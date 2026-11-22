@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { POND } from "./pond";
-import { BANK, farSideOf, HIDING_SPOTS, nearestHidingSpot } from "./world";
+import { BANK, farSideOf, farthestHidingSpot, HIDING_SPOTS, nearestHidingSpot } from "./world";
 
 describe("BANK", () => {
   it("spans the pond's width in world units", () => {
@@ -72,5 +72,21 @@ describe("nearestHidingSpot", () => {
     expect(right.spot.x).toBe(POND.reeds[1]?.x);
     expect(right.x).toBeLessThanOrEqual(BANK.right);
     expect(right.x).toBeGreaterThan(right.spot.x);
+  });
+});
+
+describe("farthestHidingSpot", () => {
+  it("hides behind the spot farthest from the threat, on its far side", () => {
+    expect(farthestHidingSpot(1200)).toEqual({
+      spot: { kind: "reed", x: 180, halfWidth: 30 },
+      x: 130,
+    });
+  });
+
+  it("picks the right-hand reed when the threat is on the left", () => {
+    expect(farthestHidingSpot(300)).toEqual({
+      spot: { kind: "reed", x: 1380, halfWidth: 35 },
+      x: 1435,
+    });
   });
 });
