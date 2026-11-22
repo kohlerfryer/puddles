@@ -96,10 +96,17 @@ New issues use the Task form in `.github/ISSUE_TEMPLATE/task.yml`, which require
 
 ## Running agents
 
-- Agents run in GitHub Actions with `anthropics/claude-code-action`, authenticated with the owner's Claude subscription token.
-- At most 2 agent runs at once, each with a turn limit and a timeout.
-- Setting the repository variable `AGENTS_PAUSED=true` stops all agent workflows.
-- Only issues and comments from the owner can start an agent.
+Two workflows run Claude Code with `anthropics/claude-code-action`, authenticated with the owner's subscription token (`CLAUDE_CODE_OAUTH_TOKEN` secret):
+
+- **`agent implement`** starts when the owner labels an issue `agent:ready`, every hour, or by hand. `scripts/agent_dispatch.py` picks the oldest ready issue whose `Blocked by` issues are closed, but only while fewer than 2 issues are in progress and no "main is red" issue is open. The agent runs `/work-issue` and opens a PR as `claude[bot]`. A failed or timed-out run labels the issue `needs-human`.
+- **`agent review`** runs `/review-pr` on every non-draft PR from the owner or `claude[bot]`. The verdict is posted by `github-actions[bot]`, since `claude[bot]` can't review its own PRs. Requesting changes fails the required `agent review` check, which blocks auto-merge. On agent PRs, an agent then fixes the points and pushes, which triggers a fresh review. After 2 fix rounds the PR is labeled `needs-human`.
+
+Limits and controls:
+
+- Each run has a turn limit and a timeout, and the model is pinned in the workflow.
+- Agent steps set `PUDDLES_AGENT=ci`, so the guard hook stops them merging PRs or editing gate files.
+- Only the owner's `agent:ready` label starts work from an issue event; agents never start agents.
+- Setting the repository variable `AGENTS_PAUSED=true` stops both workflows. While paused, the review check is skipped, so the owner should hold merges.
 - The game's own Claude API calls (teacher labels, frontier baselines) use a separate API key with a spend cap. Play itself is fully offline.
 
 ## Learning loop
@@ -115,6 +122,5 @@ Every `human-revised` PR ends with an update to `AGENTS.md` or `docs/coding-stan
 | Claude Code hooks and commands | #3 (done) |
 | Templates, CODEOWNERS, ruleset, board automation | #4 (done) |
 | Risk gate, auto-merge, extra CI checks | #5 (done) |
-| Agent implement and review workflows | #6 |
+| Agent implement and review workflows | #6 (done) |
 
-Until #5 and #6 land, the owner merges every PR by hand.
