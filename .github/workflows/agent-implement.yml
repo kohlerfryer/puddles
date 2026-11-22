@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       issue:
-        description: Issue number to implement (default: next ready issue)
+        description: "Issue number to implement (default: next ready issue)"
         required: false
 
 permissions:
