@@ -59,6 +59,9 @@
           },
           {
             "context": "dependency review"
+          },
+          {
+            "context": "agent review"
           }
         ]
       }

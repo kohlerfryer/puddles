@@ -1,0 +1,124 @@
+name: agent review
+
+# A fresh-context agent reviews each PR. Its verdict is posted by github-actions[bot],
+# because claude[bot] can't approve or reject PRs it opened. When changes are requested
+# on an agent PR, an agent fixes them; after 2 rounds the PR goes to needs-human.
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  OWNER: kohlerfryer
+  AGENT: claude[bot]
+  PR: ${{ github.event.pull_request.number }}
+  MAX_ROUNDS: 2
+
+jobs:
+  review:
+    name: agent review
+    if: >-
+      vars.AGENTS_PAUSED != 'true' && !github.event.pull_request.draft &&
+      (github.event.pull_request.user.login == 'kohlerfryer' ||
+       github.event.pull_request.user.login == 'claude[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+      actions: read
+    outputs:
+      verdict: ${{ steps.post.outputs.verdict }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: claude[bot]
+          prompt: >-
+            /review-pr ${{ github.event.pull_request.number }}.
+            Do not post the review with gh. Instead write the review body to
+            .quality/review.md and exactly one word, approve or request-changes,
+            to .quality/review-verdict.
+          claude_args: >-
+            --model claude-opus-5-5
+            --max-turns 40
+            --allowedTools "Bash(gh:*),Bash(git:*),Read,Write,Glob,Grep,Skill"
+      - id: post
+        name: Post the review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          verdict=$(tr -d '[:space:]' < .quality/review-verdict 2>/dev/null || echo missing)
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+          case "$verdict" in
+            approve)
+              gh pr review "$PR" -R "$GITHUB_REPOSITORY" --approve --body-file .quality/review.md ;;
+            request-changes)
+              gh pr review "$PR" -R "$GITHUB_REPOSITORY" --request-changes --body-file .quality/review.md
+              exit 1 ;;
+            *)
+              echo "::error::The review agent wrote no verdict."
+              exit 1 ;;
+          esac
+
+  fix:
+    name: agent fix
+    needs: review
+    if: >-
+      always() && needs.review.outputs.verdict == 'request-changes' &&
+      github.event.pull_request.user.login == 'claude[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - id: rounds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rounds=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" \
+            --jq '[.[] | select(.user.login == "github-actions[bot]" and .state == "CHANGES_REQUESTED")] | length')
+          echo "rounds=$rounds" >> "$GITHUB_OUTPUT"
+          if [ "$rounds" -gt "$MAX_ROUNDS" ]; then
+            gh pr edit "$PR" -R "$GITHUB_REPOSITORY" --add-label needs-human
+            gh pr comment "$PR" -R "$GITHUB_REPOSITORY" --body "Review still requests changes after $MAX_ROUNDS fix rounds. Needs a human."
+          fi
+      - if: steps.rounds.outputs.rounds <= 2
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - if: steps.rounds.outputs.rounds <= 2
+        uses: ./.github/actions/setup
+      - if: steps.rounds.outputs.rounds <= 2
+        uses: anthropics/claude-code-action@v1
+        env:
+          PUDDLES_AGENT: ci
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: claude[bot]
+          prompt: >-
+            Address the latest review from github-actions[bot] on PR
+            ${{ github.event.pull_request.number }} (read it with gh pr view --comments).
+            Fix each point on this branch, keep just check green, commit with the
+            Co-Authored-By trailer from AGENTS.md, and push. If a point is wrong or
+            out of scope, reply on the PR explaining why instead of changing code.
+          claude_args: >-
+            --model claude-opus-5-5
+            --max-turns 60
+            --allowedTools "Bash(git:*),Bash(gh:*),Bash(just:*),Bash(uv:*),Bash(pnpm:*),Read,Edit,Write,Glob,Grep,Skill"
