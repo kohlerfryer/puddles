@@ -31,7 +31,9 @@ function download(name: string, data: unknown): void {
   link.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: "application/json" }));
   link.download = name;
   link.click();
-  URL.revokeObjectURL(link.href);
+  setTimeout(() => {
+    URL.revokeObjectURL(link.href);
+  }, 0);
 }
 
 function drawPoints(frame: PoseFrame | undefined): void {
