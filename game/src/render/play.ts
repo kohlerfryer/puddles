@@ -79,17 +79,15 @@ export function playDemo(app: Application, scene: Container): Actor {
       idle = undefined;
       if (cue.nudge) sticker.physics.nudge(target, cue.nudge);
       duck = { x: cue.frame.x, facing: cue.frame.facing };
-      show(
-        { ...duck, height: cue.frame.height, look: cue.frame.pose, mood: cue.mood },
-        clockMs / 1000,
-      );
+      const { height, pose, wing } = cue.frame;
+      show({ ...duck, height, wing, look: pose, mood: cue.mood }, clockMs / 1000);
       return;
     }
     idle = idle
       ? advanceIdle(idle, ticker.deltaMS / 1000, Math.random)
       : startIdle(duck.x, Math.random);
     duck = { x: idlePosition(idle), facing: idleFacing(idle, duck.facing) };
-    show({ ...duck, height: 0, look: idle.action.kind, mood: "happy" }, clockMs / 1000);
+    show({ ...duck, height: 0, wing: 0, look: idle.action.kind, mood: "happy" }, clockMs / 1000);
   });
   return {
     react(step: Step): void {
