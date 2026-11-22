@@ -23,9 +23,9 @@ describe("planVerb", () => {
   });
 
   it("stands still for verbs it has no plan for yet", () => {
-    const plan = planVerb(step("dance"), { x: 400, facing: -1 }, { object: 900 });
+    const plan = planVerb(step("eat"), { x: 400, facing: -1 }, { object: 900 });
     expect(plan.moves).toEqual([
-      { pose: "stand", from: 400, to: 400, seconds: VERB_SECONDS.dance, facing: -1, lift: 0 },
+      { pose: "stand", from: 400, to: 400, seconds: VERB_SECONDS.eat, facing: -1, lift: 0 },
     ]);
     expect(plan.nudge).toBeUndefined();
   });
