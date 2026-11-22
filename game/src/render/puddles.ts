@@ -2,7 +2,12 @@ import { type Application, Container, Graphics } from "pixi.js";
 
 import { advanceIdle, idlePosition, startIdle } from "../core/idle";
 import { POND, SCENE_WIDTH } from "../core/pond";
-import type { Mood } from "../core/reaction";
+import type { Mood, Step } from "../core/reaction";
+import type { createRunner } from "../core/runner";
+import { frameAt, type Plan, planVerb } from "../core/verbs";
+
+type Runner = ReturnType<typeof createRunner>;
+type Playing = Extract<ReturnType<Runner["update"]>, { state: "playing" }>;
 
 interface Puddles {
   setMood: (mood: Mood) => void;
@@ -127,36 +132,75 @@ function drawHead(): { head: Container; face: Graphics } {
   return { head, face };
 }
 
-/** Draws placeholder Puddles on the bank of `scene` and runs the idle loop: wander, preen and nap. */
-export function drawPuddles(app: Application, scene: Container): Puddles {
+function drawDuck(): { duck: Container; head: Container; face: Graphics } {
   const duck = new Container();
-  const body = drawBody();
   const { head, face } = drawHead();
-  duck.addChild(body, head);
-  duck.position.y = POND.bank.top + POND.bank.height / 3;
+  duck.addChild(drawBody(), head);
+  return { duck, head, face };
+}
+
+/** Shows `wanted` on the face unless it is already there. */
+function faceShower(face: Graphics): (wanted: Mood | "nap") => void {
+  let shown = "";
+  return (wanted) => {
+    if (wanted === shown) return;
+    shown = wanted;
+    face.clear();
+    if (wanted === "nap") sleepFace(face);
+    else FACES[wanted](face);
+  };
+}
+
+/**
+ * Draws placeholder Puddles on the bank of `scene`. Steps from `runner` play first; between
+ * them Puddles idles: wander, preen and nap.
+ */
+export function drawPuddles(app: Application, scene: Container, runner: Runner): Puddles {
+  const { duck, head, face } = drawDuck();
+  const ground = POND.bank.top + POND.bank.height / 3;
+  duck.position.y = ground;
   scene.addChild(duck);
+  const showFace = faceShower(face);
 
   let mood: Mood = "happy";
-  let state = startIdle(SCENE_WIDTH / 2, Math.random);
+  let idle = startIdle(SCENE_WIDTH / 2, Math.random);
+  let acting: { step: Step; startedAt: number; plan: Plan } | undefined;
   let clock = 0;
-  let shownFace = "";
 
-  app.ticker.add((ticker) => {
-    const seconds = ticker.deltaMS / 1000;
-    clock += seconds;
-    state = advanceIdle(state, seconds, Math.random);
-    const { kind, from, to } = state.action;
-    duck.position.x = idlePosition(state);
+  /** Plays the runner's current step; the object sticker isn't on the bank yet, so it sits mid-bank. */
+  function act({ step, startedAt }: Playing, now: number): void {
+    if (acting?.step !== step || acting.startedAt !== startedAt) {
+      const facing = duck.scale.x < 0 ? -1 : 1;
+      const plan = planVerb(step, { x: duck.position.x, facing }, { object: SCENE_WIDTH / 2 });
+      acting = { step, startedAt, plan };
+    }
+    const frame = frameAt(acting.plan, (now - startedAt) / 1000);
+    duck.position.set(frame.x, ground - frame.height);
+    duck.scale.x = frame.facing;
+    const moving = frame.pose === "walk" || frame.pose === "run";
+    duck.rotation = moving ? Math.sin(clock * 10) * WADDLE : 0;
+    head.rotation = 0;
+    showFace(step.mood);
+  }
+
+  function idleOn(seconds: number): void {
+    if (acting) idle = startIdle(duck.position.x, Math.random);
+    acting = undefined;
+    idle = advanceIdle(idle, seconds, Math.random);
+    const { kind, from, to } = idle.action;
+    duck.position.set(idlePosition(idle), ground);
     if (to !== from) duck.scale.x = to > from ? 1 : -1;
     duck.rotation = kind === "wander" ? Math.sin(clock * 10) * WADDLE : 0;
     head.rotation = kind === "preen" ? 1.2 + Math.sin(clock * 6) * PREEN_SWAY : 0;
+    showFace(kind === "nap" ? "nap" : mood);
+  }
 
-    const wanted = kind === "nap" ? "nap" : mood;
-    if (wanted === shownFace) return;
-    shownFace = wanted;
-    face.clear();
-    if (wanted === "nap") sleepFace(face);
-    else FACES[mood](face);
+  app.ticker.add((ticker) => {
+    clock += ticker.deltaMS / 1000;
+    const now = performance.now();
+    const status = runner.update(now);
+    if (status.state === "playing") act(status, now);
+    else idleOn(ticker.deltaMS / 1000);
   });
 
   return {
