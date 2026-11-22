@@ -8,6 +8,7 @@ Every standard here is enforced by a tool in `just check`. Hooks, pre-push and C
 | --- | --- | --- | --- |
 | Lint | ruff (E, F, I, N, B, UP, SIM, RUF, PL, C90, PGH) | typescript-eslint `strict-type-checked` + `stylistic-type-checked` | 0 warnings |
 | Format | `ruff format` | prettier | no diff |
+| GitHub workflows | actionlint (all of `.github/workflows/`) | | 0 errors |
 | Types | `mypy --strict` | `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` | no untyped `any` |
 | Cyclomatic complexity | ruff `C901` | eslint `complexity` | 10 per function |
 | Cognitive complexity | complexipy | `sonarjs/cognitive-complexity` | 15 per function |
@@ -38,7 +39,7 @@ Logic is always measured: the script runner, validator, state machine, server an
 | Command | What it runs |
 | --- | --- |
 | `just check` | everything below |
-| `just lint` | format checks, ruff, eslint (including TypeScript complexity and size) |
+| `just lint` | format checks, ruff, eslint (including TypeScript complexity and size), actionlint |
 | `just types` | mypy, tsc |
 | `just complexity` | complexipy, Python file length |
 | `just dupes` | jscpd |
