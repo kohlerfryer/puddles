@@ -34,8 +34,8 @@ function drawRock(g: Graphics): void {
   g.ellipse(x, POND.bank.top, width / 2, height).fill(COLOURS.rock);
 }
 
-/** Draws the pond and keeps it fitted to the window. */
-export function drawPond(app: Application): void {
+/** Draws the pond, keeps it fitted to the window and returns the scene to draw Puddles into. */
+export function drawPond(app: Application): Container {
   const scene = new Container();
   const g = new Graphics();
   drawBands(g);
@@ -51,4 +51,5 @@ export function drawPond(app: Application): void {
   };
   fit();
   app.renderer.on("resize", fit);
+  return scene;
 }
