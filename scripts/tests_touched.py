@@ -6,6 +6,8 @@ from scripts.git_changes import FileChange, branch_changes, is_test
 
 SOURCE_ROOTS = ("server/", "game/src/", "scripts/")
 SOURCE_SUFFIXES = (".py", ".ts")
+# Drawing and entry code isn't unit-tested (ADR: game logic in core, drawing in render).
+UNTESTED = ("game/src/render/", "game/src/main.ts")
 
 
 def is_source(path: str) -> bool:
@@ -14,6 +16,7 @@ def is_source(path: str) -> bool:
         and path.endswith(SOURCE_SUFFIXES)
         and not is_test(path)
         and not path.endswith("__init__.py")
+        and not path.startswith(UNTESTED)
     )
 
 

@@ -15,6 +15,8 @@ def test_recognizes_source_files() -> None:
     assert not is_source("game/src/title.test.ts")
     assert not is_source("server/puddles_server/__init__.py")
     assert not is_source("docs/workflow.md")
+    assert not is_source("game/src/render/pond.ts")
+    assert not is_source("game/src/main.ts")
 
 
 def test_flags_source_changes_without_tests() -> None:
