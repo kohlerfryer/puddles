@@ -15,6 +15,7 @@
 
 - `server/puddles_server/`: FastAPI app (SmolVLM inference later). Tests in `server/tests/`.
 - `game/`: Vite + TypeScript game. Logic in `src/core/` (pure, tested, no PixiJS or DOM); drawing and input in `src/render/` (PixiJS, MediaPipe; no tests, excluded from coverage). Tests sit next to code as `*.test.ts`.
+- `shared/`: contracts used across game, server and evals. `reaction.schema.json` is the reaction format; game types are generated from it (`pnpm -C game gen:types`, checked by `just generated`).
 - `scripts/`: repo tooling in Python, with tests in `scripts/tests/`.
 - `docs/adr/`: decisions. `docs/workflow.md`, `docs/coding-standards.md`.
 - Python 3.12 via `uv`; Node via `pnpm` inside `game/`. TypeScript is pinned to 6.x.
