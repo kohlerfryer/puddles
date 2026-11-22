@@ -19,6 +19,7 @@ lint:
     uv run ruff check .
     pnpm -C game exec prettier --check .
     pnpm -C game exec eslint . --max-warnings 0
+    uv run actionlint
 
 # Strict type checks
 types:
