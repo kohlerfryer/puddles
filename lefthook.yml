@@ -1,0 +1,10 @@
+pre-commit:
+  commands:
+    check-files:
+      glob: "*.{py,ts}"
+      run: just check-files {staged_files}
+
+pre-push:
+  commands:
+    check:
+      run: just check
