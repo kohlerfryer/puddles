@@ -3,7 +3,8 @@ import type { Step, Traits, Verb } from "./reaction";
 import { isReaction } from "./reactionSchema";
 
 const MAX_STEPS = 5;
-const MAX_SECONDS = 6;
+/** Longest a played script may last, in seconds. */
+export const MAX_SECONDS = 6;
 const MAX_SAY_WORDS = 12;
 
 /** Rough length of each verb in seconds: caps a script near MAX_SECONDS and times its steps. */
