@@ -50,6 +50,19 @@ Everything else is `risk:low`.
 
 The `risk gate` workflow runs on every PR update and review. Low risk: it adds `risk:low` and turns on rebase auto-merge, so the PR merges once the required checks pass. High risk: it adds `risk:high`, turns auto-merge off, and fails until the owner approves (PRs the owner authored pass, since GitHub doesn't allow self-approval). A separate `tests touched` check fails when source code changes without any test changing.
 
+## CI
+
+| Check | When | Fails on |
+| --- | --- | --- |
+| `just check` | every PR, push to `main`, nightly | any gate in `docs/coding-standards.md` |
+| Diff coverage | PRs | under 90% of changed lines covered |
+| `tests touched` | PRs | source changed without a test changing |
+| `risk gate` | PRs and reviews | high risk without the owner's approval |
+| `secrets scan` | every run | gitleaks finds a secret in history |
+| `dependency review` | PRs | a new dependency with a moderate or worse vulnerability |
+
+When CI fails on `main`, the `main red` workflow opens one `needs-human` issue naming the commit. Fix forward or revert in a PR; agents don't start new work while it's open.
+
 ## Branching
 
 - Trunk-based: `main` is protected and always green.
@@ -101,7 +114,7 @@ Every `human-revised` PR ends with an update to `AGENTS.md` or `docs/coding-stan
 | These docs and ADRs | #2 (done) |
 | Claude Code hooks and commands | #3 (done) |
 | Templates, CODEOWNERS, ruleset, board automation | #4 (done) |
-| Risk gate, auto-merge, extra CI checks | #5 |
+| Risk gate, auto-merge, extra CI checks | #5 (done) |
 | Agent implement and review workflows | #6 |
 
 Until #5 and #6 land, the owner merges every PR by hand.
