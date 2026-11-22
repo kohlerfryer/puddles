@@ -1,4 +1,5 @@
 import type { Mood } from "./reaction";
+import { planVerb } from "./planVerb";
 import type { RunnerStatus } from "./runner";
 import type { Line } from "./speech";
 import { VERB_SECONDS } from "./validator";
@@ -8,12 +9,12 @@ import {
   frameAt,
   type Nudge,
   type Plan,
-  planVerb,
   type Scene,
+  type Take,
 } from "./verbs";
 
 /**
- * What Puddles shows this frame, the push to give the object sticker if one lands now,
+ * What Puddles shows this frame, what happens to the object sticker if it happens now,
  * and the line to start saying if a step that speaks has just started.
  */
 interface Cue {
@@ -21,15 +22,29 @@ interface Cue {
   readonly mood: Mood;
   readonly nudge?: Nudge;
   readonly line?: Line;
+  readonly take?: Take;
 }
 
 interface Acting {
   readonly startedAt: number;
   readonly plan: Plan;
-  nudged: boolean;
+  /** The plan's nudge and take that have already landed. */
+  readonly landed: Set<"nudge" | "take">;
 }
 
-/** Acts out what the runner plays: plans each step as it starts, says its line and lands its nudge once. */
+/** `happening` if it falls due by `elapsed` and hasn't landed yet, marking it landed. */
+function landing<T extends { readonly at: number }>(
+  acting: Acting,
+  event: "nudge" | "take",
+  happening: T | undefined,
+  elapsed: number,
+): T | undefined {
+  if (!happening || acting.landed.has(event) || elapsed < happening.at) return undefined;
+  acting.landed.add(event);
+  return happening;
+}
+
+/** Acts out what the runner plays: plans each step as it starts, says its line and lands its nudge and take once. */
 export function createActing() {
   let acting: Acting | undefined;
 
@@ -43,19 +58,19 @@ export function createActing() {
       const { step, startedAt } = status;
       let line: Line | undefined;
       if (acting?.startedAt !== startedAt) {
-        acting = { startedAt, plan: planVerb(step, duck, scene), nudged: false };
+        acting = { startedAt, plan: planVerb(step, duck, scene), landed: new Set() };
         if (step.say) line = { text: step.say, startedAt, seconds: VERB_SECONDS[step.do] };
       }
       const elapsed = (now - startedAt) / 1000;
-      const cue = {
+      const nudge = landing(acting, "nudge", acting.plan.nudge, elapsed);
+      const take = landing(acting, "take", acting.plan.take, elapsed);
+      return {
         frame: frameAt(acting.plan, elapsed),
         mood: status.mood,
         ...(line && { line }),
+        ...(nudge && { nudge }),
+        ...(take && { take }),
       };
-      const { nudge } = acting.plan;
-      if (!nudge || acting.nudged || elapsed < nudge.at) return cue;
-      acting.nudged = true;
-      return { ...cue, nudge };
     },
   };
 }
