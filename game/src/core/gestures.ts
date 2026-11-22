@@ -60,17 +60,22 @@ function median(values: readonly number[]): number {
   return sorted[Math.floor(sorted.length / 2)] ?? 0;
 }
 
-function toSample(frame: PoseFrame, scale: number): Sample {
-  const feetVisibility = Math.min(
+/** Whether both ankles are in view; jump and crouch can't be judged without them. */
+export function feetInView(frame: PoseFrame): boolean {
+  const visibility = Math.min(
     landmark(frame, LEFT_ANKLE).visibility,
     landmark(frame, RIGHT_ANKLE).visibility,
   );
+  return visibility >= FEET_VISIBLE;
+}
+
+function toSample(frame: PoseFrame, scale: number): Sample {
   return {
     t: frame.t,
     shoulders: midY(frame, LEFT_SHOULDER, RIGHT_SHOULDER) / scale,
     hips: midY(frame, LEFT_HIP, RIGHT_HIP) / scale,
     feet: midY(frame, LEFT_ANKLE, RIGHT_ANKLE) / scale,
-    feetVisible: feetVisibility >= FEET_VISIBLE,
+    feetVisible: feetInView(frame),
     leftRaise: (y(frame, LEFT_SHOULDER) - y(frame, LEFT_WRIST)) / scale,
     rightRaise: (y(frame, RIGHT_SHOULDER) - y(frame, RIGHT_WRIST)) / scale,
   };
