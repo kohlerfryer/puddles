@@ -7,7 +7,7 @@ export default defineConfig({
       provider: "v8",
       include: ["src/**/*.ts"],
       // Rendering and entry code is excluded on purpose; see docs/coding-standards.md.
-      exclude: ["src/**/*.test.ts", "src/main.ts"],
+      exclude: ["src/**/*.test.ts", "src/main.ts", "src/render/**"],
       reporter: ["text", "cobertura"],
       thresholds: { lines: 85, branches: 85, functions: 85, statements: 85 },
     },
