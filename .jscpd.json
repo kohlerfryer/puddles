@@ -1,8 +1,19 @@
 {
   "threshold": 3,
   "minLines": 5,
-  "path": ["server", "scripts", "game/src"],
-  "ignore": ["**/node_modules/**", "**/tests/**", "**/*.test.ts"],
-  "reporters": ["console"],
+  "path": [
+    "server",
+    "scripts",
+    "game/src"
+  ],
+  "ignore": [
+    "**/node_modules/**",
+    "**/tests/**",
+    "**/*.test.ts",
+    "**/fixtures/**"
+  ],
+  "reporters": [
+    "console"
+  ],
   "absolute": false
 }
