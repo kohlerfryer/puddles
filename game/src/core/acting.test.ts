@@ -51,6 +51,20 @@ describe("createActing", () => {
     ]);
   });
 
+  it("gives the step's line once, when the step starts, timed to the step", () => {
+    const acting = createActing();
+    const hello: Step = { ...peck, say: "Hi friend!" };
+    const cues = [1000, 1500].map((now) => acting.update(playing(hello, 1000), now, duck, scene));
+    expect(cues.map((cue) => cue?.line)).toEqual([
+      { text: "Hi friend!", startedAt: 1000, seconds: 1 },
+      undefined,
+    ]);
+  });
+
+  it("gives no line for a step that says nothing", () => {
+    expect(createActing().update(playing(walk, 0), 0, duck, scene)?.line).toBeUndefined();
+  });
+
   it("forgets the step once the runner goes idle", () => {
     const acting = createActing();
     acting.update(playing(peck, 0), 600, duck, { object: 460 });

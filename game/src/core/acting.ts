@@ -1,5 +1,7 @@
 import type { Mood } from "./reaction";
 import type { RunnerStatus } from "./runner";
+import type { Line } from "./speech";
+import { VERB_SECONDS } from "./validator";
 import {
   type Duck,
   type Frame,
@@ -10,11 +12,15 @@ import {
   type Scene,
 } from "./verbs";
 
-/** What Puddles shows this frame, and the push to give the object sticker if one lands now. */
+/**
+ * What Puddles shows this frame, the push to give the object sticker if one lands now,
+ * and the line to start saying if a step that speaks has just started.
+ */
 interface Cue {
   readonly frame: Frame;
   readonly mood: Mood;
   readonly nudge?: Nudge;
+  readonly line?: Line;
 }
 
 interface Acting {
@@ -23,7 +29,7 @@ interface Acting {
   nudged: boolean;
 }
 
-/** Acts out what the runner plays: plans each step as it starts and lands its nudge once. */
+/** Acts out what the runner plays: plans each step as it starts, says its line and lands its nudge once. */
 export function createActing() {
   let acting: Acting | undefined;
 
@@ -34,12 +40,18 @@ export function createActing() {
         acting = undefined;
         return undefined;
       }
-      if (acting?.startedAt !== status.startedAt) {
-        const plan = planVerb(status.step, duck, scene);
-        acting = { startedAt: status.startedAt, plan, nudged: false };
+      const { step, startedAt } = status;
+      let line: Line | undefined;
+      if (acting?.startedAt !== startedAt) {
+        acting = { startedAt, plan: planVerb(step, duck, scene), nudged: false };
+        if (step.say) line = { text: step.say, startedAt, seconds: VERB_SECONDS[step.do] };
       }
-      const elapsed = (now - status.startedAt) / 1000;
-      const cue = { frame: frameAt(acting.plan, elapsed), mood: status.mood };
+      const elapsed = (now - startedAt) / 1000;
+      const cue = {
+        frame: frameAt(acting.plan, elapsed),
+        mood: status.mood,
+        ...(line && { line }),
+      };
       const { nudge } = acting.plan;
       if (!nudge || acting.nudged || elapsed < nudge.at) return cue;
       acting.nudged = true;
