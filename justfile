@@ -5,7 +5,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 jscpd := "game/node_modules/.bin/jscpd"
 
 # Run every gate
-check: lint types complexity dupes deadcode test
+check: lint types complexity dupes deadcode generated test
 
 # Install Python and TypeScript dependencies from the lockfiles
 install:
@@ -39,6 +39,11 @@ dupes:
 deadcode:
     uv run vulture
     pnpm -C game exec knip
+
+# Generated code matches its source (shared/ schema -> game types)
+generated:
+    pnpm -C game run --silent gen:types >/dev/null
+    git diff --exit-code HEAD -- game/src/core/reaction.ts || (echo "game/src/core/reaction.ts was stale and has been regenerated; commit it" && exit 1)
 
 # Tests with coverage thresholds
 test:

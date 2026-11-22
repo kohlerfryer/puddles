@@ -44,6 +44,7 @@ Logic is always measured: the script runner, validator, state machine, server an
 | `just complexity` | complexipy, Python file length |
 | `just dupes` | jscpd |
 | `just deadcode` | vulture, knip |
+| `just generated` | regenerates code from `shared/` and fails if it changed |
 | `just test` | pytest and vitest with coverage thresholds |
 | `just check-files <paths>` | fast lint, types and complexity for specific files |
 | `just fix` | auto-format and auto-fix |
