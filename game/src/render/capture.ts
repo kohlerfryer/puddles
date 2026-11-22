@@ -1,4 +1,4 @@
-import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
+import type { PoseLandmarker } from "@mediapipe/tasks-vision";
 
 import {
   fixtureFileName,
@@ -7,15 +7,11 @@ import {
   type Gesture,
   type PoseFrame,
 } from "../core/poseFixture";
+import { loadPose, openCamera, SAMPLE_MS } from "./camera";
 
-// Dev-only tool for recording gesture fixtures (issue #28). Assets load from the
-// MediaPipe CDN; the game itself will bundle them for offline play.
-const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
-const MODEL =
-  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+// Dev-only tool for recording gesture fixtures (issue #28).
 const COUNTDOWN_S = 3;
 const RECORD_MS = 10_000;
-const SAMPLE_MS = 66;
 
 const video = document.getElementById("video") as HTMLVideoElement;
 const overlay = document.getElementById("overlay") as HTMLCanvasElement;
@@ -105,17 +101,10 @@ async function onRecord(pose: PoseLandmarker, gesture: Gesture, button: HTMLButt
 }
 
 async function start(): Promise<void> {
-  video.srcObject = await navigator.mediaDevices.getUserMedia({
-    video: { width: 1280, height: 720 },
-  });
-  await video.play();
+  await openCamera(video);
   overlay.width = video.videoWidth;
   overlay.height = video.videoHeight;
-  const vision = await FilesetResolver.forVisionTasks(WASM);
-  const pose = await PoseLandmarker.createFromOptions(vision, {
-    baseOptions: { modelAssetPath: MODEL },
-    runningMode: "VIDEO",
-  });
+  const pose = await loadPose();
   for (const gesture of GESTURES) {
     const button = document.createElement("button");
     button.textContent = `Record ${gesture}`;

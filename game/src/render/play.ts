@@ -5,6 +5,7 @@ import { DEMO_SCRIPT, DEMO_TRAITS, demoDrop } from "../core/demo";
 import { advanceIdle, idlePosition, startIdle } from "../core/idle";
 import { createPhysics } from "../core/physics";
 import { SCENE_WIDTH, STICKER_POND } from "../core/pond";
+import type { Step } from "../core/reaction";
 import { createRunner } from "../core/runner";
 import type { Duck, Facing } from "../core/verbs";
 import { drawPuddles } from "./puddles";
@@ -41,8 +42,13 @@ function demoSticker(scene: Container, x: number) {
   };
 }
 
+/** Lets other inputs (the camera) queue reactions on the same clock as the demo. */
+export interface Actor {
+  react(step: Step): void;
+}
+
 /** Plays the six-verb demo, then idles: Puddles follows plans from core and decides nothing here. */
-export function playDemo(app: Application, scene: Container): void {
+export function playDemo(app: Application, scene: Container): Actor {
   const show = drawPuddles(scene);
   const runner = createRunner();
   const acting = createActing();
@@ -73,4 +79,9 @@ export function playDemo(app: Application, scene: Container): void {
     duck = { x: idlePosition(idle), facing: idleFacing(idle, duck.facing) };
     show({ ...duck, height: 0, look: idle.action.kind, mood: "happy" }, clockMs / 1000);
   });
+  return {
+    react(step: Step): void {
+      runner.react(step, clockMs);
+    },
+  };
 }
