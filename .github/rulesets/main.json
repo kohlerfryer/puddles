@@ -53,6 +53,12 @@
           },
           {
             "context": "tests touched"
+          },
+          {
+            "context": "secrets scan"
+          },
+          {
+            "context": "dependency review"
           }
         ]
       }

@@ -19,6 +19,7 @@ Every standard here is enforced by a tool in `just check`. Hooks, pre-push and C
 | Duplication | jscpd | jscpd | ≤ 3% |
 | Dead code | vulture | knip (files, exports, dependencies) | none |
 | Coverage | pytest-cov | vitest v8 | ≥ 85% lines and branches |
+| Diff coverage (PRs) | diff-cover on both reports | diff-cover | ≥ 90% of changed lines |
 
 Settings live in `pyproject.toml`, `game/eslint.config.js`, `game/tsconfig.json`, `game/vitest.config.ts`, `game/knip.json` and `.jscpd.json`. TypeScript tests are exempt from the function-length limit (a `describe` block is one long function); Python tests are exempt from the magic-number rule.
 
@@ -45,6 +46,7 @@ Logic is always measured: the script runner, validator, state machine, server an
 | `just test` | pytest and vitest with coverage thresholds |
 | `just check-files <paths>` | fast lint, types and complexity for specific files |
 | `just fix` | auto-format and auto-fix |
+| `just diff-coverage [base]` | coverage of lines changed since `base` (default `origin/main`) |
 | `just report` | every gate, writing `.quality/report.json` with each violation's file, line and rule |
 
 In Claude Code, a hook runs `just check-files` after every edit and reports violations straight back, and Claude can't finish a task while `just check` fails (after 3 blocked attempts it must escalate with `needs-human`).
