@@ -1,0 +1,35 @@
+name: main red
+
+# When CI fails on main (a merge or the nightly run), open one needs-human issue
+# naming the failing commit, so nobody builds on a broken trunk.
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  issues: write
+
+jobs:
+  flag:
+    name: flag red main
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          title="main is red at ${SHA:0:7}"
+          if gh issue list -R "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq 'length' | grep -qv '^0$'; then
+            echo "Issue already open."
+            exit 0
+          fi
+          gh issue create -R "$GITHUB_REPOSITORY" --title "$title" --label needs-human \
+            --body "CI failed on \`main\` at $SHA: $RUN_URL
+
+          Fix forward in a PR, or revert with \`git revert $SHA\` in a PR. Agents don't start new work while this is open."
