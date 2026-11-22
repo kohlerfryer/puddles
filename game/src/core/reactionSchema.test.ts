@@ -29,6 +29,10 @@ describe("reaction schema", () => {
     expect(isReaction({ ...toyCat, script: [...toyCat.script, ...toyCat.script] })).toBe(false);
   });
 
+  it("rejects an empty object name", () => {
+    expect(isReaction({ ...toyCat, object: "" })).toBe(false);
+  });
+
   it("rejects extra fields and missing traits", () => {
     expect(isReaction({ ...toyCat, x: 1 })).toBe(false);
     expect(isReaction({ ...toyCat, traits: { size: "small" } })).toBe(false);
