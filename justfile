@@ -1,0 +1,75 @@
+# One entry point for every quality gate. Hooks, pre-push and CI all run these recipes.
+
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+jscpd := "game/node_modules/.bin/jscpd"
+
+# Run every gate
+check: lint types complexity dupes deadcode test
+
+# Install Python and TypeScript dependencies from the lockfiles
+install:
+    uv sync --frozen
+    pnpm -C game install --frozen-lockfile
+    lefthook install
+
+# Lint and format checks (includes TypeScript complexity and size limits)
+lint:
+    uv run ruff format --check .
+    uv run ruff check .
+    pnpm -C game exec prettier --check .
+    pnpm -C game exec eslint . --max-warnings 0
+
+# Strict type checks
+types:
+    uv run mypy
+    pnpm -C game exec tsc --noEmit
+
+# Python cognitive complexity and file length (Python cyclomatic limits run in lint)
+complexity:
+    uv run complexipy
+    uv run python -m scripts.file_length
+
+# Copy-paste detection across both languages
+dupes:
+    {{jscpd}} --config .jscpd.json
+
+# Unused code, exports and dependencies
+deadcode:
+    uv run vulture
+    pnpm -C game exec knip
+
+# Tests with coverage thresholds
+test:
+    uv run pytest --cov --cov-report=term --cov-report=xml
+    pnpm -C game exec vitest run --coverage
+
+# Fast checks on specific files, for hooks and quick iteration
+check-files +paths:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    py=(); ts=()
+    for p in {{paths}}; do
+      p="${p#"$PWD"/}"
+      case "$p" in
+        *.py) py+=("$p") ;;
+        game/*.ts) ts+=("${p#game/}") ;;
+      esac
+    done
+    if ((${#py[@]})); then
+      uv run ruff format --check "${py[@]}"
+      uv run ruff check "${py[@]}"
+      uv run mypy "${py[@]}"
+      uv run complexipy "${py[@]}"
+    fi
+    if ((${#ts[@]})); then
+      pnpm -C game exec prettier --check "${ts[@]}"
+      pnpm -C game exec eslint --max-warnings 0 "${ts[@]}"
+    fi
+
+# Apply automatic formatting and lint fixes
+fix:
+    uv run ruff format .
+    uv run ruff check --fix .
+    pnpm -C game exec prettier --write .
+    pnpm -C game exec eslint . --fix
