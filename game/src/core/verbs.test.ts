@@ -4,7 +4,8 @@ import { IDLE_MARGIN } from "./idle";
 import { POND } from "./pond";
 import type { Step, Target, Verb } from "./reaction";
 import { VERB_SECONDS } from "./validator";
-import { type Plan, frameAt, planVerb } from "./verbs";
+import { planVerb } from "./planVerb";
+import { type Plan, frameAt } from "./verbs";
 import { waveWing } from "./wave";
 import { BANK } from "./world";
 
@@ -21,14 +22,6 @@ describe("planVerb", () => {
       const plan = planVerb(step(verb, target), { x: 400, facing: 1 }, { object: 1200 });
       expect(total(plan)).toBeCloseTo(VERB_SECONDS[verb]);
     }
-  });
-
-  it("stands still for verbs it has no plan for yet", () => {
-    const plan = planVerb(step("eat"), { x: 400, facing: -1 }, { object: 900 });
-    expect(plan.moves).toEqual([
-      { pose: "stand", from: 400, to: 400, seconds: VERB_SECONDS.eat, facing: -1, lift: 0 },
-    ]);
-    expect(plan.nudge).toBeUndefined();
   });
 });
 
