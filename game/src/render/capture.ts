@@ -76,18 +76,32 @@ async function record(pose: PoseLandmarker, gesture: Gesture): Promise<PoseFrame
   return frames;
 }
 
-async function onRecord(pose: PoseLandmarker, gesture: Gesture, button: HTMLButtonElement) {
-  buttons.querySelectorAll("button").forEach((b) => (b.disabled = true));
+function setButtonsEnabled(enabled: boolean): void {
+  buttons.querySelectorAll("button").forEach((b) => (b.disabled = !enabled));
+}
+
+async function saveRecording(pose: PoseLandmarker, gesture: Gesture, button: HTMLButtonElement) {
   const frames = await record(pose, gesture);
   const name = fixtureFileName(gesture, who.value);
-  if (frames.length > 0) {
-    download(name, { gesture, who: who.value.trim() || "anon", frames });
-    button.classList.add("done");
-    status.textContent = `Saved ${name} (${String(frames.length)} frames).`;
-  } else {
+  if (frames.length === 0) {
     status.textContent = "No body detected. Step back so you're fully in view and try again.";
+    return;
   }
-  buttons.querySelectorAll("button").forEach((b) => (b.disabled = false));
+  download(name, { gesture, who: who.value.trim() || "anon", frames });
+  button.classList.add("done");
+  status.textContent = `Saved ${name} (${String(frames.length)} frames).`;
+}
+
+async function onRecord(pose: PoseLandmarker, gesture: Gesture, button: HTMLButtonElement) {
+  setButtonsEnabled(false);
+  try {
+    await saveRecording(pose, gesture, button);
+  } catch (error: unknown) {
+    banner.textContent = "";
+    status.textContent = `Recording failed: ${String(error)}`;
+  } finally {
+    setButtonsEnabled(true);
+  }
 }
 
 async function start(): Promise<void> {
