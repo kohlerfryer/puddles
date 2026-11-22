@@ -48,6 +48,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REQUESTED: ${{ github.event.issue.number || inputs.issue }}
         run: |
+          uv run --frozen python -m scripts.close_merged
           uv run --frozen python -m scripts.agent_dispatch ${REQUESTED:+--issue "$REQUESTED"} > pick.json
           jq -r .reason pick.json | tee -a "$GITHUB_STEP_SUMMARY"
           issue=$(jq -r '.issue // empty' pick.json)
