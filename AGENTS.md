@@ -43,7 +43,7 @@ Repo skills: `/plan-milestone`, `/create-tickets`, `/work-issue <n>`, `/review-p
 
 ## Escalation
 
-Stop, label the issue `needs-human` and comment why when: acceptance criteria are unclear, an ADR conflicts, CI fails 3 times in a row, review passes 2 rounds, or the diff grows past 400 lines.
+Stop, label the issue `needs-human` and comment why when: acceptance criteria are unclear, an ADR conflicts, CI fails 3 times in a row, review passes 2 rounds, or the diff grows past 400 non-test lines (tests don't count; never trim tests to fit).
 
 ## Decisions
 

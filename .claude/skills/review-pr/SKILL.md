@@ -14,5 +14,5 @@ Review as someone who didn't write it.
    - **Scope:** nothing beyond the issue; no speculative options, dead code, commented-out code, or `TODO` without an issue.
    - **Fit:** matches the patterns around it; no new dependency without a reason.
    - **Gates:** no loosened limits, coverage exclusions, or unexplained suppressions.
-   - **Risk:** say whether it should be `risk:high` (gates, agent config, ADRs, `shared/`, dependencies, > 400 lines, deleted tests).
+   - **Risk:** say whether it should be `risk:high` (gates, agent config, ADRs, `shared/`, dependencies, > 400 non-test lines, deleted tests).
 3. Post the result with `gh pr review <n>`: `--approve` when nothing blocks, otherwise `--request-changes` with each issue as `file:line`: problem and fix. Style preferences that the linters don't enforce are comments, not blockers.
