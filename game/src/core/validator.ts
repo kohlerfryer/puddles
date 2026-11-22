@@ -6,8 +6,8 @@ const MAX_STEPS = 5;
 const MAX_SECONDS = 6;
 const MAX_SAY_WORDS = 12;
 
-/** Rough length of each verb, used only to cap a script near MAX_SECONDS. */
-const VERB_SECONDS: Record<Verb, number> = {
+/** Rough length of each verb in seconds: caps a script near MAX_SECONDS and times its steps. */
+export const VERB_SECONDS: Record<Verb, number> = {
   walk_to: 1.5,
   run_to: 1,
   run_away: 1.5,
