@@ -1,10 +1,21 @@
 import { IDLE_MARGIN } from "./idle";
 import { POND } from "./pond";
-import type { Step, Target } from "./reaction";
+import type { Step, Target, Verb } from "./reaction";
 import { VERB_SECONDS } from "./validator";
 import { BANK, farthestHidingSpot } from "./world";
 
-export type Pose = "stand" | "walk" | "run" | "sniff" | "peck" | "look" | "look_camera" | "hop";
+export type Pose =
+  | "stand"
+  | "walk"
+  | "run"
+  | "sniff"
+  | "peck"
+  | "look"
+  | "look_camera"
+  | "hop"
+  | "flap"
+  | "freeze"
+  | "fallen";
 export type Facing = 1 | -1;
 
 /** One timed stretch of a verb: Puddles in `pose` going from `from` to `to`, hopping `lift` high. */
@@ -63,6 +74,12 @@ const PECK_NUDGE = { x: 4, y: -6 };
 /** How long a hop over something takes, and how far it carries Puddles. */
 const HOP_OVER_SECONDS = 0.75;
 const HOP_SPAN = 2 * REACH;
+/** A dance is this many little hops, turning round each one. */
+const DANCE_BEATS = 4;
+const DANCE_LIFT = 30;
+const FLAP_LIFT = 20;
+/** How long Puddles lies fallen before getting back up. */
+const FALLEN_SECONDS = 1;
 
 /** Where a target sits on the bank, if it has a place there. */
 function placeOf(target: Target | undefined, scene: Scene, x: number): number | undefined {
@@ -186,24 +203,54 @@ function peckNudge(step: Step, duck: Duck, scene: Scene): { nudge?: Nudge } {
   return { nudge: { at, x: duck.facing * PECK_NUDGE.x, y: PECK_NUDGE.y } };
 }
 
+/** Bounces `DANCE_BEATS` little hops on the spot, turning round each beat, starting towards the target. */
+function dance(step: Step, duck: Duck, scene: Scene): Plan {
+  const beat = VERB_SECONDS.dance / DANCE_BEATS;
+  const first = facingTowards(placeOf(step.target, scene, duck.x), duck);
+  const beatAt = (index: number): Move =>
+    still("hop", { x: duck.x, facing: index % 2 === 0 ? first : flip(first) }, beat, DANCE_LIFT);
+  const rest = Array.from({ length: DANCE_BEATS - 1 }, (_, index) => beatAt(index + 1));
+  return { moves: [beatAt(0), ...rest] };
+}
+
+function flip(facing: Facing): Facing {
+  return facing === 1 ? -1 : 1;
+}
+
+function flap(step: Step, duck: Duck, scene: Scene): Plan {
+  const turned = { x: duck.x, facing: facingTowards(placeOf(step.target, scene, duck.x), duck) };
+  return { moves: [still("flap", turned, VERB_SECONDS.flap, FLAP_LIFT)] };
+}
+
+/** Freezes exactly as it is, not even turning to the target. */
+function freeze(_step: Step, duck: Duck): Plan {
+  return { moves: [still("freeze", duck, VERB_SECONDS.freeze)] };
+}
+
+/** Falls over where it stands, lies there for `FALLEN_SECONDS`, then stands back up. */
+function fallOver(_step: Step, duck: Duck): Plan {
+  const fallen = still("fallen", duck, FALLEN_SECONDS);
+  return { moves: [fallen, still("stand", duck, VERB_SECONDS.fall_over - FALLEN_SECONDS)] };
+}
+
+type Planner = (step: Step, duck: Duck, scene: Scene) => Plan;
+
+const PLANNERS: Partial<Record<Verb, Planner>> = {
+  walk_to: (step, duck, scene) => approach(WALK, step, duck, scene),
+  run_to: (step, duck, scene) => approach(RUN, step, duck, scene),
+  run_away: runAway,
+  hide_behind: hideBehind,
+  jump_over: jumpOver,
+  circle,
+  dance,
+  flap,
+  freeze,
+  fall_over: fallOver,
+};
+
 /** Turns a script step into timed moves for Puddles at `duck`; the moves add up to the verb's time. */
 export function planVerb(step: Step, duck: Duck, scene: Scene): Plan {
-  switch (step.do) {
-    case "walk_to":
-      return approach(WALK, step, duck, scene);
-    case "run_to":
-      return approach(RUN, step, duck, scene);
-    case "run_away":
-      return runAway(step, duck, scene);
-    case "hide_behind":
-      return hideBehind(step, duck, scene);
-    case "jump_over":
-      return jumpOver(step, duck, scene);
-    case "circle":
-      return circle(step, duck, scene);
-    default:
-      return onTheSpot(step, duck, scene);
-  }
+  return (PLANNERS[step.do] ?? onTheSpot)(step, duck, scene);
 }
 
 /** Where Puddles is `elapsed` seconds into a plan, held at the ends; hops follow a sine arc. */
