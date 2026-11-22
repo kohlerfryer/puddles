@@ -18,7 +18,8 @@
     },
     "object": {
       "type": "string",
-      "description": "Short name of the object. The game trims long names."
+      "description": "Short name of the object. The game trims long names.",
+      "minLength": 1
     },
     "traits": {
       "$ref": "#/$defs/Traits"
