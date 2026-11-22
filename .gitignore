@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# Quality reports
+.quality/
+
+# Private data (never committed)
+data/private/
+
+# OS and editor
+.DS_Store
+.idea/
+.vscode/
