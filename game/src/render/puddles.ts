@@ -1,11 +1,20 @@
-import { type Application, Container, Graphics } from "pixi.js";
+import { Container, Graphics } from "pixi.js";
 
-import { advanceIdle, idlePosition, startIdle } from "../core/idle";
-import { POND, SCENE_WIDTH } from "../core/pond";
+import type { IdleKind } from "../core/idle";
+import { GROUND } from "../core/pond";
 import type { Mood } from "../core/reaction";
+import type { Facing, Pose } from "../core/verbs";
 
-interface Puddles {
-  setMood: (mood: Mood) => void;
+/** What Puddles is doing: a verb's pose or an idle action. */
+type Look = Pose | IdleKind;
+
+/** Puddles as drawn this frame, `height` above the ground. */
+interface Shown {
+  readonly x: number;
+  readonly facing: Facing;
+  readonly height: number;
+  readonly look: Look;
+  readonly mood: Mood;
 }
 
 const COLOURS = {
@@ -26,6 +35,15 @@ const EYES = [
 ] as const;
 const PREEN_SWAY = 0.35;
 const WADDLE = 0.06;
+/** How fast Puddles rocks side to side while moving, in radians per second. */
+const WADDLE_SPEED: Partial<Record<Look, number>> = { wander: 10, walk: 10, run: 22 };
+/** Head tilt over time for looks that move the head; the head is upright otherwise. */
+const HEAD_TILT: Partial<Record<Look, (clock: number) => number>> = {
+  preen: (clock) => 1.2 + Math.sin(clock * 6) * PREEN_SWAY,
+  sniff: (clock) => 0.5 + Math.sin(clock * 24) * 0.08,
+  peck: (clock) => 0.9 * Math.abs(Math.sin(clock * 8)),
+  look_camera: () => -0.25,
+};
 
 function beak(g: Graphics, open: boolean): void {
   if (open) {
@@ -127,41 +145,27 @@ function drawHead(): { head: Container; face: Graphics } {
   return { head, face };
 }
 
-/** Draws placeholder Puddles on the bank of `scene` and runs the idle loop: wander, preen and nap. */
-export function drawPuddles(app: Application, scene: Container): Puddles {
+/** Draws placeholder Puddles into `scene` and returns how to show Puddles each frame. */
+export function drawPuddles(scene: Container): (shown: Shown, clock: number) => void {
   const duck = new Container();
   const body = drawBody();
   const { head, face } = drawHead();
   duck.addChild(body, head);
-  duck.position.y = POND.bank.top + POND.bank.height / 3;
   scene.addChild(duck);
-
-  let mood: Mood = "happy";
-  let state = startIdle(SCENE_WIDTH / 2, Math.random);
-  let clock = 0;
   let shownFace = "";
 
-  app.ticker.add((ticker) => {
-    const seconds = ticker.deltaMS / 1000;
-    clock += seconds;
-    state = advanceIdle(state, seconds, Math.random);
-    const { kind, from, to } = state.action;
-    duck.position.x = idlePosition(state);
-    if (to !== from) duck.scale.x = to > from ? 1 : -1;
-    duck.rotation = kind === "wander" ? Math.sin(clock * 10) * WADDLE : 0;
-    head.rotation = kind === "preen" ? 1.2 + Math.sin(clock * 6) * PREEN_SWAY : 0;
+  return (shown, clock) => {
+    duck.position.set(shown.x, GROUND - shown.height);
+    duck.scale.x = shown.facing;
+    const waddle = WADDLE_SPEED[shown.look];
+    duck.rotation = waddle === undefined ? 0 : Math.sin(clock * waddle) * WADDLE;
+    head.rotation = HEAD_TILT[shown.look]?.(clock) ?? 0;
 
-    const wanted = kind === "nap" ? "nap" : mood;
+    const wanted = shown.look === "nap" ? "nap" : shown.mood;
     if (wanted === shownFace) return;
     shownFace = wanted;
     face.clear();
     if (wanted === "nap") sleepFace(face);
-    else FACES[mood](face);
-  });
-
-  return {
-    setMood: (next) => {
-      mood = next;
-    },
+    else FACES[wanted](face);
   };
 }
