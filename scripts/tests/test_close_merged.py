@@ -32,9 +32,24 @@ def test_main_closes_and_unlabels(monkeypatch: pytest.MonkeyPatch) -> None:
         "gh_json",
         lambda *_args: [{"number": 18, "closingIssuesReferences": [{"number": 14}]}],
     )
-    monkeypatch.setattr(close_merged, "open_issues", lambda: [{"number": 14}])
+    labeled = {"agent:in-progress": [{"number": 14}]}
+    monkeypatch.setattr(close_merged, "open_issues", lambda label="": labeled.get(label, []))
     monkeypatch.setattr(subprocess, "run", lambda command, **_: calls.append(command))
 
     assert close_merged.main() == 0
     assert calls[0][:4] == ["gh", "issue", "close", "14"]
     assert calls[1][-1] == "agent:in-progress"
+
+
+def test_main_leaves_reopened_issues_alone(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        close_merged,
+        "gh_json",
+        lambda *_args: [{"number": 18, "closingIssuesReferences": [{"number": 14}]}],
+    )
+    monkeypatch.setattr(close_merged, "open_issues", lambda label="": [])
+    monkeypatch.setattr(subprocess, "run", lambda command, **_: calls.append(command))
+
+    assert close_merged.main() == 0
+    assert calls == []

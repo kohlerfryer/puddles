@@ -36,6 +36,7 @@ jobs:
     permissions:
       contents: read
       issues: write
+      pull-requests: read
     outputs:
       issue: ${{ steps.pick.outputs.issue }}
     steps:

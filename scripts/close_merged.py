@@ -1,7 +1,8 @@
-"""Close open issues whose closing PR has merged.
+"""Close agent:in-progress issues whose closing PR has merged.
 
 GitHub doesn't apply "Closes #n" when github-actions[bot] performs the auto-merge, so
-issues would stay open and keep counting against the agent limit.
+issues would stay open and keep counting against the agent limit. Only issues still
+labeled agent:in-progress are closed, so an issue the owner reopens stays open.
 """
 
 import subprocess
@@ -32,8 +33,8 @@ def main() -> int:
         "--json",
         "number,closingIssuesReferences",
     )
-    open_numbers = {int(str(issue["number"])) for issue in open_issues()}
-    for number in issues_to_close(merged, open_numbers):
+    in_progress = {int(str(issue["number"])) for issue in open_issues("agent:in-progress")}
+    for number in issues_to_close(merged, in_progress):
         subprocess.run(
             [
                 "gh",
