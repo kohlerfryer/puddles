@@ -85,6 +85,7 @@ github-settings:
     repo=$(gh repo view --json nameWithOwner -q .nameWithOwner)
     gh api -X PATCH "repos/$repo" -F allow_rebase_merge=true -F allow_squash_merge=false \
       -F allow_merge_commit=false -F delete_branch_on_merge=true -F allow_auto_merge=true >/dev/null
+    gh api -X PUT "repos/$repo/vulnerability-alerts"  # turns on the dependency graph for dependency review
     id=$(gh api "repos/$repo/rulesets" --jq '.[] | select(.name == "main") | .id')
     if [ -n "$id" ]; then
       gh api -X PUT "repos/$repo/rulesets/$id" --input .github/rulesets/main.json >/dev/null
