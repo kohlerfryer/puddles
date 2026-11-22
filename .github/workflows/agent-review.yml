@@ -103,6 +103,9 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
+          # Push with the Claude app's token, not GITHUB_TOKEN: GitHub holds checks
+          # triggered by GITHUB_TOKEN pushes for manual approval.
+          persist-credentials: false
       - if: steps.rounds.outputs.rounds <= 2
         uses: ./.github/actions/setup
       - if: steps.rounds.outputs.rounds <= 2
