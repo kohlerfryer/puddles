@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fitScene, POND, SCENE_HEIGHT, SCENE_WIDTH } from "./pond";
+import { fitScene, GROUND, POND, SCENE_HEIGHT, SCENE_WIDTH, STICKER_POND } from "./pond";
 
 describe("POND layout", () => {
   it("stacks sky, water and bank to fill the scene height", () => {
@@ -42,6 +42,20 @@ describe("fitScene", () => {
       scale: 1,
       x: 0,
       y: SCENE_HEIGHT,
+    });
+  });
+});
+
+describe("STICKER_POND", () => {
+  it("rests stickers on the ground Puddles stands on, all along the bank", () => {
+    expect(GROUND).toBeGreaterThan(POND.bank.top);
+    expect(GROUND).toBeLessThan(SCENE_HEIGHT);
+    expect(STICKER_POND).toEqual({
+      width: SCENE_WIDTH,
+      height: SCENE_HEIGHT,
+      bankEdge: SCENE_WIDTH,
+      bankTop: GROUND,
+      waterline: SCENE_HEIGHT,
     });
   });
 });

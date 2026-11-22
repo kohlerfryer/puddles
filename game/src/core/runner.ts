@@ -1,7 +1,7 @@
 import type { Mood, Step } from "./reaction";
 import { VERB_SECONDS } from "./validator";
 
-type RunnerStatus =
+export type RunnerStatus =
   { state: "idle" } | { state: "playing"; step: Step; mood: Mood; startedAt: number };
 
 const IDLE: RunnerStatus = { state: "idle" };

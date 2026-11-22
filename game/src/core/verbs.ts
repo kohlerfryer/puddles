@@ -4,8 +4,8 @@ import type { Step, Target } from "./reaction";
 import { VERB_SECONDS } from "./validator";
 import { BANK } from "./world";
 
-type Pose = "stand" | "walk" | "run" | "sniff" | "peck" | "look" | "look_camera" | "hop";
-type Facing = 1 | -1;
+export type Pose = "stand" | "walk" | "run" | "sniff" | "peck" | "look" | "look_camera" | "hop";
+export type Facing = 1 | -1;
 
 /** One timed stretch of a verb: Puddles in `pose` going from `from` to `to`, hopping `lift` high. */
 interface Move {
@@ -18,7 +18,7 @@ interface Move {
 }
 
 /** A push given to the object sticker `at` seconds into the plan. */
-interface Nudge {
+export interface Nudge {
   readonly at: number;
   readonly x: number;
   readonly y: number;
@@ -29,17 +29,17 @@ export interface Plan {
   readonly nudge?: Nudge;
 }
 
-interface Duck {
+export interface Duck {
   readonly x: number;
   readonly facing: Facing;
 }
 
-interface Scene {
+export interface Scene {
   /** Where the object sticker is on the bank. */
   readonly object: number;
 }
 
-interface Frame {
+export interface Frame {
   readonly pose: Pose;
   readonly x: number;
   readonly facing: Facing;

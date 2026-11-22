@@ -1,3 +1,5 @@
+import type { Pond } from "./physics";
+
 export const SCENE_WIDTH = 1600;
 export const SCENE_HEIGHT = 900;
 
@@ -30,6 +32,18 @@ export const POND: PondLayout = {
     { x: 1380, width: 70, height: 260 },
   ],
   rock: { x: 1000, width: 180, height: 110 },
+};
+
+/** The line along the bank where Puddles stands and stickers come to rest. */
+export const GROUND = POND.bank.top + POND.bank.height / 3;
+
+/** The scene as sticker physics sees it: stickers land on the ground anywhere along the bank. */
+export const STICKER_POND: Pond = {
+  width: SCENE_WIDTH,
+  height: SCENE_HEIGHT,
+  bankEdge: SCENE_WIDTH,
+  bankTop: GROUND,
+  waterline: SCENE_HEIGHT,
 };
 
 interface SceneFit {
