@@ -5,6 +5,7 @@ import { POND } from "./pond";
 import type { Step, Target, Verb } from "./reaction";
 import { VERB_SECONDS } from "./validator";
 import { type Plan, frameAt, planVerb } from "./verbs";
+import { waveWing } from "./wave";
 import { BANK } from "./world";
 
 const step = (verb: Verb, target?: Target): Step =>
@@ -163,7 +164,7 @@ describe("frameAt", () => {
   const walk = planVerb(step("walk_to", "object"), { x: 400, facing: -1 }, { object: 700 });
 
   it("starts at the plan's first position", () => {
-    expect(frameAt(walk, 0)).toEqual({ pose: "walk", x: 400, facing: 1, height: 0 });
+    expect(frameAt(walk, 0)).toEqual({ pose: "walk", x: 400, facing: 1, height: 0, wing: 0 });
   });
 
   it("moves along a move in proportion to time", () => {
@@ -171,17 +172,17 @@ describe("frameAt", () => {
   });
 
   it("switches to the next move once one ends", () => {
-    expect(frameAt(walk, 1)).toEqual({ pose: "stand", x: 630, facing: 1, height: 0 });
+    expect(frameAt(walk, 1)).toEqual({ pose: "stand", x: 630, facing: 1, height: 0, wing: 0 });
   });
 
   it("holds the last frame after the plan ends, and the first before it starts", () => {
-    expect(frameAt(walk, 5)).toEqual({ pose: "stand", x: 630, facing: 1, height: 0 });
-    expect(frameAt(walk, -1)).toEqual({ pose: "walk", x: 400, facing: 1, height: 0 });
+    expect(frameAt(walk, 5)).toEqual({ pose: "stand", x: 630, facing: 1, height: 0, wing: 0 });
+    expect(frameAt(walk, -1)).toEqual({ pose: "walk", x: 400, facing: 1, height: 0, wing: 0 });
   });
 
   it("ends a one-move plan where the move ends", () => {
     const far = planVerb(step("walk_to", "object"), { x: 100, facing: 1 }, { object: 1500 });
-    expect(frameAt(far, 1.5)).toEqual({ pose: "walk", x: 550, facing: 1, height: 0 });
+    expect(frameAt(far, 1.5)).toEqual({ pose: "walk", x: 550, facing: 1, height: 0, wing: 0 });
   });
 
   it("follows a sine arc on a hop", () => {
@@ -190,5 +191,13 @@ describe("frameAt", () => {
     expect(frameAt(hop, 0.25).height).toBeCloseTo(80 * Math.sin(Math.PI / 4));
     expect(frameAt(hop, 0.5).height).toBeCloseTo(80);
     expect(frameAt(hop, 1).height).toBeCloseTo(0);
+  });
+
+  it("waves a wing while looking at the camera, and only then", () => {
+    const look = planVerb(step("look_at", "camera"), { x: 600, facing: 1 }, { object: 900 });
+    expect(frameAt(look, 0.4).wing).toBe(waveWing(0.4));
+    expect(frameAt(look, 0.4).wing).toBeGreaterThan(0);
+    const peek = planVerb(step("look_at", "object"), { x: 600, facing: 1 }, { object: 900 });
+    expect(frameAt(peek, 0.4).wing).toBe(0);
   });
 });
