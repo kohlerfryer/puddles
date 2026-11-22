@@ -6,7 +6,7 @@ export type Gesture = (typeof GESTURES)[number];
 /** MediaPipe Pose returns 33 landmarks per person. */
 export const LANDMARK_COUNT = 33;
 
-/** Normalized image coordinates: x and y in [0, 1], z relative to the hips. */
+/** Normalized image coordinates (outside [0, 1] for off-frame joints); z is relative to the hips. */
 export interface Landmark {
   x: number;
   y: number;
