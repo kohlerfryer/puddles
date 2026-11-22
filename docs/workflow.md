@@ -36,7 +36,7 @@ When escalating, the agent stops, labels the issue `needs-human`, and comments w
 
 ## Risk
 
-A PR is `risk:high` if any of these hold. Agents can raise the risk level, never lower it.
+A PR is `risk:high` if any of these hold. `scripts/risk.py` decides, reading the high-risk paths from `.github/CODEOWNERS`. Agents and reviewers can raise the risk level by adding the `risk:high` label; nothing lowers it.
 
 - Touches `.github/`, `.claude/`, `AGENTS.md`, `docs/adr/` or `shared/`
 - Touches lint, type, test or coverage settings, thresholds or exclusion lists
@@ -47,6 +47,8 @@ A PR is `risk:high` if any of these hold. Agents can raise the risk level, never
 - The review agent flags it
 
 Everything else is `risk:low`.
+
+The `risk gate` workflow runs on every PR update and review. Low risk: it adds `risk:low` and turns on rebase auto-merge, so the PR merges once the required checks pass. High risk: it adds `risk:high`, turns auto-merge off, and fails until the owner approves (PRs the owner authored pass, since GitHub doesn't allow self-approval). A separate `tests touched` check fails when source code changes without any test changing.
 
 ## Branching
 
@@ -98,7 +100,7 @@ Every `human-revised` PR ends with an update to `AGENTS.md` or `docs/coding-stan
 | `just check` gates and CI | #1 (done) |
 | These docs and ADRs | #2 (done) |
 | Claude Code hooks and commands | #3 (done) |
-| Templates, CODEOWNERS, ruleset, board automation | #4 |
+| Templates, CODEOWNERS, ruleset, board automation | #4 (done) |
 | Risk gate, auto-merge, extra CI checks | #5 |
 | Agent implement and review workflows | #6 |
 

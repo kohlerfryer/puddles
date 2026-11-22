@@ -1,0 +1,79 @@
+name: risk gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: risk-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  OWNER: kohlerfryer
+
+jobs:
+  tests-touched:
+    name: tests touched
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.4.0
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - run: uv run python -m scripts.tests_touched --base "origin/${{ github.event.pull_request.base.ref }}"
+
+  risk:
+    name: risk gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.4.0
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - name: Assess risk
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          uv run python -m scripts.risk --base "origin/${{ github.event.pull_request.base.ref }}" --labels "$LABELS" > risk.json
+          jq -r '"Risk: \(.level)\n" + (.reasons | map("- " + .) | join("\n"))' risk.json | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Label, auto-merge, and require owner approval when high
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          level=$(jq -r .level risk.json)
+          if [ "$level" = "low" ]; then
+            gh pr edit "$PR" --add-label risk:low
+            gh pr merge "$PR" --auto --rebase
+            exit 0
+          fi
+          gh pr edit "$PR" --add-label risk:high --remove-label risk:low
+          gh pr merge "$PR" --disable-auto || true
+          if [ "$AUTHOR" = "$OWNER" ]; then
+            echo "High risk, authored by the owner."
+            exit 0
+          fi
+          state=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" \
+            --jq "[.[] | select(.user.login == \"$OWNER\")] | last | .state // \"NONE\"")
+          if [ "$state" != "APPROVED" ]; then
+            echo "::error::High-risk PR needs approval from @$OWNER (latest review: $state)."
+            exit 1
+          fi
