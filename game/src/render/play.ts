@@ -68,7 +68,9 @@ function stickers(scene: Container) {
     /** Puddles takes `body` out of the world into the beak or onto the head, dropping anything held before. */
     take(body: Body, on: Hold, now: number): void {
       physics.remove(body);
-      for (const sticker of drawn.filter((other) => other.held)) forget(sticker);
+      for (const sticker of drawn.filter((other) => other.held && other.body !== body)) {
+        forget(sticker);
+      }
       const sticker = drawn.find((other) => other.body === body);
       if (sticker) sticker.held = { on, since: now };
     },
