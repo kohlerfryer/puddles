@@ -20,14 +20,34 @@ describe("script runner", () => {
   it("reports the first step and its mood as soon as a script plays", () => {
     const runner = createRunner();
     runner.play([sniff, dance], 1000);
-    expect(runner.update(1000)).toEqual({ state: "playing", step: sniff, mood: "curious" });
+    expect(runner.update(1000)).toEqual({
+      state: "playing",
+      step: sniff,
+      mood: "curious",
+      startedAt: 1000,
+    });
+  });
+
+  it("reports when the current step started", () => {
+    const runner = createRunner();
+    runner.play([sniff, dance], 1000);
+    expect(runner.update(1000)).toMatchObject({ startedAt: 1000 });
+    expect(runner.update(1000 + ms(sniff) + 10)).toMatchObject({
+      step: dance,
+      startedAt: 1000 + ms(sniff),
+    });
   });
 
   it("keeps the step until its time is up, then advances", () => {
     const runner = createRunner();
     runner.play([sniff, dance], 0);
     expect(runner.update(ms(sniff) - 1)).toMatchObject({ step: sniff });
-    expect(runner.update(ms(sniff))).toEqual({ state: "playing", step: dance, mood: "happy" });
+    expect(runner.update(ms(sniff))).toEqual({
+      state: "playing",
+      step: dance,
+      mood: "happy",
+      startedAt: ms(sniff),
+    });
   });
 
   it("goes idle when the last step ends", () => {
@@ -66,7 +86,12 @@ describe("gesture reactions", () => {
     runner.play([sniff, dance], 0);
     runner.react(hop, 100);
     expect(runner.update(ms(sniff) - 1)).toMatchObject({ step: sniff });
-    expect(runner.update(ms(sniff))).toEqual({ state: "playing", step: hop, mood: "proud" });
+    expect(runner.update(ms(sniff))).toEqual({
+      state: "playing",
+      step: hop,
+      mood: "proud",
+      startedAt: ms(sniff),
+    });
     expect(runner.update(ms(sniff) + ms(hop))).toMatchObject({ step: dance });
   });
 
