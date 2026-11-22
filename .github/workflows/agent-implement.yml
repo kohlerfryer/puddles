@@ -85,20 +85,6 @@ jobs:
             --model claude-opus-5-5
             --max-turns 80
             --allowedTools "Bash(git:*),Bash(gh:*),Bash(just:*),Bash(uv:*),Bash(pnpm:*),Read,Edit,Write,Glob,Grep,Skill"
-      - name: Open the PR if the agent pushed without one
-        env:
-          GH_TOKEN: ${{ steps.claude.outputs.github_token }}
-          ISSUE: ${{ needs.dispatch.outputs.issue }}
-        run: |
-          branch=$(git ls-remote --heads origin "agent/$ISSUE-*" | head -1 | sed 's#.*refs/heads/##')
-          if [ -z "$branch" ] || [ -n "$(gh pr list -R "$GITHUB_REPOSITORY" --head "$branch" --json number --jq '.[].number')" ]; then
-            exit 0
-          fi
-          title=$(gh issue view "$ISSUE" -R "$GITHUB_REPOSITORY" --json title --jq .title)
-          gh pr create -R "$GITHUB_REPOSITORY" --head "$branch" --base main --title "$title" --label agent-authored \
-            --body "Closes #$ISSUE
-
-          Opened by the agent-implement workflow because the agent pushed \`$branch\` without opening a PR. See the run summary for the agent's notes."
       - name: Escalate when the run fails
         if: failure()
         env:
