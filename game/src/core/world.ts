@@ -42,3 +42,10 @@ export function nearestHidingSpot(x: number, threatX: number): Hide {
   const hides = HIDING_SPOTS.map((spot) => hideBehind(spot, threatX));
   return hides.reduce((best, hide) => (Math.abs(hide.x - x) < Math.abs(best.x - x) ? hide : best));
 }
+
+/** The hiding place behind the spot farthest from the threat, on the side away from it. */
+export function farthestHidingSpot(threatX: number): Hide {
+  const hides = HIDING_SPOTS.map((spot) => hideBehind(spot, threatX));
+  const distance = (hide: Hide): number => Math.abs(hide.spot.x - threatX);
+  return hides.reduce((best, hide) => (distance(hide) > distance(best) ? hide : best));
+}
