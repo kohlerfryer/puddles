@@ -61,7 +61,7 @@ check-files +paths:
       uv run ruff format --check "${py[@]}"
       uv run ruff check "${py[@]}"
       uv run mypy "${py[@]}"
-      uv run complexipy "${py[@]}"
+      uv run complexipy --failed "${py[@]}"
     fi
     if ((${#ts[@]})); then
       pnpm -C game exec prettier --check "${ts[@]}"
