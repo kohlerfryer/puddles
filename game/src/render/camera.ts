@@ -2,7 +2,7 @@ import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
 
 import { createGestureWatch } from "../core/gestureWatch";
 import type { BodyGesture } from "../core/gestures";
-import { toFrame } from "../core/poseFixture";
+import { type PoseFrame, toFrame } from "../core/poseFixture";
 
 // Assets load from the MediaPipe CDN for now; bundling them for offline play is a follow-up.
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
@@ -33,6 +33,7 @@ export async function loadPose(): Promise<PoseLandmarker> {
  */
 export async function watchCamera(
   onGesture: (gesture: BodyGesture, now: number) => void,
+  onFrame?: (frame: PoseFrame | undefined) => void,
 ): Promise<void> {
   const video = document.createElement("video");
   video.muted = true;
@@ -47,8 +48,10 @@ export async function watchCamera(
     if (now - sampledAt < SAMPLE_MS) return;
     sampledAt = now;
     const person = pose.detectForVideo(video, now).landmarks[0];
-    if (!person) return;
-    for (const gesture of watch.push(toFrame(now, person))) onGesture(gesture, now);
+    const frame = person ? toFrame(now, person) : undefined;
+    onFrame?.(frame);
+    if (!frame) return;
+    for (const gesture of watch.push(frame)) onGesture(gesture, now);
   };
   requestAnimationFrame(sample);
 }

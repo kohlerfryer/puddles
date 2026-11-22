@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { detectGestures } from "./gestures";
+import { detectGestures, feetInView } from "./gestures";
 import { isPoseFixture, LANDMARK_COUNT, type PoseFixture } from "./poseFixture";
 
 const files = import.meta.glob<unknown>("./fixtures/*.json", { eager: true, import: "default" });
@@ -29,5 +29,22 @@ describe("detectGestures", () => {
     const landmarks = Array.from({ length: LANDMARK_COUNT }, () => still);
     const frames = Array.from({ length: 30 }, (_, i) => ({ t: i * 90, landmarks }));
     expect(detectGestures(frames)).toEqual([]);
+  });
+});
+
+describe("feetInView", () => {
+  const frame = (ankle: number) => ({
+    t: 0,
+    landmarks: Array.from({ length: LANDMARK_COUNT }, (_, i) => ({
+      x: 0.5,
+      y: 0.5,
+      z: 0,
+      visibility: i === 27 || i === 28 ? ankle : 1,
+    })),
+  });
+
+  it("needs both ankles visible", () => {
+    expect(feetInView(frame(0.9))).toBe(true);
+    expect(feetInView(frame(0.1))).toBe(false);
   });
 });
