@@ -7,7 +7,9 @@ import { createPhysics } from "../core/physics";
 import { SCENE_WIDTH, STICKER_POND } from "../core/pond";
 import type { Step, Traits } from "../core/reaction";
 import { createRunner } from "../core/runner";
+import { bubbleAt, type Line } from "../core/speech";
 import type { Duck, Facing } from "../core/verbs";
+import { drawBubble } from "./bubble";
 import { drawPuddles } from "./puddles";
 
 type IdleState = ReturnType<typeof startIdle>;
@@ -61,6 +63,8 @@ export interface Actor {
 /** Plays the six-verb demo, then idles: Puddles follows plans from core and decides nothing here. */
 export function playDemo(app: Application, scene: Container): Actor {
   const show = drawPuddles(scene);
+  const say = drawBubble(scene);
+  let line: Line | undefined;
   const runner = createRunner();
   const acting = createActing();
   let duck: Duck = { x: SCENE_WIDTH / 2, facing: 1 };
@@ -75,12 +79,14 @@ export function playDemo(app: Application, scene: Container): Actor {
     sticker.step(ticker.deltaMS);
     const status = runner.update(clockMs);
     const cue = acting.update(status, clockMs, duck, { object: target.position.x });
+    if (cue?.line) line = cue.line;
     if (cue) {
       idle = undefined;
       if (cue.nudge) sticker.physics.nudge(target, cue.nudge);
       duck = { x: cue.frame.x, facing: cue.frame.facing };
       const { height, pose, wing } = cue.frame;
       show({ ...duck, height, wing, look: pose, mood: cue.mood }, clockMs / 1000);
+      say(bubbleAt(line, clockMs), duck.x, height);
       return;
     }
     idle = idle
@@ -88,6 +94,7 @@ export function playDemo(app: Application, scene: Container): Actor {
       : startIdle(duck.x, Math.random);
     duck = { x: idlePosition(idle), facing: idleFacing(idle, duck.facing) };
     show({ ...duck, height: 0, wing: 0, look: idle.action.kind, mood: "happy" }, clockMs / 1000);
+    say(bubbleAt(line, clockMs), duck.x, 0);
   });
   return {
     react(step: Step): void {
