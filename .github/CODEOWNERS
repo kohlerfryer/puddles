@@ -1,0 +1,19 @@
+# High-risk paths: changes here need the owner's review (see docs/workflow.md).
+/.github/              @kohlerfryer
+/.claude/              @kohlerfryer
+/AGENTS.md             @kohlerfryer
+/CLAUDE.md             @kohlerfryer
+/docs/adr/             @kohlerfryer
+/shared/               @kohlerfryer
+/scripts/agent_hooks/  @kohlerfryer
+/justfile              @kohlerfryer
+/lefthook.yml          @kohlerfryer
+/pyproject.toml        @kohlerfryer
+/uv.lock               @kohlerfryer
+/.jscpd.json           @kohlerfryer
+/game/package.json     @kohlerfryer
+/game/pnpm-lock.yaml   @kohlerfryer
+/game/eslint.config.js @kohlerfryer
+/game/tsconfig.json    @kohlerfryer
+/game/vitest.config.ts @kohlerfryer
+/game/knip.json        @kohlerfryer
