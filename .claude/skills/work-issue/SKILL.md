@@ -14,4 +14,4 @@ description: Implement one GitHub issue end to end, test-first, ending in a PR. 
 7. **Commit** in focused batches: one short line each, ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Each commit must pass on its own.
 8. **PR.** Push and run `gh pr create` with `Closes #<n>` and sections: What changed, Why, How it was tested, Agent notes, Not done. Labels: `agent-authored`, plus `risk:high` if it touches gates, agent config, ADRs, `shared/` or dependencies. Set the board Status to In review.
 
-Escalate instead of pushing on: label `needs-human` and comment why when the criteria are unclear, an ADR conflicts, CI fails 3 times, or the diff grows past 400 lines.
+Escalate instead of pushing on: label `needs-human` and comment why when the criteria are unclear, an ADR conflicts, CI fails 3 times, or the diff grows past 400 non-test lines. Tests don't count; never trim tests to fit.

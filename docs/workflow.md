@@ -30,7 +30,7 @@ Agents do most of the work. Humans approve plans, approve tickets, review high-r
 | Moving tickets to Ready | ADR conflicts |
 | Reviewing `risk:high` PRs | CI failing 3 times in a row |
 | Milestone playtests | Review going past 2 rounds |
-| New dependencies, secrets, billing | Diffs growing past 400 lines |
+| New dependencies, secrets, billing | Diffs growing past 400 non-test lines |
 
 When escalating, the agent stops, labels the issue `needs-human`, and comments with what it needs.
 
@@ -42,7 +42,7 @@ A PR is `risk:high` if any of these hold. `scripts/risk.py` decides, reading the
 - Touches lint, type, test or coverage settings, thresholds or exclusion lists
 - Touches dependency manifests or lockfiles
 - Touches eval thresholds or the test set
-- Changes more than 400 lines
+- Changes more than 400 lines, not counting tests or lockfiles
 - Deletes tests, lowers coverage, or adds a lint or type suppression
 - The review agent flags it
 
