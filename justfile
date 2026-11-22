@@ -92,3 +92,7 @@ github-settings:
       gh api -X POST "repos/$repo/rulesets" --input .github/rulesets/main.json >/dev/null
     fi
     echo "Applied merge settings and the main ruleset to $repo"
+
+# Coverage of the lines changed since a base ref (CI runs this on PRs)
+diff-coverage base="origin/main":
+    uv run diff-cover coverage.xml game/coverage/cobertura-coverage.xml --compare-branch={{base}} --fail-under=90
