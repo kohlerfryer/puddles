@@ -42,8 +42,15 @@ deadcode:
 
 # Generated code matches its source (shared/ schema -> game types)
 generated:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    file=game/src/core/reaction.ts
+    before=$(git hash-object "$file")
     pnpm -C game run --silent gen:types >/dev/null
-    git diff --exit-code HEAD -- game/src/core/reaction.ts || (echo "game/src/core/reaction.ts was stale and has been regenerated; commit it" && exit 1)
+    if [ "$before" != "$(git hash-object "$file")" ]; then
+      echo "$file was stale and has been regenerated; commit it"
+      exit 1
+    fi
 
 # Tests with coverage thresholds
 test:
