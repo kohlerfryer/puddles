@@ -27,7 +27,12 @@ just check                   # every gate; CI runs the same thing
 just lint | types | complexity | dupes | deadcode | test
 just check-files <paths>     # fast lint/types/complexity on specific files
 just fix                     # auto-format and auto-fix lint
+just report                  # every gate; violations as file:line:rule in .quality/report.json
 ```
+
+Hooks in `.claude/settings.json` check each edited file, block finishing while `just check` fails, and deny force-pushes, pushes to `main` and `--no-verify`. In CI agent runs they also deny edits to gate files.
+
+Repo skills: `/plan-milestone`, `/create-tickets`, `/work-issue <n>`, `/review-pr <n>`.
 
 ## Commits and PRs
 

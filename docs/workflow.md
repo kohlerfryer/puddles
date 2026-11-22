@@ -84,7 +84,7 @@ Every `human-revised` PR ends with an update to `AGENTS.md` or `docs/coding-stan
 | Piece | Issue |
 | --- | --- |
 | `just check` gates and CI | #1 (done) |
-| These docs and ADRs | #2 |
+| These docs and ADRs | #2 (done) |
 | Claude Code hooks and commands | #3 |
 | Templates, CODEOWNERS, ruleset, board automation | #4 |
 | Risk gate, auto-merge, extra CI checks | #5 |
