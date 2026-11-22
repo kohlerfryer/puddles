@@ -20,13 +20,15 @@ export type Pose =
 export type Facing = 1 | -1;
 
 /** One timed stretch of a verb: Puddles in `pose` going from `from` to `to`, hopping `lift` high. */
-interface Move {
+export interface Move {
   readonly pose: Pose;
   readonly from: number;
   readonly to: number;
   readonly seconds: number;
   readonly facing: Facing;
   readonly lift: number;
+  /** How high Puddles stands at the start and end of the move, when up on the object sticker. */
+  readonly perch?: readonly [number, number];
 }
 
 /** A push given to the object sticker `at` seconds into the plan. */
@@ -36,9 +38,19 @@ export interface Nudge {
   readonly y: number;
 }
 
+/** Where a sticker Puddles takes goes: into the beak to be eaten, or onto the head to be worn. */
+export type Hold = "beak" | "head";
+
+/** Puddles taking the object sticker `at` seconds into the plan. */
+export interface Take {
+  readonly at: number;
+  readonly to: Hold;
+}
+
 export interface Plan {
   readonly moves: readonly [Move, ...Move[]];
   readonly nudge?: Nudge;
+  readonly take?: Take;
 }
 
 export interface Duck {
@@ -49,6 +61,8 @@ export interface Duck {
 export interface Scene {
   /** Where the object sticker is on the bank. */
   readonly object: number;
+  /** How tall the object sticker stands above the ground; flat when not given. */
+  readonly objectHeight?: number;
 }
 
 export interface Frame {
@@ -66,10 +80,10 @@ interface Gait {
   readonly speed: number;
 }
 
-const WALK: Gait = { pose: "walk", speed: 300 };
+export const WALK: Gait = { pose: "walk", speed: 300 };
 const RUN: Gait = { pose: "run", speed: 600 };
 /** How far short of a target Puddles stops walking. */
-const REACH = 70;
+export const REACH = 70;
 const HOP_LIFT = 80;
 /** How close the object must be for a peck to knock it. */
 const PECK_REACH = 120;
@@ -85,19 +99,19 @@ const FLAP_LIFT = 20;
 const FALLEN_SECONDS = 1;
 
 /** Where a target sits on the bank, if it has a place there. */
-function placeOf(target: Target | undefined, scene: Scene, x: number): number | undefined {
+export function placeOf(target: Target | undefined, scene: Scene, x: number): number | undefined {
   if (target === "object") return scene.object;
   if (target !== "reeds") return undefined;
   const reeds = POND.reeds.map((reed) => reed.x);
   return reeds.reduce((best, reed) => (Math.abs(reed - x) < Math.abs(best - x) ? reed : best));
 }
 
-function facingTowards(place: number | undefined, duck: Duck): Facing {
+export function facingTowards(place: number | undefined, duck: Duck): Facing {
   if (place === undefined || place === duck.x) return duck.facing;
   return place > duck.x ? 1 : -1;
 }
 
-function still(pose: Pose, duck: Duck, seconds: number, lift = 0): Move {
+export function still(pose: Pose, duck: Duck, seconds: number, lift = 0): Move {
   return { pose, from: duck.x, to: duck.x, seconds, facing: duck.facing, lift };
 }
 
@@ -114,12 +128,12 @@ function travel(gait: Gait, duck: Duck, to: number, seconds: number): Plan {
 }
 
 /** Puts `x` back on the part of the bank Puddles keeps to. */
-function onBank(x: number): number {
+export function onBank(x: number): number {
   return Math.min(Math.max(x, BANK.left + IDLE_MARGIN), BANK.right - IDLE_MARGIN);
 }
 
 /** Goes in `gait` to just short of the target; walk_to walks and run_to runs. */
-function approach(gait: Gait, step: Step, duck: Duck, scene: Scene): Plan {
+export function approach(gait: Gait, step: Step, duck: Duck, scene: Scene): Plan {
   const seconds = VERB_SECONDS[step.do];
   const place = placeOf(step.target, scene, duck.x);
   const facing = facingTowards(place, duck);
@@ -182,7 +196,8 @@ function runAway(step: Step, duck: Duck, scene: Scene): Plan {
   return travel(RUN, { x: duck.x, facing }, to, VERB_SECONDS.run_away);
 }
 
-function onTheSpot(step: Step, duck: Duck, scene: Scene): Plan {
+/** Sniffs, pecks or looks at the target where Puddles stands; anything else hops on the spot. */
+export function onTheSpot(step: Step, duck: Duck, scene: Scene): Plan {
   const seconds = VERB_SECONDS[step.do];
   const place = placeOf(step.target, scene, duck.x);
   const turned = { x: duck.x, facing: facingTowards(place, duck) };
@@ -192,16 +207,18 @@ function onTheSpot(step: Step, duck: Duck, scene: Scene): Plan {
       return { moves: [still(step.do, turned, seconds)], ...peckNudge(step, turned, scene) };
     case "look_at":
       return { moves: [still(step.target === "camera" ? "look_camera" : "look", turned, seconds)] };
-    case "jump":
-      return { moves: [still("hop", turned, seconds, HOP_LIFT)] };
     default:
-      return { moves: [still("stand", duck, seconds)] };
+      return { moves: [still("hop", turned, seconds, HOP_LIFT)] };
   }
 }
 
+/** Whether the step is about the object and Puddles at `x` can reach it with the beak. */
+export function reaches(step: Step, x: number, scene: Scene): boolean {
+  return step.target === "object" && Math.abs(scene.object - x) <= PECK_REACH;
+}
+
 function peckNudge(step: Step, duck: Duck, scene: Scene): { nudge?: Nudge } {
-  const near = Math.abs(scene.object - duck.x) <= PECK_REACH;
-  if (step.do !== "peck" || step.target !== "object" || !near) return {};
+  if (step.do !== "peck" || !reaches(step, duck.x, scene)) return {};
   const at = VERB_SECONDS.peck / 2;
   return { nudge: { at, x: duck.facing * PECK_NUDGE.x, y: PECK_NUDGE.y } };
 }
@@ -236,9 +253,10 @@ function fallOver(_step: Step, duck: Duck): Plan {
   return { moves: [fallen, still("stand", duck, VERB_SECONDS.fall_over - FALLEN_SECONDS)] };
 }
 
-type Planner = (step: Step, duck: Duck, scene: Scene) => Plan;
+export type Planner = (step: Step, duck: Duck, scene: Scene) => Plan;
 
-const PLANNERS: Partial<Record<Verb, Planner>> = {
+/** Planners for the verbs that move Puddles about or show off; the rest are on the spot or object verbs. */
+export const VERB_PLANNERS: Partial<Record<Verb, Planner>> = {
   walk_to: (step, duck, scene) => approach(WALK, step, duck, scene),
   run_to: (step, duck, scene) => approach(RUN, step, duck, scene),
   run_away: runAway,
@@ -251,12 +269,10 @@ const PLANNERS: Partial<Record<Verb, Planner>> = {
   fall_over: fallOver,
 };
 
-/** Turns a script step into timed moves for Puddles at `duck`; the moves add up to the verb's time. */
-export function planVerb(step: Step, duck: Duck, scene: Scene): Plan {
-  return (PLANNERS[step.do] ?? onTheSpot)(step, duck, scene);
-}
-
-/** Where Puddles is `elapsed` seconds into a plan, held at the ends; hops follow a sine arc and looking at the camera waves. */
+/**
+ * Where Puddles is `elapsed` seconds into a plan, held at the ends; hops follow a sine arc above
+ * the perch and looking at the camera waves.
+ */
 export function frameAt(plan: Plan, elapsed: number): Frame {
   const [first, ...rest] = plan.moves;
   let start = 0;
@@ -271,7 +287,12 @@ export function frameAt(plan: Plan, elapsed: number): Frame {
     pose: move.pose,
     x: move.from + (move.to - move.from) * progress,
     facing: move.facing,
-    height: move.lift * Math.sin(Math.PI * progress),
+    height: perchAt(move, progress) + move.lift * Math.sin(Math.PI * progress),
     wing: move.pose === "look_camera" ? waveWing(progress) : 0,
   };
+}
+
+function perchAt(move: Move, progress: number): number {
+  const [from, to] = move.perch ?? [0, 0];
+  return from + (to - from) * progress;
 }

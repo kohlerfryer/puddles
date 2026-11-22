@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { IDLE_MARGIN } from "./idle";
 import type { Step, Target, Verb } from "./reaction";
-import { planVerb } from "./verbs";
+import { planVerb } from "./planVerb";
 import { BANK } from "./world";
 
 const step = (verb: Verb, target?: Target): Step =>

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { Step, Target, Verb } from "./reaction";
-import { frameAt, planVerb } from "./verbs";
+import { planVerb } from "./planVerb";
+import { frameAt } from "./verbs";
 
 const step = (verb: Verb, target?: Target): Step =>
   target ? { do: verb, target, mood: "silly" } : { do: verb, mood: "silly" };

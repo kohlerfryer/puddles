@@ -3,7 +3,7 @@ import { Container, Graphics } from "pixi.js";
 import type { IdleKind } from "../core/idle";
 import { GROUND } from "../core/pond";
 import type { Mood } from "../core/reaction";
-import type { Facing, Pose } from "../core/verbs";
+import type { Facing, Hold, Pose } from "../core/verbs";
 
 /** What Puddles is doing: a verb's pose or an idle action. */
 type Look = Pose | IdleKind;
@@ -47,6 +47,11 @@ const HEAD_TILT: Partial<Record<Look, (clock: number) => number>> = {
 };
 /** Where the head sits on the body: side-on, or turned to face the viewer. */
 const HEAD_AT = { side: { x: 34, y: -92 }, viewer: { x: -12, y: -96 } } as const;
+/** Where a held sticker sits relative to Puddles' feet when facing right: in the beak or on the head. */
+const HOLD_AT: Record<Hold, { x: number; y: number }> = {
+  beak: { x: HEAD_AT.side.x + 40, y: HEAD_AT.side.y + 4 },
+  head: { x: HEAD_AT.side.x, y: HEAD_AT.side.y - 40 },
+};
 /** How narrow the body looks once Puddles has turned to face the viewer. */
 const TURNED_WIDTH = 0.8;
 
@@ -154,6 +159,15 @@ function drawHead(): { head: Container; face: Graphics } {
   const face = new Graphics();
   head.addChild(face);
   return { head, face };
+}
+
+/** Where on screen a sticker Puddles holds `on` the beak or head sits this frame. */
+export function holdPoint(
+  shown: Pick<Shown, "x" | "facing" | "height">,
+  on: Hold,
+): { x: number; y: number } {
+  const at = HOLD_AT[on];
+  return { x: shown.x + shown.facing * at.x, y: GROUND - shown.height + at.y };
 }
 
 /** Draws placeholder Puddles into `scene` and returns how to show Puddles each frame. */

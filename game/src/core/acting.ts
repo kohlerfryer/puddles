@@ -1,4 +1,5 @@
 import type { Mood } from "./reaction";
+import { planVerb } from "./planVerb";
 import type { RunnerStatus } from "./runner";
 import {
   type Duck,
@@ -6,24 +7,38 @@ import {
   frameAt,
   type Nudge,
   type Plan,
-  planVerb,
   type Scene,
+  type Take,
 } from "./verbs";
 
-/** What Puddles shows this frame, and the push to give the object sticker if one lands now. */
+/** What Puddles shows this frame, and what happens to the object sticker if it happens now. */
 interface Cue {
   readonly frame: Frame;
   readonly mood: Mood;
   readonly nudge?: Nudge;
+  readonly take?: Take;
 }
 
 interface Acting {
   readonly startedAt: number;
   readonly plan: Plan;
-  nudged: boolean;
+  /** The plan's nudge and take that have already landed. */
+  readonly landed: Set<"nudge" | "take">;
 }
 
-/** Acts out what the runner plays: plans each step as it starts and lands its nudge once. */
+/** `happening` if it falls due by `elapsed` and hasn't landed yet, marking it landed. */
+function landing<T extends { readonly at: number }>(
+  acting: Acting,
+  event: "nudge" | "take",
+  happening: T | undefined,
+  elapsed: number,
+): T | undefined {
+  if (!happening || acting.landed.has(event) || elapsed < happening.at) return undefined;
+  acting.landed.add(event);
+  return happening;
+}
+
+/** Acts out what the runner plays: plans each step as it starts and lands its nudge and take once. */
 export function createActing() {
   let acting: Acting | undefined;
 
@@ -36,14 +51,17 @@ export function createActing() {
       }
       if (acting?.startedAt !== status.startedAt) {
         const plan = planVerb(status.step, duck, scene);
-        acting = { startedAt: status.startedAt, plan, nudged: false };
+        acting = { startedAt: status.startedAt, plan, landed: new Set() };
       }
       const elapsed = (now - status.startedAt) / 1000;
-      const cue = { frame: frameAt(acting.plan, elapsed), mood: status.mood };
-      const { nudge } = acting.plan;
-      if (!nudge || acting.nudged || elapsed < nudge.at) return cue;
-      acting.nudged = true;
-      return { ...cue, nudge };
+      const nudge = landing(acting, "nudge", acting.plan.nudge, elapsed);
+      const take = landing(acting, "take", acting.plan.take, elapsed);
+      return {
+        frame: frameAt(acting.plan, elapsed),
+        mood: status.mood,
+        ...(nudge && { nudge }),
+        ...(take && { take }),
+      };
     },
   };
 }

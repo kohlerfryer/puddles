@@ -51,6 +51,21 @@ describe("createActing", () => {
     ]);
   });
 
+  it("takes the sticker once, when the take is due", () => {
+    const acting = createActing();
+    const eat: Step = { do: "eat", target: "object", mood: "happy" };
+    const cues = [0, 400, 500, 600, 1400].map((now) =>
+      acting.update(playing(eat, 0), now, duck, { object: 460 }),
+    );
+    expect(cues.map((cue) => cue?.take)).toEqual([
+      undefined,
+      undefined,
+      { at: 0.5, to: "beak" },
+      undefined,
+      undefined,
+    ]);
+  });
+
   it("forgets the step once the runner goes idle", () => {
     const acting = createActing();
     acting.update(playing(peck, 0), 600, duck, { object: 460 });
