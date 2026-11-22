@@ -1,0 +1,77 @@
+[project]
+name = "puddles"
+version = "0.1.0"
+description = "Puddles the duck: a kids' webcam game driven by a fine-tuned small VLM"
+requires-python = ">=3.12,<3.13"
+dependencies = ["fastapi>=0.115"]
+
+[dependency-groups]
+dev = [
+    "complexipy",
+    "diff-cover",
+    "httpx2",
+    "mypy",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "vulture",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["server", "."]
+extend-exclude = ["game"]
+
+[tool.ruff.lint]
+preview = true
+explicit-preview-rules = true
+select = ["E", "F", "I", "N", "B", "UP", "SIM", "RUF", "PL", "C90", "PGH"]
+extend-select = ["PLR1702"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 5
+max-positional-args = 5
+max-statements = 40
+max-branches = 10
+max-returns = 5
+max-nested-blocks = 3
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["PLR2004"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+mypy_path = "server"
+files = ["server", "scripts"]
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+pythonpath = ["server", "."]
+testpaths = ["server/tests", "scripts/tests"]
+addopts = "--strict-markers"
+
+[tool.coverage.run]
+source = ["server/puddles_server", "scripts"]
+omit = ["**/tests/**"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
+
+[tool.complexipy]
+paths = ["server", "scripts"]
+max-complexity-allowed = 15
+
+[tool.vulture]
+paths = ["server", "scripts"]
+min_confidence = 80
