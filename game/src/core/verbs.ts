@@ -2,7 +2,7 @@ import { IDLE_MARGIN } from "./idle";
 import { POND } from "./pond";
 import type { Step, Target } from "./reaction";
 import { VERB_SECONDS } from "./validator";
-import { BANK } from "./world";
+import { BANK, farthestHidingSpot } from "./world";
 
 export type Pose = "stand" | "walk" | "run" | "sniff" | "peck" | "look" | "look_camera" | "hop";
 export type Facing = 1 | -1;
@@ -60,6 +60,9 @@ const HOP_LIFT = 80;
 /** How close the object must be for a peck to knock it. */
 const PECK_REACH = 120;
 const PECK_NUDGE = { x: 4, y: -6 };
+/** How long a hop over something takes, and how far it carries Puddles. */
+const HOP_OVER_SECONDS = 0.75;
+const HOP_SPAN = 2 * REACH;
 
 /** Where a target sits on the bank, if it has a place there. */
 function placeOf(target: Target | undefined, scene: Scene, x: number): number | undefined {
@@ -90,14 +93,65 @@ function travel(gait: Gait, duck: Duck, to: number, seconds: number): Plan {
   return { moves: [move, still("stand", { x: end, facing: duck.facing }, seconds - moving)] };
 }
 
-function walkTo(step: Step, duck: Duck, scene: Scene): Plan {
-  const seconds = VERB_SECONDS.walk_to;
+/** Puts `x` back on the part of the bank Puddles keeps to. */
+function onBank(x: number): number {
+  return Math.min(Math.max(x, BANK.left + IDLE_MARGIN), BANK.right - IDLE_MARGIN);
+}
+
+/** Goes in `gait` to just short of the target; walk_to walks and run_to runs. */
+function approach(gait: Gait, step: Step, duck: Duck, scene: Scene): Plan {
+  const seconds = VERB_SECONDS[step.do];
   const place = placeOf(step.target, scene, duck.x);
   const facing = facingTowards(place, duck);
   if (place === undefined || Math.abs(place - duck.x) <= REACH) {
     return { moves: [still("stand", { x: duck.x, facing }, seconds)] };
   }
-  return travel(WALK, { x: duck.x, facing }, place - facing * REACH, seconds);
+  return travel(gait, { x: duck.x, facing }, place - facing * REACH, seconds);
+}
+
+/** Runs behind the hiding spot farthest from the target, falling back to the object. */
+function hideBehind(step: Step, duck: Duck, scene: Scene): Plan {
+  const threat = placeOf(step.target, scene, duck.x) ?? scene.object;
+  const { x } = farthestHidingSpot(threat);
+  return travel(RUN, { x: duck.x, facing: facingTowards(x, duck) }, x, VERB_SECONDS.hide_behind);
+}
+
+/** Runs up to the target and hops `HOP_SPAN` on, then stands for whatever time is left. */
+function jumpOver(step: Step, duck: Duck, scene: Scene): Plan {
+  const seconds = VERB_SECONDS.jump_over;
+  const place = placeOf(step.target, scene, duck.x);
+  if (place === undefined) return { moves: [still("hop", duck, seconds, HOP_LIFT)] };
+  const facing = facingTowards(place, duck);
+  const runUp = Math.max(facing * (place - facing * REACH - duck.x), 0);
+  const ahead = Math.min(runUp, RUN.speed * (seconds - HOP_OVER_SECONDS));
+  const running = ahead / RUN.speed;
+  const takeoff = duck.x + facing * ahead;
+  const landing = onBank(takeoff + facing * HOP_SPAN);
+  const hop: Move = {
+    pose: "hop",
+    from: takeoff,
+    to: landing,
+    seconds: HOP_OVER_SECONDS,
+    facing,
+    lift: HOP_LIFT,
+  };
+  const left = seconds - running - HOP_OVER_SECONDS;
+  const after = left > 0 ? [still("stand", { x: landing, facing }, left)] : [];
+  if (ahead === 0) return { moves: [hop, ...after] };
+  const run: Move = { pose: "run", from: duck.x, to: takeoff, seconds: running, facing, lift: 0 };
+  return { moves: [run, hop, ...after] };
+}
+
+/** Walks round to the far side of the target and back, half the time each way. */
+function circle(step: Step, duck: Duck, scene: Scene): Plan {
+  const half = VERB_SECONDS.circle / 2;
+  const centre = placeOf(step.target, scene, duck.x) ?? duck.x + duck.facing * REACH;
+  const far = onBank(centre + facingTowards(centre, duck) * REACH);
+  const outFacing = facingTowards(far, duck);
+  const out = travel(WALK, { x: duck.x, facing: outFacing }, far, half);
+  const turned = { x: frameAt(out, half).x, facing: outFacing };
+  const back = travel(WALK, { ...turned, facing: facingTowards(duck.x, turned) }, duck.x, half);
+  return { moves: [...out.moves, ...back.moves] };
 }
 
 function runAway(step: Step, duck: Duck, scene: Scene): Plan {
@@ -134,9 +188,22 @@ function peckNudge(step: Step, duck: Duck, scene: Scene): { nudge?: Nudge } {
 
 /** Turns a script step into timed moves for Puddles at `duck`; the moves add up to the verb's time. */
 export function planVerb(step: Step, duck: Duck, scene: Scene): Plan {
-  if (step.do === "walk_to") return walkTo(step, duck, scene);
-  if (step.do === "run_away") return runAway(step, duck, scene);
-  return onTheSpot(step, duck, scene);
+  switch (step.do) {
+    case "walk_to":
+      return approach(WALK, step, duck, scene);
+    case "run_to":
+      return approach(RUN, step, duck, scene);
+    case "run_away":
+      return runAway(step, duck, scene);
+    case "hide_behind":
+      return hideBehind(step, duck, scene);
+    case "jump_over":
+      return jumpOver(step, duck, scene);
+    case "circle":
+      return circle(step, duck, scene);
+    default:
+      return onTheSpot(step, duck, scene);
+  }
 }
 
 /** Where Puddles is `elapsed` seconds into a plan, held at the ends; hops follow a sine arc. */
