@@ -67,6 +67,18 @@ Everything else is `risk:low`.
 
 Other labels: `needs-human`, `risk:low`, `risk:high`, `agent-authored`, `human-revised` (agent output the owner rejected or reshaped).
 
+Agents set the board status with `gh project item-edit` as they work (see the `/work-issue` skill). The project's built-in workflows cover the rest; turn these on once in the project's Workflows settings:
+
+- **Auto-add to project:** issues from `kohlerfryer/puddles`, so new tickets land on the board.
+- **Item closed** and **Pull request merged:** set Status to Done.
+- **Pull request linked to issue:** set Status to In review.
+
+## Repository settings
+
+`main` is protected by the ruleset in `.github/rulesets/main.json`: PRs only, linear history, no force pushes or deletion, the `just check` status check, resolved review threads, and code-owner review for the high-risk paths in `.github/CODEOWNERS`. Only rebase merges are allowed, and branches are deleted on merge. The owner applies changes to these with `just github-settings`. Admins can bypass the review rule on their own PRs, since GitHub doesn't let authors approve their own work.
+
+New issues use the Task form in `.github/ISSUE_TEMPLATE/task.yml`, which requires the Definition of Ready fields. PRs start from `.github/pull_request_template.md`.
+
 ## Running agents
 
 - Agents run in GitHub Actions with `anthropics/claude-code-action`, authenticated with the owner's Claude subscription token.
@@ -85,7 +97,7 @@ Every `human-revised` PR ends with an update to `AGENTS.md` or `docs/coding-stan
 | --- | --- |
 | `just check` gates and CI | #1 (done) |
 | These docs and ADRs | #2 (done) |
-| Claude Code hooks and commands | #3 |
+| Claude Code hooks and commands | #3 (done) |
 | Templates, CODEOWNERS, ruleset, board automation | #4 |
 | Risk gate, auto-merge, extra CI checks | #5 |
 | Agent implement and review workflows | #6 |
