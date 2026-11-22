@@ -102,6 +102,11 @@ export function createPhysics(pond: Pond) {
       Matter.Composite.add(engine.world, body);
       return body;
     },
+    /** Takes the sticker out of the world, so nothing moves it or rests on it. */
+    remove(body: Matter.Body): void {
+      floaters.delete(body);
+      Matter.Composite.remove(engine.world, body);
+    },
     step(deltaMs: number): void {
       applyWater();
       Matter.Engine.update(engine, deltaMs);
