@@ -73,3 +73,7 @@ fix:
     uv run ruff check --fix .
     pnpm -C game exec prettier --write .
     pnpm -C game exec eslint . --fix
+
+# Run every gate and write .quality/report.json with each violation's file, line and rule
+report:
+    uv run python -m scripts.quality_report
