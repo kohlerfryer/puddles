@@ -83,4 +83,16 @@ describe("createPhysics", () => {
     run(physics, 1);
     expect(sticker.angle - before).toBeGreaterThan(1);
   });
+
+  it("stops moving a removed sticker and lets others land where it was", () => {
+    const physics = createPhysics(pond);
+    const removed = physics.addSticker(book, 150, 300);
+    run(physics, 2);
+    const { x, y } = removed.position;
+    physics.remove(removed);
+    const falling = physics.addSticker(ball, 150, 100);
+    run(physics, 2);
+    expect(removed.position).toEqual({ x, y });
+    expect(falling.position.y).toBeCloseTo(pond.bankTop - stickerProps(ball).scale * 40, 0);
+  });
 });
