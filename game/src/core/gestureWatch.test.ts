@@ -43,10 +43,11 @@ describe("gesture watch", () => {
   });
 
   it("stays quiet for the cooldown after reporting", () => {
-    const wave = fixtures.find(([, f]) => f.gesture === "wave")?.[1];
-    if (!wave) throw new Error("no wave fixture");
+    const jump = fixtures.find(([, f]) => f.gesture === "jump")?.[1];
+    if (!jump) throw new Error("no jump fixture");
     const watch = createGestureWatch();
-    const times = wave.frames.flatMap((frame) => (watch.push(frame).length > 0 ? [frame.t] : []));
+    const times = jump.frames.flatMap((frame) => (watch.push(frame).length > 0 ? [frame.t] : []));
+    expect(times.length).toBeGreaterThan(1);
     for (const [i, t] of times.slice(1).entries()) {
       expect(t - (times[i] ?? 0)).toBeGreaterThanOrEqual(WATCH_COOLDOWN_MS);
     }
