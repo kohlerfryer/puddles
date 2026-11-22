@@ -1,6 +1,7 @@
 import { GESTURE_REACTIONS } from "./core/gestureWatch";
 import { gameTitle } from "./core/title";
 import { watchCamera } from "./render/camera";
+import { createDevPanel } from "./render/devPanel";
 import { createHud } from "./render/hud";
 import { drawPond } from "./render/pond";
 import { playDemo } from "./render/play";
@@ -10,6 +11,7 @@ document.title = gameTitle();
 void createStage(document.body).then((app) => {
   const puddles = playDemo(app, drawPond(app));
   const hud = createHud(document.body);
+  createDevPanel(document.body, puddles);
   watchCamera(
     (gesture) => {
       const reaction = GESTURE_REACTIONS[gesture];
