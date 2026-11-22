@@ -1,5 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "project": ["src/**/*.ts"],
-  "ignoreDependencies": ["jscpd", "matter-js", "@types/matter-js", "@mediapipe/tasks-vision"]
+  "ignoreDependencies": ["jscpd", "matter-js", "@types/matter-js", "@mediapipe/tasks-vision"],
+  "ignoreExportsUsedInFile": {
+    "type": true,
+    "interface": true
+  }
 }
