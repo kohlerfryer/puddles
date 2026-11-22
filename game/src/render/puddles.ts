@@ -8,11 +8,12 @@ import type { Facing, Pose } from "../core/verbs";
 /** What Puddles is doing: a verb's pose or an idle action. */
 type Look = Pose | IdleKind;
 
-/** Puddles as drawn this frame, `height` above the ground. */
+/** Puddles as drawn this frame, `height` above the ground with one wing raised `wing` radians. */
 interface Shown {
   readonly x: number;
   readonly facing: Facing;
   readonly height: number;
+  readonly wing: number;
   readonly look: Look;
   readonly mood: Mood;
 }
@@ -44,6 +45,10 @@ const HEAD_TILT: Partial<Record<Look, (clock: number) => number>> = {
   peck: (clock) => 0.9 * Math.abs(Math.sin(clock * 8)),
   look_camera: () => -0.25,
 };
+/** Where the head sits on the body: side-on, or turned to face the viewer. */
+const HEAD_AT = { side: { x: 34, y: -92 }, viewer: { x: -12, y: -96 } } as const;
+/** How narrow the body looks once Puddles has turned to face the viewer. */
+const TURNED_WIDTH = 0.8;
 
 function beak(g: Graphics, open: boolean): void {
   if (open) {
@@ -129,16 +134,22 @@ function sleepFace(g: Graphics): void {
 function drawBody(): Graphics {
   const g = new Graphics();
   g.ellipse(0, -45, 55, 38).fill(COLOURS.body);
-  g.ellipse(-8, -48, 30, 18).fill(COLOURS.wing);
   g.poly([-50, -60, -72, -78, -56, -44]).fill(COLOURS.body);
   g.rect(-12, -10, 5, 10).fill(COLOURS.beak);
   g.rect(10, -10, 5, 10).fill(COLOURS.beak);
   return g;
 }
 
+/** The near wing, pivoting at its shoulder so it can be raised to wave. */
+function drawWing(): Graphics {
+  const g = new Graphics();
+  g.ellipse(-22, 0, 30, 18).fill(COLOURS.wing);
+  g.position.set(14, -48);
+  return g;
+}
+
 function drawHead(): { head: Container; face: Graphics } {
   const head = new Container();
-  head.position.set(34, -92);
   head.addChild(new Graphics().circle(0, 0, 30).fill(COLOURS.body));
   const face = new Graphics();
   head.addChild(face);
@@ -149,14 +160,19 @@ function drawHead(): { head: Container; face: Graphics } {
 export function drawPuddles(scene: Container): (shown: Shown, clock: number) => void {
   const duck = new Container();
   const body = drawBody();
+  const wing = drawWing();
   const { head, face } = drawHead();
-  duck.addChild(body, head);
+  duck.addChild(body, head, wing);
   scene.addChild(duck);
   let shownFace = "";
 
   return (shown, clock) => {
     duck.position.set(shown.x, GROUND - shown.height);
-    duck.scale.x = shown.facing;
+    const turned = shown.look === "look_camera";
+    duck.scale.x = shown.facing * (turned ? TURNED_WIDTH : 1);
+    const at = turned ? HEAD_AT.viewer : HEAD_AT.side;
+    head.position.set(at.x, at.y);
+    wing.rotation = shown.wing;
     const waddle = WADDLE_SPEED[shown.look];
     duck.rotation = waddle === undefined ? 0 : Math.sin(clock * waddle) * WADDLE;
     head.rotation = HEAD_TILT[shown.look]?.(clock) ?? 0;
