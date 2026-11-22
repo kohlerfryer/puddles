@@ -2,6 +2,7 @@ import { IDLE_MARGIN } from "./idle";
 import { POND } from "./pond";
 import type { Step, Target, Verb } from "./reaction";
 import { VERB_SECONDS } from "./validator";
+import { waveWing } from "./wave";
 import { BANK, farthestHidingSpot } from "./world";
 
 export type Pose =
@@ -55,6 +56,8 @@ export interface Frame {
   readonly x: number;
   readonly facing: Facing;
   readonly height: number;
+  /** How far one wing is raised, in radians; 0 rests it against the body. */
+  readonly wing: number;
 }
 
 /** How Puddles travels, at `speed` world units per second. */
@@ -253,7 +256,7 @@ export function planVerb(step: Step, duck: Duck, scene: Scene): Plan {
   return (PLANNERS[step.do] ?? onTheSpot)(step, duck, scene);
 }
 
-/** Where Puddles is `elapsed` seconds into a plan, held at the ends; hops follow a sine arc. */
+/** Where Puddles is `elapsed` seconds into a plan, held at the ends; hops follow a sine arc and looking at the camera waves. */
 export function frameAt(plan: Plan, elapsed: number): Frame {
   const [first, ...rest] = plan.moves;
   let start = 0;
@@ -269,5 +272,6 @@ export function frameAt(plan: Plan, elapsed: number): Frame {
     x: move.from + (move.to - move.from) * progress,
     facing: move.facing,
     height: move.lift * Math.sin(Math.PI * progress),
+    wing: move.pose === "look_camera" ? waveWing(progress) : 0,
   };
 }
