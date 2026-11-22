@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kohlerfryer/puddles/shared/reaction.schema.json",
+  "title": "Reaction",
+  "description": "What Puddles does about a held-up object. Produced by the VLM, checked by the game's validator.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "holding",
+    "object",
+    "traits",
+    "script"
+  ],
+  "properties": {
+    "holding": {
+      "type": "boolean",
+      "description": "Whether the hand is holding anything."
+    },
+    "object": {
+      "type": "string",
+      "description": "Short name of the object. The game trims long names."
+    },
+    "traits": {
+      "$ref": "#/$defs/Traits"
+    },
+    "script": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/Step"
+      }
+    }
+  },
+  "$defs": {
+    "Traits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "size",
+        "weight",
+        "shape",
+        "edible"
+      ],
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/Size"
+        },
+        "weight": {
+          "$ref": "#/$defs/Weight"
+        },
+        "shape": {
+          "$ref": "#/$defs/Shape"
+        },
+        "edible": {
+          "type": "boolean"
+        }
+      },
+      "title": "Traits"
+    },
+    "Verb": {
+      "enum": [
+        "walk_to",
+        "run_to",
+        "run_away",
+        "hide_behind",
+        "look_at",
+        "sniff",
+        "peck",
+        "eat",
+        "push",
+        "jump",
+        "jump_over",
+        "sit_on",
+        "wear",
+        "circle",
+        "dance",
+        "flap",
+        "freeze",
+        "fall_over"
+      ],
+      "title": "Verb"
+    },
+    "Target": {
+      "enum": [
+        "object",
+        "camera",
+        "reeds",
+        "none"
+      ],
+      "title": "Target"
+    },
+    "Mood": {
+      "enum": [
+        "happy",
+        "curious",
+        "scared",
+        "silly",
+        "proud",
+        "grossed_out"
+      ],
+      "title": "Mood"
+    },
+    "Size": {
+      "enum": [
+        "tiny",
+        "small",
+        "medium",
+        "big"
+      ],
+      "title": "Size"
+    },
+    "Weight": {
+      "enum": [
+        "light",
+        "medium",
+        "heavy"
+      ],
+      "title": "Weight"
+    },
+    "Shape": {
+      "enum": [
+        "round",
+        "flat",
+        "long",
+        "other"
+      ],
+      "title": "Shape"
+    },
+    "Step": {
+      "title": "Step",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "do",
+        "mood"
+      ],
+      "properties": {
+        "do": {
+          "$ref": "#/$defs/Verb"
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        },
+        "mood": {
+          "$ref": "#/$defs/Mood"
+        },
+        "say": {
+          "type": "string",
+          "description": "What Puddles says. The game cuts it to 12 words."
+        }
+      }
+    }
+  }
+}
