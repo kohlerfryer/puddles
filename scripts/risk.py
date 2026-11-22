@@ -47,9 +47,11 @@ def assess(
     owned = sorted(c.path for c in changes if is_owned(c.path, patterns))
     if owned:
         reasons.append(f"touches high-risk paths: {', '.join(owned)}")
-    size = sum(c.added + c.deleted for c in changes if c.path not in LOCKFILES)
+    size = sum(
+        c.added + c.deleted for c in changes if c.path not in LOCKFILES and not is_test(c.path)
+    )
     if size > MAX_LINES:
-        reasons.append(f"changes {size} lines (limit {MAX_LINES})")
+        reasons.append(f"changes {size} non-test lines (limit {MAX_LINES})")
     deleted_tests = sorted(c.path for c in changes if c.status == "D" and is_test(c.path))
     if deleted_tests:
         reasons.append(f"deletes tests: {', '.join(deleted_tests)}")

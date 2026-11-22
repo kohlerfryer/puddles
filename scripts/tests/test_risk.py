@@ -39,7 +39,7 @@ def test_plain_source_change_is_low_risk() -> None:
     ("changes", "added", "labels", "reason"),
     [
         ([change(".github/workflows/ci.yml")], [], [], "high-risk paths"),
-        ([change("server/app.py", added=300, deleted=150)], [], [], "450 lines"),
+        ([change("server/app.py", added=300, deleted=150)], [], [], "450 non-test lines"),
         ([change("server/tests/test_app.py", status="D", added=0)], [], [], "deletes tests"),
         ([change("server/app.py")], ["x = f()  # noqa: E501"], [], "suppression"),
         ([change("game/src/a.ts")], ["// eslint-disable-next-line max-params"], [], "suppression"),
@@ -71,3 +71,9 @@ def test_main_prints_json(
 
     assert risk.main(["--labels", "agent-authored"]) == 0
     assert json.loads(capsys.readouterr().out)["level"] == "high"
+
+
+def test_test_lines_do_not_count_toward_size() -> None:
+    changes = [change("game/src/core/verbs.test.ts", added=300), change("server/app.py", added=200)]
+
+    assert assess(changes, [], [], []).level == "low"
