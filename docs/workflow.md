@@ -98,7 +98,7 @@ New issues use the Task form in `.github/ISSUE_TEMPLATE/task.yml`, which require
 
 Two workflows run Claude Code with `anthropics/claude-code-action`, authenticated with the owner's subscription token (`CLAUDE_CODE_OAUTH_TOKEN` secret):
 
-- **`agent implement`** starts when the owner labels an issue `agent:ready`, every hour, or by hand. `scripts/agent_dispatch.py` picks the oldest ready issue whose `Blocked by` issues are closed, but only while fewer than 2 issues are in progress and no "main is red" issue is open. The agent runs `/work-issue` and opens a PR as `claude[bot]`. A failed or timed-out run labels the issue `needs-human`.
+- **`agent implement`** starts when the owner labels an issue `agent:ready`, every hour, or by hand. `scripts/agent_dispatch.py` picks the oldest ready issue whose `Blocked by` issues are closed, but only while fewer than 2 issues are in progress and no "main is red" issue is open. The agent runs `/work-issue` and opens a PR as `claude[bot]`. If the agent pushes a branch without opening a PR, the workflow opens one with the Claude App's token. A failed or timed-out run labels the issue `needs-human`. Dispatch runs one at a time; when several issues are labeled at once, GitHub keeps only one queued dispatch, and the hourly run picks up the rest.
 - **`agent review`** runs `/review-pr` on every non-draft PR from the owner or `claude[bot]`. The verdict is posted by `github-actions[bot]`, since `claude[bot]` can't review its own PRs. Requesting changes fails the required `agent review` check, which blocks auto-merge. On agent PRs, an agent then fixes the points and pushes, which triggers a fresh review. After 2 fix rounds the PR is labeled `needs-human`.
 
 Limits and controls:
