@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Puddles gesture capture</title>
+    <style>
+      body {
+        margin: 0;
+        font:
+          16px system-ui,
+          sans-serif;
+        background: #102030;
+        color: #f4f4f4;
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        height: 100vh;
+      }
+      #view {
+        position: relative;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+      video,
+      canvas {
+        position: absolute;
+        max-width: 100%;
+        max-height: 100%;
+        transform: scaleX(-1);
+      }
+      #banner {
+        position: absolute;
+        top: 24px;
+        font-size: 48px;
+        font-weight: 700;
+        text-shadow: 0 2px 8px #000;
+      }
+      aside {
+        padding: 20px;
+        background: #1c3248;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      button {
+        font: inherit;
+        padding: 10px;
+        border-radius: 8px;
+        border: 0;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      input {
+        font: inherit;
+        padding: 8px;
+        border-radius: 6px;
+        border: 0;
+      }
+      #status {
+        min-height: 3em;
+      }
+      .done {
+        background: #8fd18f;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="view">
+      <video id="video" playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div id="banner"></div>
+    </div>
+    <aside>
+      <h2>Record gestures</h2>
+      <p>
+        Stand back so your whole body is in view. Each recording is 3 seconds of countdown, then 10
+        seconds of the gesture, over and over.
+      </p>
+      <label>Who is recording <input id="who" value="adult" /></label>
+      <div id="buttons"></div>
+      <div id="status">Loading the pose model...</div>
+      <p>Each recording downloads a JSON file. Send me the files when you're done.</p>
+    </aside>
+    <script type="module" src="/src/render/capture.ts"></script>
+  </body>
+</html>
