@@ -14,7 +14,7 @@
 ## Repo Shape
 
 - `server/puddles_server/`: FastAPI app (SmolVLM inference later). Tests in `server/tests/`.
-- `game/`: Vite + TypeScript game. Tests sit next to code as `*.test.ts`. `src/main.ts` is the entry point and is excluded from coverage.
+- `game/`: Vite + TypeScript game. Logic in `src/core/` (pure, tested, no PixiJS or DOM); drawing and input in `src/render/` (PixiJS, MediaPipe; no tests, excluded from coverage). Tests sit next to code as `*.test.ts`.
 - `scripts/`: repo tooling in Python, with tests in `scripts/tests/`.
 - `docs/adr/`: decisions. `docs/workflow.md`, `docs/coding-standards.md`.
 - Python 3.12 via `uv`; Node via `pnpm` inside `game/`. TypeScript is pinned to 6.x.
@@ -51,3 +51,4 @@ Stop, label the issue `needs-human` and comment why when: acceptance criteria ar
 - Agents run in GitHub Actions on the Claude subscription: `docs/adr/2026-11-22-agents-run-in-github-actions-on-the-subscription.md`
 - Agent commits carry a Claude co-author trailer: `docs/adr/2026-11-22-agent-commits-carry-a-co-author-trailer.md`
 - TypeScript stays on 6.x until typescript-eslint supports 7: `docs/adr/2026-11-22-typescript-stays-on-6.md`
+- Game logic in core, drawing in render: `docs/adr/2026-11-22-game-logic-in-core-drawing-in-render.md`

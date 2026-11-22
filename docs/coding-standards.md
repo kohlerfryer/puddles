@@ -26,7 +26,7 @@ Settings live in `pyproject.toml`, `game/eslint.config.js`, `game/tsconfig.json`
 
 ## Coverage scope
 
-Logic is always measured: the script runner, validator, state machine, server and scripts. Rendering and entry code, such as PixiJS drawing and `game/src/main.ts`, is excluded by an explicit list in the coverage settings. Changing that list is a high-risk change.
+Logic is always measured: the script runner, validator, state machine, server and scripts. Drawing and entry code (`game/src/render/` and `game/src/main.ts`) is excluded by an explicit list in the coverage settings and in `scripts/tests_touched.py`; see the core/render ADR. Changing that list is a high-risk change.
 
 ## Rules about the rules
 
