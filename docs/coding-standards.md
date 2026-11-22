@@ -45,3 +45,6 @@ Logic is always measured: the script runner, validator, state machine, server an
 | `just test` | pytest and vitest with coverage thresholds |
 | `just check-files <paths>` | fast lint, types and complexity for specific files |
 | `just fix` | auto-format and auto-fix |
+| `just report` | every gate, writing `.quality/report.json` with each violation's file, line and rule |
+
+In Claude Code, a hook runs `just check-files` after every edit and reports violations straight back, and Claude can't finish a task while `just check` fails (after 3 blocked attempts it must escalate with `needs-human`).
