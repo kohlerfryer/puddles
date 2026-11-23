@@ -63,6 +63,8 @@ def test_messages_put_the_photo_before_the_prompt() -> None:
         pytest.param('Sure! {"a": {"b": "}"}} trailing {"c": 1}', '{"a": {"b": "}"}}', id="first"),
         pytest.param('{"a": [1, 2', '{"a": [1, 2]}', id="cut-in-list"),
         pytest.param('{"say": "Quack \\"hi', '{"say": "Quack \\"hi"}', id="cut-in-string"),
+        pytest.param('{"say": "Quack \\', '{"say": "Quack "}', id="cut-mid-escape"),
+        pytest.param('{"say": "a\\\\', '{"say": "a\\\\"}', id="cut-after-escaped-slash"),
         pytest.param("no json here", None, id="none"),
     ],
 )
