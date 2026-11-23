@@ -1,6 +1,6 @@
 """Base SmolVLM behind the ReactionModel interface.
 
-torch, transformers, outlines and pillow live in the optional `vlm` dependency group,
+torch, transformers, xgrammar and pillow live in the optional `vlm` dependency group,
 so they are imported only when the model loads; the rest of the server never needs them.
 """
 
@@ -98,14 +98,17 @@ def load_generator(model_id: str, prompt: str) -> Generate:
     processor = transformers.AutoProcessor.from_pretrained(model_id)
     model = transformers.AutoModelForImageTextToText.from_pretrained(model_id).to(device)
     text = processor.apply_chat_template(build_messages(prompt), add_generation_prompt=True)
-    constrained = constrain(model, processor)
+    schema_processors = constrain(model, processor)
 
     def generate(image: bytes) -> str:
-        photo = pil_image.open(io.BytesIO(image))
-        if constrained is not None:
-            return constrained(text, photo)
+        photo = pil_image.open(io.BytesIO(image)).convert("RGB")
         inputs = processor(text=text, images=[photo], return_tensors="pt").to(device)
-        output = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=False)
+        output = model.generate(
+            **inputs,
+            max_new_tokens=MAX_NEW_TOKENS,
+            do_sample=False,
+            logits_processor=schema_processors(),
+        )
         reply = output[:, inputs["input_ids"].shape[1] :]
         return str(processor.batch_decode(reply, skip_special_tokens=True)[0])
 
@@ -120,21 +123,22 @@ def decoding_schema() -> dict[str, Any]:
     return schema
 
 
-def constrain(model: Any, processor: Any) -> Callable[[str, Any], str] | None:
-    """A generator that can only write schema-valid JSON, or None if outlines can't wrap it."""
+def constrain(model: Any, processor: Any) -> Callable[[], list[Any]]:
+    """Fresh logits processors per reply that allow only schema-valid JSON.
+
+    They are stateful, hence one set per reply. If xgrammar can't compile the schema for this
+    model's tokenizer, there are none and the model generates freely.
+    """
     try:
-        outlines = importlib.import_module("outlines")
-        wrapped = outlines.from_transformers(model, processor)
-        schema = outlines.types.JsonSchema(decoding_schema(), whitespace_pattern=r"[ ]?")
-        generator = outlines.Generator(wrapped, schema)
+        xgrammar = importlib.import_module("xgrammar")
+        xgrammar_hf = importlib.import_module("xgrammar.contrib.hf")
+        vocab_size = model.config.text_config.vocab_size
+        info = xgrammar.TokenizerInfo.from_huggingface(processor.tokenizer, vocab_size=vocab_size)
+        compiler = xgrammar.GrammarCompiler(info)
+        grammar = compiler.compile_json_schema(decoding_schema(), any_whitespace=False)
     except Exception:
-        return None
-
-    def run(text: str, photo: Any) -> str:
-        prompt = [text, outlines.inputs.Image(photo)]
-        return str(generator(prompt, max_new_tokens=MAX_NEW_TOKENS))
-
-    return run
+        return list
+    return lambda: [xgrammar_hf.LogitsProcessor(grammar)]
 
 
 class SmolVLMModel:
