@@ -1,6 +1,7 @@
-import type { Mood } from "./reaction";
+import type { Mood, Step } from "./reaction";
 import { planVerb } from "./planVerb";
 import type { RunnerStatus } from "./runner";
+import { shakeHead, type Sound, soundFor } from "./sounds";
 import type { Line } from "./speech";
 import { VERB_SECONDS } from "./validator";
 import {
@@ -15,11 +16,14 @@ import {
 
 /**
  * What Puddles shows this frame, what happens to the object sticker if it happens now,
- * and the line to start saying if a step that speaks has just started.
+ * the line to start saying if a step that speaks has just started, and the sounds to play now.
  */
 interface Cue {
   readonly frame: Frame;
   readonly mood: Mood;
+  /** How far the head is turned in a "no" head shake, in radians. */
+  readonly shake: number;
+  readonly sounds?: readonly Sound[];
   readonly nudge?: Nudge;
   readonly line?: Line;
   readonly take?: Take;
@@ -28,14 +32,17 @@ interface Cue {
 interface Acting {
   readonly startedAt: number;
   readonly plan: Plan;
-  /** The plan's nudge and take that have already landed. */
-  readonly landed: Set<"nudge" | "take">;
+  readonly quack: Sound | undefined;
+  /** When each hop in the plan takes off, in seconds. */
+  readonly hops: readonly number[];
+  /** The plan's nudge, take and hops that have already landed. */
+  readonly landed: Set<string>;
 }
 
 /** `happening` if it falls due by `elapsed` and hasn't landed yet, marking it landed. */
 function landing<T extends { readonly at: number }>(
   acting: Acting,
-  event: "nudge" | "take",
+  event: string,
   happening: T | undefined,
   elapsed: number,
 ): T | undefined {
@@ -44,7 +51,57 @@ function landing<T extends { readonly at: number }>(
   return happening;
 }
 
-/** Acts out what the runner plays: plans each step as it starts, says its line and lands its nudge and take once. */
+function hopsIn(plan: Plan): number[] {
+  let start = 0;
+  return plan.moves.flatMap((move) => {
+    const at = start;
+    start += move.seconds;
+    return move.pose === "hop" ? [at] : [];
+  });
+}
+
+function start(step: Step, startedAt: number, duck: Duck, scene: Scene): Acting {
+  const plan = planVerb(step, duck, scene);
+  const quack = soundFor({ kind: "step", step });
+  return { startedAt, plan, quack, hops: hopsIn(plan), landed: new Set() };
+}
+
+/** The step's quack as it starts, then a boing as each hop takes off. */
+function soundsNow(acting: Acting, starting: boolean, elapsed: number): Sound[] {
+  const boings = acting.hops
+    .filter((at, index) => landing(acting, `hop${String(index)}`, { at }, elapsed))
+    .map(() => soundFor({ kind: "jump" }));
+  return [starting ? acting.quack : undefined, ...boings].filter((sound) => sound !== undefined);
+}
+
+type Playing = Extract<RunnerStatus, { state: "playing" }>;
+
+/** The cue `now` ms into the playing step; `starting` when the step has just begun. */
+function cueAt(acting: Acting, status: Playing, now: number, starting: boolean): Cue {
+  const { step, startedAt } = status;
+  const elapsed = (now - startedAt) / 1000;
+  const line =
+    starting && step.say
+      ? { text: step.say, startedAt, seconds: VERB_SECONDS[step.do] }
+      : undefined;
+  const nudge = landing(acting, "nudge", acting.plan.nudge, elapsed);
+  const take = landing(acting, "take", acting.plan.take, elapsed);
+  const sounds = soundsNow(acting, starting, elapsed);
+  return {
+    frame: frameAt(acting.plan, elapsed),
+    mood: status.mood,
+    shake: acting.quack === "no" ? shakeHead(elapsed) : 0,
+    ...(line && { line }),
+    ...(sounds.length > 0 && { sounds }),
+    ...(nudge && { nudge }),
+    ...(take && { take }),
+  };
+}
+
+/**
+ * Acts out what the runner plays: plans each step as it starts, says and quacks its line, and lands
+ * its nudge, take and hop boings once.
+ */
 export function createActing() {
   let acting: Acting | undefined;
 
@@ -55,22 +112,9 @@ export function createActing() {
         acting = undefined;
         return undefined;
       }
-      const { step, startedAt } = status;
-      let line: Line | undefined;
-      if (acting?.startedAt !== startedAt) {
-        acting = { startedAt, plan: planVerb(step, duck, scene), landed: new Set() };
-        if (step.say) line = { text: step.say, startedAt, seconds: VERB_SECONDS[step.do] };
-      }
-      const elapsed = (now - startedAt) / 1000;
-      const nudge = landing(acting, "nudge", acting.plan.nudge, elapsed);
-      const take = landing(acting, "take", acting.plan.take, elapsed);
-      return {
-        frame: frameAt(acting.plan, elapsed),
-        mood: status.mood,
-        ...(line && { line }),
-        ...(nudge && { nudge }),
-        ...(take && { take }),
-      };
+      const starting = acting?.startedAt !== status.startedAt;
+      if (!acting || starting) acting = start(status.step, status.startedAt, duck, scene);
+      return cueAt(acting, status, now, starting);
     },
   };
 }

@@ -95,4 +95,19 @@ describe("createPhysics", () => {
     expect(removed.position).toEqual({ x, y });
     expect(falling.position.y).toBeCloseTo(pond.bankTop - stickerProps(ball).scale * 40, 0);
   });
+
+  it("reports a sticker once, on the step it first lands in the water", () => {
+    const physics = createPhysics(pond);
+    const sticker = physics.addSticker(rock, 550, 100);
+    const splashes = Array.from({ length: 360 }, () => physics.step(FRAME_MS));
+    const landed = splashes.findIndex((bodies) => bodies.length > 0);
+    expect(splashes.flat()).toEqual([sticker]);
+    expect(landed).toBeGreaterThan(0);
+  });
+
+  it("reports no splash for a sticker landing on the bank", () => {
+    const physics = createPhysics(pond);
+    physics.addSticker(book, 150, 100);
+    expect(Array.from({ length: 180 }, () => physics.step(FRAME_MS)).flat()).toEqual([]);
+  });
 });
