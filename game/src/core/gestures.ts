@@ -4,7 +4,7 @@ import { GESTURES, type Gesture, type Landmark, type PoseFrame } from "./poseFix
 
 export type BodyGesture = Exclude<Gesture, "idle">;
 
-const BODY_GESTURES = GESTURES.filter((g): g is BodyGesture => g !== "idle");
+export const BODY_GESTURES = GESTURES.filter((g): g is BodyGesture => g !== "idle");
 
 /** MediaPipe Pose landmark indices. */
 const LEFT_SHOULDER = 11;
