@@ -1,5 +1,6 @@
 /** Puddles' thought bubble: a picture of what he's thinking, for kids who can't read yet. */
 
+import { ASK_MS, type CopyCue } from "./copyMe";
 import type { BodyGesture } from "./gestures";
 import { SCENE_WIDTH } from "./pond";
 import { fadeAlpha, SPEECH_WIDTH } from "./speech";
@@ -40,10 +41,11 @@ export const THOUGHT_ICONS = {
 
 export type ThoughtIcon = keyof typeof THOUGHT_ICONS;
 
-/** A picture Puddles starts thinking of at `startedAt` ms. */
+/** A picture Puddles starts thinking of at `startedAt` ms and holds for `seconds`. */
 interface Thought {
   readonly icon: ThoughtIcon;
   readonly startedAt: number;
+  readonly seconds: number;
 }
 
 /** How long Puddles holds a thought before it fades. */
@@ -62,7 +64,29 @@ const GESTURE_ICONS: Record<BodyGesture, ThoughtIcon> = {
 
 /** The thought Puddles has at `now` ms when the player makes `gesture`. */
 export function gestureThought(gesture: BodyGesture, now: number): Thought {
-  return { icon: GESTURE_ICONS[gesture], startedAt: now };
+  return { icon: GESTURE_ICONS[gesture], startedAt: now, seconds: THOUGHT_SECONDS };
+}
+
+/**
+ * The thought after `cue` at `now` ms: the asked-for gesture held for the whole wait, a mirrored
+ * gesture briefly, popped once the request ends, or unchanged through a wrong guess.
+ */
+export function thoughtAfter(
+  current: Thought | undefined,
+  cue: CopyCue,
+  now: number,
+): Thought | undefined {
+  switch (cue.kind) {
+    case "ask":
+      return { icon: GESTURE_ICONS[cue.gesture], startedAt: now, seconds: ASK_MS / 1000 };
+    case "mirror":
+      return gestureThought(cue.gesture, now);
+    case "no":
+      return current;
+    case "yes":
+    case "timeout":
+      return undefined;
+  }
 }
 
 /** The thought bubble at `now` ms: its icon and how opaque it is. */
@@ -71,7 +95,7 @@ export function thoughtAt(
   now: number,
 ): { readonly icon: ThoughtIcon; readonly alpha: number } | undefined {
   if (!thought) return undefined;
-  const alpha = fadeAlpha(thought.startedAt, THOUGHT_SECONDS, now);
+  const alpha = fadeAlpha(thought.startedAt, thought.seconds, now);
   return alpha > 0 ? { icon: thought.icon, alpha } : undefined;
 }
 
