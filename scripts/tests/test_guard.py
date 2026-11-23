@@ -99,3 +99,42 @@ def test_main_stays_silent_when_allowed(
 
     assert guard.main() == 0
     assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git push -u origin agent/59-x && gh pr create --base main --title t",
+        'gh issue create --title "Guard" --body "never run git push origin main"',
+        "git commit -m 'Explain why git push --force is banned'",
+        "git push origin agent/59-x; gh api -X PATCH repos/o/r -f state=closed",
+        "cat <<'EOF'\nnotes\nEOF",
+    ],
+)
+def test_allows_commands_that_only_mention_dangerous_ones(command: str) -> None:
+    assert bash_denial(command, branch="agent/59-x", ci_agent=False) is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cd game && git push origin main",
+        "git status\ngit push origin HEAD:main",
+        "FOO=1 git push -fu origin agent/59-x",
+        "git push origin +agent/59-x",
+        "git add . && git commit -n -m wip",
+        "git push origin refs/heads/main",
+    ],
+)
+def test_denies_dangerous_commands_inside_compound_ones(command: str) -> None:
+    assert bash_denial(command, branch="agent/59-x", ci_agent=False)
+
+
+def test_denies_pushing_head_while_on_main() -> None:
+    assert bash_denial("git push -u origin HEAD", branch="main", ci_agent=False)
+    assert bash_denial("git push -u origin HEAD", branch="agent/59-x", ci_agent=False) is None
+
+
+def test_falls_back_to_patterns_for_unbalanced_quotes() -> None:
+    assert bash_denial("git push --force 'oops", branch="agent/59-x", ci_agent=False)
+    assert bash_denial("echo 'oops", branch="agent/59-x", ci_agent=False) is None
