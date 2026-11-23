@@ -1,6 +1,7 @@
 import { type Application, type Container, Graphics } from "pixi.js";
 
 import { createActing } from "../core/acting";
+import { type CopyCue, createCopyMe } from "../core/copyMe";
 import { DEMO_SCRIPT, DEMO_TRAITS, demoDrop } from "../core/demo";
 import { advanceIdle, idlePosition, startIdle } from "../core/idle";
 import { createPhysics } from "../core/physics";
@@ -11,7 +12,7 @@ import { createRunner } from "../core/runner";
 import type { BodyGesture } from "../core/gestures";
 import { type Sound, soundFor } from "../core/sounds";
 import { bubbleAt, type Line } from "../core/speech";
-import { bubbleCentres, gestureThought, thoughtAt } from "../core/thought";
+import { bubbleCentres, thoughtAfter, thoughtAt } from "../core/thought";
 import type { Duck, Facing, Hold } from "../core/verbs";
 import { drawBubble, drawThought } from "./bubble";
 import { drawPuddles, holdPoint } from "./puddles";
@@ -102,10 +103,11 @@ function talk(scene: Container) {
   const say = drawBubble(scene);
   const think = drawThought(scene);
   let line: Line | undefined;
-  let thought: ReturnType<typeof gestureThought> | undefined;
+  let thought: ReturnType<typeof thoughtAfter>;
   return {
-    think(gesture: BodyGesture, now: number): void {
-      thought = gestureThought(gesture, now);
+    /** Changes what Puddles thinks of as a copy-me `cue` happens at `now` ms. */
+    follow(cue: CopyCue, now: number): void {
+      thought = thoughtAfter(thought, cue, now);
     },
     /** Shows both bubbles at `now` ms above Puddles at `x`, `height` off the ground, starting `next` if he has a new line. */
     draw(x: number, height: number, now: number, next?: Line): void {
@@ -142,15 +144,38 @@ function idler() {
   };
 }
 
+/** The copy-me game, played through the runner and the thought bubble; core decides every move. */
+function copier(runner: ReturnType<typeof createRunner>, bubbles: ReturnType<typeof talk>) {
+  const copy = createCopyMe(Math.random);
+  let inView = false;
+  const follow = (cue: CopyCue, now: number): CopyCue => {
+    runner.react(cue.step, now);
+    bubbles.follow(cue, now);
+    return cue;
+  };
+  return {
+    /** Moves the game on to `now` ms, asking or giving up when core says; `busy` while Puddles acts. */
+    tick: (now: number, busy: boolean): void => {
+      const cue = copy.tick(now, { inView, busy });
+      if (cue) follow(cue, now);
+    },
+    see: (gesture: BodyGesture, now: number): CopyCue => follow(copy.see(gesture, now), now),
+    watching: (seen: boolean): void => {
+      inView = seen;
+    },
+  };
+}
+
 /** Lets other inputs (the camera, the dev panel) drive Puddles on the same clock as the demo. */
 export interface Actor {
-  react(step: Step): void;
   /** Drops a new sticker for Puddles to react to. */
   spawn(traits: Traits): void;
   /** Plays `script` now, replacing the running one. */
   play(script: readonly Step[]): void;
-  /** Shows Puddles thinking of the gesture the player just made. */
-  think(gesture: BodyGesture): void;
+  /** Reacts to the gesture the player just made, as an answer while Puddles is asking, and says how. */
+  see(gesture: BodyGesture): CopyCue;
+  /** Tells Puddles whether a body is in front of the camera. */
+  watching(inView: boolean): void;
 }
 
 /**
@@ -170,6 +195,7 @@ export function playDemo(
   const idling = idler();
   let clockMs = 0;
   const sticker = stickers(scene, play);
+  const copying = copier(runner, bubbles);
   let target = sticker.drop(DEMO_TRAITS, duck.x);
   runner.play(DEMO_SCRIPT, clockMs);
 
@@ -184,6 +210,7 @@ export function playDemo(
       if (cue.take) sticker.take(target, cue.take.to, clockMs);
       idling.stop();
     }
+    copying.tick(clockMs, cue !== undefined);
     const shown = cue
       ? { ...cue.frame, look: cue.frame.pose, mood: cue.mood, shake: cue.shake }
       : idling.next(ticker.deltaMS, duck);
@@ -193,17 +220,15 @@ export function playDemo(
     sticker.step(ticker.deltaMS, clockMs, shown);
   });
   return {
-    react(step: Step): void {
-      runner.react(step, clockMs);
-    },
     spawn(traits: Traits): void {
       target = sticker.drop(traits, duck.x);
     },
     play(script: readonly Step[]): void {
       runner.play(script, clockMs);
     },
-    think(gesture: BodyGesture): void {
-      bubbles.think(gesture, clockMs);
+    see(gesture: BodyGesture): CopyCue {
+      return copying.see(gesture, clockMs);
     },
+    watching: copying.watching,
   };
 }
