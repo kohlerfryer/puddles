@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from puddles_server.app import app, get_model
-from puddles_server.models import FakeModel, load_model
+from puddles_server.app import MAX_IMAGE_CHARS, app, get_model
+from puddles_server.models import MODELS, FakeModel, load_model
 
 SCHEMA = json.loads((Path(__file__).parents[2] / "shared" / "reaction.schema.json").read_text())
 JPEG = b"\xff\xd8\xff\xe0 not really a jpeg"
@@ -71,6 +71,7 @@ def test_react_reports_model_and_latency_headers(client: TestClient) -> None:
     "image",
     [
         pytest.param("not base64!", id="not-base64"),
+        pytest.param("é", id="not-ascii"),
         pytest.param("", id="empty"),
         pytest.param(encode(b"\0" * (2 * 1024 * 1024 + 1)), id="over-2mb"),
     ],
@@ -79,6 +80,13 @@ def test_react_rejects_bad_images(client: TestClient, image: str) -> None:
     response = client.post("/react", json={"image": image})
 
     assert response.status_code == 400
+
+
+def test_react_rejects_overlong_strings_before_decoding(client: TestClient) -> None:
+    response = client.post("/react", json={"image": "!" * (MAX_IMAGE_CHARS + 1)})
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "image is over 2 MB"}
 
 
 def test_react_accepts_an_image_of_exactly_2mb(client: TestClient) -> None:
@@ -132,12 +140,13 @@ def test_cors_preflight_rejects_other_origins(client: TestClient) -> None:
 
 
 def test_model_is_chosen_by_env_var(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("PUDDLES_MODEL", "fake")
+    monkeypatch.setitem(MODELS, "recording", RecordingModel)
+    monkeypatch.setenv("PUDDLES_MODEL", "recording")
 
     with TestClient(app) as test_client:
         response = test_client.post("/react", json={"image": encode(JPEG)})
 
-    assert response.headers["X-Puddles-Model"] == "fake"
+    assert response.headers["X-Puddles-Model"] == "recording"
 
 
 def test_unknown_model_name_fails_at_startup(monkeypatch: pytest.MonkeyPatch) -> None:

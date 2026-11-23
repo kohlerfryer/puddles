@@ -1,5 +1,5 @@
 import base64
-import binascii
+import math
 import os
 import time
 from collections.abc import AsyncIterator
@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from puddles_server.models import ReactionModel, load_model
 
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
+MAX_IMAGE_CHARS = 4 * math.ceil(MAX_IMAGE_BYTES / 3)
 DEV_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
 MODEL_HEADER = "X-Puddles-Model"
 LATENCY_HEADER = "X-Puddles-Latency-Ms"
@@ -45,9 +46,11 @@ def get_model(request: Request) -> ReactionModel:
 
 
 def decode_image(image: str) -> bytes:
+    if len(image) > MAX_IMAGE_CHARS:
+        raise HTTPException(400, "image is over 2 MB")
     try:
         data = base64.b64decode(image, validate=True)
-    except binascii.Error as error:
+    except ValueError as error:
         raise HTTPException(400, "image is not base64") from error
     if not data:
         raise HTTPException(400, "image is empty")
