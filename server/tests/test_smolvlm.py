@@ -2,8 +2,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
-from typing import Any
 
 import pytest
 
@@ -16,7 +14,6 @@ from puddles_server.smolvlm import (
     build_messages,
     first_json_object,
     parse_reaction,
-    pick_device,
 )
 
 SHARED = Path(__file__).parents[2] / "shared"
@@ -111,21 +108,6 @@ def test_decoding_schema_caps_strings_and_keeps_the_rest() -> None:
     assert schema == shared
 
 
-def fake_torch(*, mps: bool = False, cuda: bool = False) -> Any:
-    return SimpleNamespace(
-        backends=SimpleNamespace(mps=SimpleNamespace(is_available=lambda: mps)),
-        cuda=SimpleNamespace(is_available=lambda: cuda),
-    )
-
-
-@pytest.mark.parametrize(
-    ("mps", "cuda", "device"),
-    [(True, True, "mps"), (False, True, "cuda"), (False, False, "cpu")],
-)
-def test_pick_device_prefers_mps_then_cuda(mps: bool, cuda: bool, device: str) -> None:
-    assert pick_device(fake_torch(mps=mps, cuda=cuda)) == device
-
-
 def test_model_reads_its_id_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     loads: list[tuple[str, str]] = []
 
@@ -150,7 +132,7 @@ def test_model_reads_its_id_from_the_environment(monkeypatch: pytest.MonkeyPatch
 
 
 def test_choosing_smolvlm_imports_no_heavy_library_until_it_loads() -> None:
-    heavy = "{'torch', 'transformers', 'outlines', 'PIL'}"
+    heavy = "{'torch', 'transformers', 'xgrammar', 'PIL'}"
     code = f"import sys, puddles_server.app; print(sorted({heavy} & set(sys.modules)))"
     server = Path(__file__).parents[1]
     result = subprocess.run(
@@ -167,130 +149,3 @@ def test_puddles_model_smolvlm_selects_the_backend(monkeypatch: pytest.MonkeyPat
 
     assert isinstance(model, SmolVLMModel)
     assert model.react(b"jpeg") == CONFUSED_REACTION
-
-
-class FakeTensor:
-    def __init__(self, label: str) -> None:
-        self.label = label
-        self.shape = (1, 7)
-
-    def __getitem__(self, key: tuple[slice, slice]) -> str:
-        return f"{self.label}[{key[1].start}:]"
-
-
-class FakeInputs(dict[str, Any]):
-    def to(self, device: str) -> "FakeInputs":
-        self["device"] = device
-        return self
-
-
-class FakeProcessor:
-    def apply_chat_template(self, messages: Any, add_generation_prompt: bool) -> str:
-        assert add_generation_prompt
-        return f"CHAT({messages[0]['content'][1]['text'][:9]})"
-
-    def __call__(self, text: str, images: list[Any], return_tensors: str) -> FakeInputs:
-        assert return_tensors == "pt"
-        return FakeInputs(input_ids=FakeTensor("ids"), text=text, images=images)
-
-    def batch_decode(self, reply: str, skip_special_tokens: bool) -> list[str]:
-        assert skip_special_tokens
-        return [f"decoded {reply}"]
-
-
-class FakeVLM:
-    def __init__(self) -> None:
-        self.device = ""
-
-    def to(self, device: str) -> "FakeVLM":
-        self.device = device
-        return self
-
-    def generate(self, **inputs: Any) -> FakeTensor:
-        return FakeTensor(f"out({inputs['text']},{inputs['images'][0]},{inputs['device']})")
-
-
-class FakePhoto:
-    def __init__(self, data: bytes) -> None:
-        self.data = data
-
-    def __str__(self) -> str:
-        return self.data.decode()
-
-
-def install_fakes(monkeypatch: pytest.MonkeyPatch, outlines: ModuleType) -> FakeVLM:
-    vlm = FakeVLM()
-    auto = SimpleNamespace
-    fakes = {
-        "torch": module("torch", **vars(fake_torch(cuda=True))),
-        "transformers": module(
-            "transformers",
-            AutoProcessor=auto(from_pretrained=lambda model_id: FakeProcessor()),
-            AutoModelForImageTextToText=auto(from_pretrained=lambda model_id: vlm),
-        ),
-        "PIL.Image": module("PIL.Image", open=lambda stream: FakePhoto(stream.read())),
-        "outlines": outlines,
-    }
-    for name, fake in fakes.items():
-        monkeypatch.setitem(sys.modules, name, fake)
-    return vlm
-
-
-def broken_outlines() -> ModuleType:
-    def refuse(model: Any, processor: Any) -> None:
-        raise NotImplementedError("no vision support")
-
-    return module("outlines", from_transformers=refuse)
-
-
-def json_schema(schema: dict[str, Any], whitespace_pattern: str) -> str:
-    assert whitespace_pattern == "[ ]?"
-    return str(schema["title"])
-
-
-def schema_outlines(calls: list[Any]) -> ModuleType:
-    def generator(wrapped: Any, schema: Any) -> Any:
-        def run(prompt: list[Any], max_new_tokens: int) -> str:
-            calls.append((wrapped, schema, prompt, max_new_tokens))
-            return json.dumps(REACTION)
-
-        return run
-
-    return module(
-        "outlines",
-        from_transformers=lambda model, processor: ("wrapped", model),
-        types=SimpleNamespace(JsonSchema=json_schema),
-        Generator=generator,
-        inputs=SimpleNamespace(Image=lambda photo: f"Image({photo})"),
-    )
-
-
-def test_loader_decodes_under_the_schema_when_outlines_can(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[Any] = []
-    vlm = install_fakes(monkeypatch, schema_outlines(calls))
-
-    generate = smolvlm.load_generator("some/model", "You are Puddles")
-
-    assert generate(b"jpeg") == json.dumps(REACTION)
-    assert vlm.device == "cuda"
-    assert calls == [
-        (("wrapped", vlm), "Reaction", ["CHAT(You are P)", "Image(jpeg)"], smolvlm.MAX_NEW_TOKENS)
-    ]
-
-
-def test_loader_generates_freely_when_outlines_cannot_constrain(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    install_fakes(monkeypatch, broken_outlines())
-
-    generate = smolvlm.load_generator("some/model", "You are Puddles")
-
-    assert generate(b"jpeg") == "decoded out(CHAT(You are P),jpeg,cuda)[7:]"
-
-
-def module(name: str, **attributes: Any) -> ModuleType:
-    fake = ModuleType(name)
-    fake.__dict__.update(attributes)
-    return fake
