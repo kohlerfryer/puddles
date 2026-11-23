@@ -16,6 +16,8 @@ interface Shown {
   readonly wing: number;
   readonly look: Look;
   readonly mood: Mood;
+  /** How far the head is turned in a head shake, in radians. */
+  readonly shake: number;
 }
 
 const COLOURS = {
@@ -189,7 +191,7 @@ export function drawPuddles(scene: Container): (shown: Shown, clock: number) => 
     wing.rotation = shown.wing;
     const waddle = WADDLE_SPEED[shown.look];
     duck.rotation = waddle === undefined ? 0 : Math.sin(clock * waddle) * WADDLE;
-    head.rotation = HEAD_TILT[shown.look]?.(clock) ?? 0;
+    head.rotation = (HEAD_TILT[shown.look]?.(clock) ?? 0) + shown.shake;
 
     const wanted = shown.look === "nap" ? "nap" : shown.mood;
     if (wanted === shownFace) return;
