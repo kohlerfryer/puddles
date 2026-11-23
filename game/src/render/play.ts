@@ -1,4 +1,4 @@
-import { type Application, type Container, Graphics } from "pixi.js";
+import type { Application, Container } from "pixi.js";
 
 import { createActing } from "../core/acting";
 import { type CopyCue, createCopyMe } from "../core/copyMe";
@@ -11,83 +11,47 @@ import { GROUND, SCENE_WIDTH, STICKER_POND } from "../core/pond";
 import type { Step, Traits } from "../core/reaction";
 import { createRunner } from "../core/runner";
 import { sensingRing } from "../core/sensing";
+import { createStickers } from "../core/stickers";
 import type { BodyGesture } from "../core/gestures";
 import type { PoseFrame } from "../core/poseFixture";
 import { type Sound, soundFor } from "../core/sounds";
 import { bubbleAt, type Line } from "../core/speech";
 import { bubbleCentres, senseThought, thoughtAfter, thoughtAt } from "../core/thought";
-import type { Duck, Hold } from "../core/verbs";
+import type { Duck } from "../core/verbs";
 import { drawBubble, drawSensing, drawThought } from "./bubble";
 import { type AtWindow, drawPuddles, holdPoint, type Shown } from "./puddles";
+import { type Look, placeLook, releaseLook, stickerLook } from "./sticker";
 
-const STICKER_COLOUR = "#e0457b";
 /** Longest physics step, so a slow frame can't drop the sticker through the ground. */
 const MAX_STEP_MS = 1000 / 60;
 /** How big a sticker shows once Puddles holds it, so a hat fits the head. */
 const HELD_SCALE = 0.6;
 
-type Body = ReturnType<ReturnType<typeof createPhysics>["addSticker"]>;
-
-interface Drawn {
-  readonly body: Body;
-  readonly art: Graphics;
-  held?: { readonly on: Hold; readonly since: number };
-}
-
-/** Draws a sticker loose where its body is, or scaled at `at` when Puddles holds it. */
-function drawSticker({ body, art }: Drawn, at?: { x: number; y: number }, scale = 1): void {
-  const offset = at ? body.position : { x: 0, y: 0 };
-  art
-    .clear()
-    .poly(body.vertices.flatMap((v) => [v.x - offset.x, v.y - offset.y]))
-    .fill(STICKER_COLOUR);
-  art.position.set(at?.x ?? 0, at?.y ?? 0);
-  art.scale.set(scale);
-}
-
 /** Drops stickers into one physics world and draws each wherever its body is, or Puddles holds it. */
 function stickers(scene: Container, play: (sound: Sound | undefined) => void) {
-  const physics = createPhysics(STICKER_POND);
-  const drawn: Drawn[] = [];
-  const forget = (sticker: Drawn): void => {
-    drawn.splice(drawn.indexOf(sticker), 1);
-    sticker.art.destroy();
-  };
+  const shelf = createStickers<Look>(createPhysics(STICKER_POND), releaseLook);
   return {
-    physics,
-    /** Drops a sticker from the sky near Puddles at `x` and returns its body. */
-    drop(traits: Traits, x: number) {
-      const at = demoDrop(x);
-      const body = physics.addSticker(traits, at.x, at.y);
-      const art = new Graphics();
-      scene.addChild(art);
-      drawn.push({ body, art });
-      return body;
-    },
-    /** Puddles takes `body` out of the world into the beak or onto the head, dropping anything held before. */
-    take(body: Body, on: Hold, now: number): void {
-      physics.remove(body);
-      for (const sticker of drawn.filter((other) => other.held && other.body !== body)) {
-        forget(sticker);
-      }
-      const sticker = drawn.find((other) => other.body === body);
-      if (sticker) sticker.held = { on, since: now };
+    ...shelf,
+    /** Drops a sticker from the sky near Puddles at `x` at `now` ms, showing `photo` if given. */
+    drop(traits: Traits, x: number, now: number, photo?: ImageBitmap) {
+      return shelf.drop(traits, demoDrop(x), now, (frame) => stickerLook(scene, frame, photo));
     },
     /** Moves and draws the stickers, splashing those that land in the water. */
     step(deltaMs: number, now: number, puddles: Parameters<typeof holdPoint>[0]): void {
-      const splashes = physics.step(Math.min(deltaMs, MAX_STEP_MS));
+      const splashes = shelf.physics.step(Math.min(deltaMs, MAX_STEP_MS));
       splashes.forEach(() => {
         play(soundFor({ kind: "landed" }));
       });
-      for (const sticker of drawn) {
-        const { held } = sticker;
-        if (!held) {
-          drawSticker(sticker);
-          continue;
-        }
-        const scale = heldScale(held.on, (now - held.since) / 1000);
-        if (scale === 0) forget(sticker);
-        else drawSticker(sticker, holdPoint(puddles, held.on), scale * HELD_SCALE);
+      shelf.settle(now);
+      for (const { body, look, born, held } of shelf.all()) {
+        const at = held
+          ? {
+              ...holdPoint(puddles, held.on),
+              angle: 0,
+              scale: heldScale(held.on, (now - held.since) / 1000) * HELD_SCALE,
+            }
+          : { x: body.position.x, y: body.position.y, angle: body.angle, scale: 1 };
+        placeLook(look, at, now - born);
       }
     },
   };
@@ -179,8 +143,8 @@ function copier(runner: ReturnType<typeof createRunner>, bubbles: ReturnType<typ
 
 /** Lets other inputs (the camera, the dev panel) drive Puddles on the same clock as the demo. */
 export interface Actor {
-  /** Drops a new sticker for Puddles to react to. */
-  spawn(traits: Traits): void;
+  /** Drops a new sticker for Puddles to react to, showing the held-up `photo` if there is one. */
+  spawn(traits: Traits, photo?: ImageBitmap): void;
   /** Plays `script` now, replacing the running one. */
   play(script: readonly Step[]): void;
   /** Reacts to the gesture the player just made, as an answer while Puddles is asking, and says how. */
@@ -210,7 +174,7 @@ export function playDemo(
   let clockMs = 0;
   const sticker = stickers(scene, play);
   const copying = copier(runner, bubbles);
-  let target = sticker.drop(DEMO_TRAITS, duck.x);
+  let target = sticker.drop(DEMO_TRAITS, duck.x, clockMs).body;
   runner.play(DEMO_SCRIPT, clockMs);
 
   app.ticker.add((ticker) => {
@@ -229,8 +193,8 @@ export function playDemo(
     sticker.step(ticker.deltaMS, clockMs, shown);
   });
   return {
-    spawn(traits: Traits): void {
-      target = sticker.drop(traits, duck.x);
+    spawn(traits: Traits, photo?: ImageBitmap): void {
+      target = sticker.drop(traits, duck.x, clockMs, photo).body;
     },
     play(script: readonly Step[]): void {
       runner.play(script, clockMs);
