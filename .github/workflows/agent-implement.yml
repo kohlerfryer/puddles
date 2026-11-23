@@ -1,14 +1,17 @@
 name: agent implement
 
-# An agent implements the next ready issue and opens a PR (docs/workflow.md).
-# Starts when the owner labels an issue agent:ready, hourly to pick up queued
-# issues, or by hand. Set the repo variable AGENTS_PAUSED=true to stop agents.
+# Agents implement ready issues in parallel and open PRs (docs/workflow.md).
+# Dispatch runs when the owner labels an issue agent:ready, whenever main changes
+# (a merge frees a slot or closes a blocker), every 15 minutes, or by hand.
+# Set the repo variable AGENTS_PAUSED=true to stop agents.
 
 on:
   issues:
     types: [labeled]
+  push:
+    branches: [main]
   schedule:
-    - cron: "17 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       issue:
@@ -38,7 +41,7 @@ jobs:
       issues: write
       pull-requests: read
     outputs:
-      issue: ${{ steps.pick.outputs.issue }}
+      issues: ${{ steps.pick.outputs.issues }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.4.0
@@ -52,16 +55,19 @@ jobs:
           uv run --frozen python -m scripts.close_merged
           uv run --frozen python -m scripts.agent_dispatch ${REQUESTED:+--issue "$REQUESTED"} > pick.json
           jq -r .reason pick.json | tee -a "$GITHUB_STEP_SUMMARY"
-          issue=$(jq -r '.issue // empty' pick.json)
-          echo "issue=$issue" >> "$GITHUB_OUTPUT"
-          if [ -n "$issue" ]; then
+          echo "issues=$(jq -c .issues pick.json)" >> "$GITHUB_OUTPUT"
+          for issue in $(jq -r '.issues[]' pick.json); do
             gh issue edit "$issue" -R "$GITHUB_REPOSITORY" --add-label agent:in-progress --remove-label agent:ready
-          fi
+          done
 
   implement:
     name: implement issue
     needs: dispatch
-    if: needs.dispatch.outputs.issue != ''
+    if: needs.dispatch.outputs.issues != '[]' && needs.dispatch.outputs.issues != ''
+    strategy:
+      fail-fast: false
+      matrix:
+        issue: ${{ fromJSON(needs.dispatch.outputs.issues) }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -81,7 +87,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           display_report: true
-          prompt: /work-issue ${{ needs.dispatch.outputs.issue }}
+          prompt: /work-issue ${{ matrix.issue }}
           claude_args: >-
             --model claude-opus-5-5
             --max-turns 80
@@ -90,7 +96,7 @@ jobs:
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
-          ISSUE: ${{ needs.dispatch.outputs.issue }}
+          ISSUE: ${{ matrix.issue }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           gh issue edit "$ISSUE" -R "$GITHUB_REPOSITORY" --add-label needs-human --remove-label agent:in-progress
