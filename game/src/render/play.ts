@@ -8,9 +8,11 @@ import { heldScale } from "../core/objectVerbs";
 import { GROUND, SCENE_WIDTH, STICKER_POND } from "../core/pond";
 import type { Step, Traits } from "../core/reaction";
 import { createRunner } from "../core/runner";
+import type { BodyGesture } from "../core/gestures";
 import { bubbleAt, type Line } from "../core/speech";
+import { bubbleCentres, gestureThought, thoughtAt } from "../core/thought";
 import type { Duck, Facing, Hold } from "../core/verbs";
-import { drawBubble } from "./bubble";
+import { drawBubble, drawThought } from "./bubble";
 import { drawPuddles, holdPoint } from "./puddles";
 
 type IdleState = ReturnType<typeof startIdle>;
@@ -90,6 +92,26 @@ function stickers(scene: Container) {
   };
 }
 
+/** Puddles' speech and thought bubbles, side by side above him. */
+function talk(scene: Container) {
+  const say = drawBubble(scene);
+  const think = drawThought(scene);
+  let line: Line | undefined;
+  let thought: ReturnType<typeof gestureThought> | undefined;
+  return {
+    think(gesture: BodyGesture, now: number): void {
+      thought = gestureThought(gesture, now);
+    },
+    /** Shows both bubbles at `now` ms above Puddles at `x`, `height` off the ground, starting `next` if he has a new line. */
+    draw(x: number, height: number, now: number, next?: Line): void {
+      if (next) line = next;
+      const centres = bubbleCentres(x);
+      say(bubbleAt(line, now), centres.speech, x, height);
+      think(thoughtAt(thought, now), centres.thought, x, height);
+    },
+  };
+}
+
 /** Lets other inputs (the camera, the dev panel) drive Puddles on the same clock as the demo. */
 export interface Actor {
   react(step: Step): void;
@@ -97,13 +119,14 @@ export interface Actor {
   spawn(traits: Traits): void;
   /** Plays `script` now, replacing the running one. */
   play(script: readonly Step[]): void;
+  /** Shows Puddles thinking of the gesture the player just made. */
+  think(gesture: BodyGesture): void;
 }
 
 /** Plays the six-verb demo, then idles: Puddles follows plans from core and decides nothing here. */
 export function playDemo(app: Application, scene: Container): Actor {
   const show = drawPuddles(scene);
-  const say = drawBubble(scene);
-  let line: Line | undefined;
+  const bubbles = talk(scene);
   const runner = createRunner();
   const acting = createActing();
   let duck: Duck = { x: SCENE_WIDTH / 2, facing: 1 };
@@ -118,7 +141,6 @@ export function playDemo(app: Application, scene: Container): Actor {
     const status = runner.update(clockMs);
     const objectHeight = GROUND - target.bounds.min.y;
     const cue = acting.update(status, clockMs, duck, { object: target.position.x, objectHeight });
-    if (cue?.line) line = cue.line;
     if (cue) {
       idle = undefined;
       if (cue.nudge) sticker.physics.nudge(target, cue.nudge);
@@ -126,7 +148,7 @@ export function playDemo(app: Application, scene: Container): Actor {
       duck = { x: cue.frame.x, facing: cue.frame.facing };
       const { height, pose, wing } = cue.frame;
       show({ ...duck, height, wing, look: pose, mood: cue.mood }, clockMs / 1000);
-      say(bubbleAt(line, clockMs), duck.x, height);
+      bubbles.draw(duck.x, height, clockMs, cue.line);
       sticker.step(ticker.deltaMS, clockMs, { ...duck, height });
       return;
     }
@@ -135,7 +157,7 @@ export function playDemo(app: Application, scene: Container): Actor {
       : startIdle(duck.x, Math.random);
     duck = { x: idlePosition(idle), facing: idleFacing(idle, duck.facing) };
     show({ ...duck, height: 0, wing: 0, look: idle.action.kind, mood: "happy" }, clockMs / 1000);
-    say(bubbleAt(line, clockMs), duck.x, 0);
+    bubbles.draw(duck.x, 0, clockMs);
     sticker.step(ticker.deltaMS, clockMs, { ...duck, height: 0 });
   });
   return {
@@ -147,6 +169,9 @@ export function playDemo(app: Application, scene: Container): Actor {
     },
     play(script: readonly Step[]): void {
       runner.play(script, clockMs);
+    },
+    think(gesture: BodyGesture): void {
+      bubbles.think(gesture, clockMs);
     },
   };
 }

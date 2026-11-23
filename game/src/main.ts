@@ -16,6 +16,7 @@ void createStage(document.body).then((app) => {
     (gesture) => {
       const reaction = GESTURE_REACTIONS[gesture];
       hud.gesture(gesture, reaction.say);
+      puddles.think(gesture);
       puddles.react(reaction);
     },
     (frame) => {
