@@ -28,9 +28,9 @@ REQUIRED_KEYS = ("holding", "object", "traits", "script")
 TRAILING_COMMA = re.compile(r",\s*([}\]])")
 STRING = re.compile(r'"(?:[^"\\]|\\.)*"')
 # A whole string (maybe cut off before its closing quote) or one bracket.
-TOKEN = re.compile(r'"(?:[^"\\]|\\.)*(?:"|\\?$)|[{}\[\]]')
+TOKEN = re.compile(r'"(?:[^"\\]|\\.)*(?:"|\\?\Z)|[{}\[\]]', re.DOTALL)
 # A reply cut off mid-escape: closing it with a quote would escape the quote.
-LONE_BACKSLASH = re.compile(r"(?<!\\)(?:\\\\)*\\$")
+LONE_BACKSLASH = re.compile(r"(?<!\\)(?:\\\\)*\\\Z")
 
 # Mirrors the game's DEFAULT_SCRIPT: curious stands in for the missing "confused" mood.
 CONFUSED_REACTION: dict[str, Any] = {

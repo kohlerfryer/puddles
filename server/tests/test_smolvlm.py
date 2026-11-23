@@ -65,6 +65,7 @@ def test_messages_put_the_photo_before_the_prompt() -> None:
         pytest.param('{"say": "Quack \\"hi', '{"say": "Quack \\"hi"}', id="cut-in-string"),
         pytest.param('{"say": "Quack \\', '{"say": "Quack "}', id="cut-mid-escape"),
         pytest.param('{"say": "a\\\\', '{"say": "a\\\\"}', id="cut-after-escaped-slash"),
+        pytest.param('{"say": "Quack \\\n', '{"say": "Quack \\\n"}', id="cut-before-newline"),
         pytest.param("no json here", None, id="none"),
     ],
 )
