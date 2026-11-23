@@ -2,6 +2,7 @@ import { type Application, type Container, Graphics } from "pixi.js";
 
 import { createActing } from "../core/acting";
 import { DEMO_SCRIPT, DEMO_TRAITS, demoDrop } from "../core/demo";
+import { createGlass, facingKid, freeToWatch } from "../core/glass";
 import { advanceIdle, idlePosition, startIdle } from "../core/idle";
 import { createPhysics } from "../core/physics";
 import { heldScale } from "../core/objectVerbs";
@@ -9,12 +10,13 @@ import { GROUND, SCENE_WIDTH, STICKER_POND } from "../core/pond";
 import type { Step, Traits } from "../core/reaction";
 import { createRunner } from "../core/runner";
 import type { BodyGesture } from "../core/gestures";
+import type { PoseFrame } from "../core/poseFixture";
 import { type Sound, soundFor } from "../core/sounds";
 import { bubbleAt, type Line } from "../core/speech";
 import { bubbleCentres, gestureThought, thoughtAt } from "../core/thought";
 import type { Duck, Facing, Hold } from "../core/verbs";
 import { drawBubble, drawThought } from "./bubble";
-import { drawPuddles, holdPoint } from "./puddles";
+import { type AtWindow, drawPuddles, holdPoint, type Shown } from "./puddles";
 
 type IdleState = ReturnType<typeof startIdle>;
 
@@ -117,28 +119,31 @@ function talk(scene: Container) {
   };
 }
 
-/** Puddles idling between scripts, starting afresh after each one. */
-function idler() {
+type Cue = ReturnType<ReturnType<typeof createActing>["update"]>;
+
+/** Shows Puddles acting out a cue, or idling on the bank between cues, turned towards a kid watching through the window. */
+function posing() {
   let idle: IdleState | undefined;
-  return {
-    stop(): void {
+  return (cue: Cue, duck: Duck, dt: number, glass: AtWindow): Shown => {
+    if (cue) {
       idle = undefined;
-    },
-    /** Moves the idle on `deltaMs` from `duck` and returns Puddles as shown. */
-    next(deltaMs: number, duck: Duck) {
-      idle = idle ? advanceIdle(idle, deltaMs / 1000, Math.random) : startIdle(duck.x, Math.random);
-      const facing = idleFacing(idle, duck.facing);
-      const look = idle.action.kind;
-      return {
-        x: idlePosition(idle),
-        facing,
-        height: 0,
-        wing: 0,
-        look,
-        mood: "happy",
-        shake: 0,
-      } as const;
-    },
+      const { x, facing, height, wing, pose } = cue.frame;
+      return { x, facing, height, wing, look: pose, mood: cue.mood, shake: cue.shake, glass };
+    }
+    idle = idle ? advanceIdle(idle, dt, Math.random) : startIdle(duck.x, Math.random);
+    const walking = idleFacing(idle, duck.facing);
+    const facing = glass.watching ? facingKid(glass.gaze, walking) : walking;
+    const look = idle.action.kind;
+    return {
+      x: idlePosition(idle),
+      facing,
+      height: 0,
+      wing: 0,
+      look,
+      mood: "happy",
+      shake: 0,
+      glass,
+    };
   };
 }
 
@@ -151,6 +156,8 @@ export interface Actor {
   play(script: readonly Step[]): void;
   /** Shows Puddles thinking of the gesture the player just made. */
   think(gesture: BodyGesture): void;
+  /** Shows Puddles the latest camera frame, or that nobody is in view. */
+  see(frame: PoseFrame | undefined): void;
 }
 
 /**
@@ -166,8 +173,9 @@ export function playDemo(
   const bubbles = talk(scene);
   const runner = createRunner();
   const acting = createActing();
+  const glass = createGlass();
   let duck: Duck = { x: SCENE_WIDTH / 2, facing: 1 };
-  const idling = idler();
+  const pose = posing();
   let clockMs = 0;
   const sticker = stickers(scene, play);
   let target = sticker.drop(DEMO_TRAITS, duck.x);
@@ -179,14 +187,10 @@ export function playDemo(
     const where = { object: target.position.x, objectHeight };
     const cue = acting.update(runner.update(clockMs), clockMs, duck, where);
     for (const sound of cue?.sounds ?? []) play(sound);
-    if (cue) {
-      if (cue.nudge) sticker.physics.nudge(target, cue.nudge);
-      if (cue.take) sticker.take(target, cue.take.to, clockMs);
-      idling.stop();
-    }
-    const shown = cue
-      ? { ...cue.frame, look: cue.frame.pose, mood: cue.mood, shake: cue.shake }
-      : idling.next(ticker.deltaMS, duck);
+    const atWindow = glass.update(ticker.deltaMS / 1000, freeToWatch(cue?.frame.pose));
+    if (cue?.nudge) sticker.physics.nudge(target, cue.nudge);
+    if (cue?.take) sticker.take(target, cue.take.to, clockMs);
+    const shown = pose(cue, duck, ticker.deltaMS / 1000, atWindow);
     duck = { x: shown.x, facing: shown.facing };
     show(shown, clockMs / 1000);
     bubbles.draw(shown.x, shown.height, clockMs, cue?.line);
@@ -204,6 +208,9 @@ export function playDemo(
     },
     think(gesture: BodyGesture): void {
       bubbles.think(gesture, clockMs);
+    },
+    see(frame: PoseFrame | undefined): void {
+      glass.see(frame);
     },
   };
 }
