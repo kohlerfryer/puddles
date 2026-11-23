@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { ASK_TIMEOUT_MS } from "./ask";
 import { ASK_MS, COPY_STEPS } from "./copyMe";
 import { BODY_GESTURES } from "./gestures";
 import { SCENE_WIDTH } from "./pond";
@@ -7,6 +8,7 @@ import { FADE_SECONDS, SPEECH_WIDTH } from "./speech";
 import {
   bubbleCentres,
   gestureThought,
+  senseThought,
   THOUGHT_ICONS,
   THOUGHT_SECONDS,
   THOUGHT_WIDTH,
@@ -128,5 +130,16 @@ describe("bubbleCentres", () => {
     expect(middle.thought).toBeGreaterThan(middle.speech);
     const edge = bubbleCentres(SCENE_WIDTH);
     expect(edge.thought).toBeLessThan(edge.speech);
+  });
+});
+
+describe("senseThought", () => {
+  it("pictures sensing for as long as the server may take", () => {
+    expect(senseThought(500)).toEqual({
+      icon: "sense",
+      startedAt: 500,
+      seconds: ASK_TIMEOUT_MS / 1000,
+    });
+    expect(THOUGHT_ICONS.sense.length).toBeGreaterThan(0);
   });
 });

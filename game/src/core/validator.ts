@@ -37,6 +37,21 @@ export const DEFAULT_SCRIPT: readonly Step[] = [
   { do: "look_at", target: "camera", mood: "curious", say: "Hmm... what IS that?" },
 ];
 
+/** Traits for the sticker Puddles gets when the model's reply can't be used. */
+export const DEFAULT_TRAITS: Traits = {
+  size: "medium",
+  weight: "medium",
+  shape: "other",
+  edible: false,
+};
+
+/** What the game plays for a reply: its traits and script, and whether the reply was valid. */
+export interface SafeReaction {
+  readonly valid: boolean;
+  readonly traits: Traits;
+  readonly script: Step[];
+}
+
 const isSmall = (traits: Traits): boolean => traits.size === "tiny" || traits.size === "small";
 
 /** A verb the object can't support, with the verb Puddles does instead. */
@@ -90,10 +105,17 @@ function fitTime(script: Step[]): Step[] {
   return end === -1 ? script : script.slice(0, end);
 }
 
+/** Turns raw model output into traits and a script the game can always play. */
+export function safeReaction(raw: string): SafeReaction {
+  const reaction = trimScript(parse(raw));
+  if (!isReaction(reaction)) {
+    return { valid: false, traits: DEFAULT_TRAITS, script: [...DEFAULT_SCRIPT] };
+  }
+  const steps = reaction.script.map((step) => cutSay(swapVerb(step, reaction.traits)));
+  return { valid: true, traits: reaction.traits, script: fitTime(steps) };
+}
+
 /** Turns raw model output into a script the game can always play. */
 export function safeScript(raw: string): Step[] {
-  const reaction = trimScript(parse(raw));
-  if (!isReaction(reaction)) return [...DEFAULT_SCRIPT];
-  const steps = reaction.script.map((step) => cutSay(swapVerb(step, reaction.traits)));
-  return fitTime(steps);
+  return safeReaction(raw).script;
 }

@@ -1,5 +1,6 @@
 /** Puddles' thought bubble: a picture of what he's thinking, for kids who can't read yet. */
 
+import { ASK_TIMEOUT_MS } from "./ask";
 import { ASK_MS, type CopyCue } from "./copyMe";
 import type { BodyGesture } from "./gestures";
 import { SCENE_WIDTH } from "./pond";
@@ -37,6 +38,11 @@ export const THOUGHT_ICONS = {
     fill(0, 0.6, 0.5, 0, 0.2, 0, 0.2, -0.8, -0.2, -0.8, -0.2, 0, -0.5, 0),
     line(-0.8, 0.8, 0.8, 0.8),
   ],
+  sense: [
+    line(-0.15, -0.85, 0.25, -0.7, 0.4, -0.3, 0.25, 0.1, -0.15, 0.25),
+    line(-0.15, 0.25, -0.55, 0.1, -0.7, -0.3, -0.55, -0.7, -0.15, -0.85),
+    line(0.2, 0.15, 0.75, 0.75),
+  ],
 } satisfies Record<string, readonly IconShape[]>;
 
 export type ThoughtIcon = keyof typeof THOUGHT_ICONS;
@@ -65,6 +71,11 @@ const GESTURE_ICONS: Record<BodyGesture, ThoughtIcon> = {
 /** The thought Puddles has at `now` ms when the player makes `gesture`. */
 export function gestureThought(gesture: BodyGesture, now: number): Thought {
   return { icon: GESTURE_ICONS[gesture], startedAt: now, seconds: THOUGHT_SECONDS };
+}
+
+/** The thought Puddles has from `now` ms while he waits to find out what he was shown. */
+export function senseThought(now: number): Thought {
+  return { icon: "sense", startedAt: now, seconds: ASK_TIMEOUT_MS / 1000 };
 }
 
 /**
