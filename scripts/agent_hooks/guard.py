@@ -61,6 +61,8 @@ def segments(command: str) -> list[list[str]]:
         unquoted_newlines_to_semicolons(command), posix=True, punctuation_chars=True
     )
     lexer.whitespace_split = True
+    # No comment handling: a `#` would otherwise hide the rest of the command (safe side).
+    lexer.commenters = ""
     result: list[list[str]] = [[]]
     for token in lexer:
         if token in SEPARATORS:

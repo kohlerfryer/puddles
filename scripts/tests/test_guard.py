@@ -124,6 +124,8 @@ def test_allows_commands_that_only_mention_dangerous_ones(command: str) -> None:
         "git push origin +agent/59-x",
         "git add . && git commit -n -m wip",
         "git push origin refs/heads/main",
+        "# push the branch\ngit push --force origin agent/x",
+        "git push origin feat#1; git push origin main",
     ],
 )
 def test_denies_dangerous_commands_inside_compound_ones(command: str) -> None:
