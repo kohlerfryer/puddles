@@ -70,7 +70,7 @@ async function watchHands(
   return (now, frame) => {
     const hand = highestHand(hands.detectForVideo(video, now).landmarks);
     const raised = frame !== undefined && armRaised(frame);
-    if (!hand || !watch.push({ t: now, raised, hand })) return;
+    if (!watch.push({ t: now, raised, hand }) || !hand) return;
     void photograph(video, cropBox(hand, video.videoWidth, video.videoHeight))
       .then(onPhoto)
       .finally(() => {
