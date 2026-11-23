@@ -80,17 +80,23 @@ function pondWalls(pond: Pond): Matter.Body[] {
 export function createPhysics(pond: Pond) {
   const engine = Matter.Engine.create();
   const floaters = new Set<Matter.Body>();
+  /** Stickers that have been in the water, so each splashes only once. */
+  const wet = new Set<Matter.Body>();
   Matter.Composite.add(engine.world, pondWalls(pond));
 
-  function applyWater(): void {
+  /** Slows and floats stickers in the water, returning those that have just gone in. */
+  function applyWater(): Matter.Body[] {
     const { gravity } = engine;
+    const splashed: Matter.Body[] = [];
     for (const body of Matter.Composite.allBodies(engine.world)) {
       const inWater = !body.isStatic && body.position.y > pond.waterline;
       body.frictionAir = inWater ? WATER_DRAG : AIR_DRAG;
-      if (inWater && floaters.has(body)) {
-        body.force.y -= body.mass * gravity.y * gravity.scale * BUOYANCY;
-      }
+      if (!inWater) continue;
+      if (!wet.has(body)) splashed.push(body);
+      wet.add(body);
+      if (floaters.has(body)) body.force.y -= body.mass * gravity.y * gravity.scale * BUOYANCY;
     }
+    return splashed;
   }
 
   return {
@@ -105,11 +111,14 @@ export function createPhysics(pond: Pond) {
     /** Takes the sticker out of the world, so nothing moves it or rests on it. */
     remove(body: Matter.Body): void {
       floaters.delete(body);
+      wet.delete(body);
       Matter.Composite.remove(engine.world, body);
     },
-    step(deltaMs: number): void {
-      applyWater();
+    /** Moves the world on `deltaMs` and returns the stickers that landed in the water. */
+    step(deltaMs: number): Matter.Body[] {
+      const splashed = applyWater();
       Matter.Engine.update(engine, deltaMs);
+      return splashed;
     },
     /** Adds impulse / mass to the sticker's velocity, in pixels per 1/60 s. */
     nudge(body: Matter.Body, impulse: Impulse): void {
