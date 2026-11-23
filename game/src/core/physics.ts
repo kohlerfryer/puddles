@@ -54,13 +54,20 @@ export function stickerProps(traits: Traits): StickerProps {
   };
 }
 
+/** How wide and tall a sticker with these traits is, upright. */
+export function stickerSize(traits: Traits): { width: number; height: number } {
+  const { scale, aspect } = stickerProps(traits);
+  const width = BASE_SIZE * scale;
+  return { width, height: width * aspect };
+}
+
 function stickerBody(traits: Traits, x: number, y: number): Matter.Body {
   const props = stickerProps(traits);
-  const side = BASE_SIZE * props.scale;
+  const { width, height } = stickerSize(traits);
   const options = { restitution: props.bounce, friction: props.friction, frictionAir: AIR_DRAG };
   const body = props.rolls
-    ? Matter.Bodies.circle(x, y, side / 2, options)
-    : Matter.Bodies.rectangle(x, y, side, side * props.aspect, options);
+    ? Matter.Bodies.circle(x, y, width / 2, options)
+    : Matter.Bodies.rectangle(x, y, width, height, options);
   Matter.Body.setMass(body, props.mass);
   return body;
 }
