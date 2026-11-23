@@ -7,6 +7,7 @@ export interface Hud {
   frame(frame: PoseFrame | undefined): void;
   gesture(name: string, line: string | undefined): void;
   sound(text: string): void;
+  server(text: string): void;
 }
 
 export function createHud(host: HTMLElement): Hud {
@@ -18,10 +19,12 @@ export function createHud(host: HTMLElement): Hud {
   const body = document.createElement("div");
   const last = document.createElement("div");
   const sound = document.createElement("div");
-  box.append(camera, body, last, sound);
+  const server = document.createElement("div");
+  box.append(camera, body, last, sound, server);
   host.appendChild(box);
   camera.textContent = "Camera: starting...";
   last.textContent = "Last gesture: none yet";
+  server.textContent = "Server: no request yet";
 
   return {
     status(text) {
@@ -42,6 +45,9 @@ export function createHud(host: HTMLElement): Hud {
     },
     sound(text) {
       sound.textContent = `Sound: ${text}`;
+    },
+    server(text) {
+      server.textContent = `Server: ${text}`;
     },
   };
 }

@@ -2,6 +2,7 @@ import { Container, Graphics, Text } from "pixi.js";
 
 import { GROUND } from "../core/pond";
 import { type Bubble, SPEECH_WIDTH } from "../core/speech";
+import type { sensingRing } from "../core/sensing";
 import { THOUGHT_ICONS, THOUGHT_WIDTH, type ThoughtIcon, type thoughtAt } from "../core/thought";
 
 const PADDING = 14;
@@ -23,6 +24,9 @@ const PUFFS = [
 ] as const;
 /** The trailing circles' radii, from the cloud down towards Puddles. */
 const TRAIL = [10, 7, 4] as const;
+/** How far the middle of the cloud sits above the thought bubble's bottom. */
+const CLOUD_MIDDLE = (PUFFS[0][1] * THOUGHT_WIDTH) / 2;
+const SPARKLE = "#ffd23f";
 /** Pixels per unit of an icon's -1 to 1 box. */
 const ICON_SCALE = 26;
 
@@ -102,7 +106,7 @@ export function drawThought(
   const box = new Container();
   const trail = new Graphics();
   const icon = new Graphics();
-  icon.y = (PUFFS[0][1] * THOUGHT_WIDTH) / 2;
+  icon.y = CLOUD_MIDDLE;
   box.addChild(trail, drawCloud(), icon);
   box.visible = false;
   scene.addChild(box);
@@ -124,5 +128,23 @@ export function drawThought(
     if (thought.icon === shownIcon) return;
     shownIcon = thought.icon;
     drawIcon(icon, thought.icon);
+  };
+}
+
+/** Draws the sensing sparkles into `scene` and returns how to show them round the thought bubble at `centre` each frame. */
+export function drawSensing(
+  scene: Container,
+): (sparkles: ReturnType<typeof sensingRing> | undefined, centre: number, height: number) => void {
+  const art = new Graphics();
+  scene.addChild(art);
+  return (sparkles, centre, height) => {
+    art.clear();
+    art.position.set(centre, GROUND - height - ABOVE - TAIL + CLOUD_MIDDLE);
+    for (const { x, y, r } of sparkles ?? []) {
+      art
+        .star(x, y, 4, r * 2, r * 0.6)
+        .fill(SPARKLE)
+        .stroke({ width: 1, color: INK });
+    }
   };
 }

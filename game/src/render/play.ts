@@ -10,13 +10,14 @@ import { heldScale } from "../core/objectVerbs";
 import { GROUND, SCENE_WIDTH, STICKER_POND } from "../core/pond";
 import type { Step, Traits } from "../core/reaction";
 import { createRunner } from "../core/runner";
+import { sensingRing } from "../core/sensing";
 import type { BodyGesture } from "../core/gestures";
 import type { PoseFrame } from "../core/poseFixture";
 import { type Sound, soundFor } from "../core/sounds";
 import { bubbleAt, type Line } from "../core/speech";
-import { bubbleCentres, thoughtAfter, thoughtAt } from "../core/thought";
+import { bubbleCentres, senseThought, thoughtAfter, thoughtAt } from "../core/thought";
 import type { Duck, Hold } from "../core/verbs";
-import { drawBubble, drawThought } from "./bubble";
+import { drawBubble, drawSensing, drawThought } from "./bubble";
 import { type AtWindow, drawPuddles, holdPoint, type Shown } from "./puddles";
 
 const STICKER_COLOUR = "#e0457b";
@@ -96,27 +97,41 @@ function stickers(scene: Container, play: (sound: Sound | undefined) => void) {
 function talk(scene: Container) {
   const say = drawBubble(scene);
   const think = drawThought(scene);
+  const sparkle = drawSensing(scene);
   let line: Line | undefined;
   let thought: ReturnType<typeof thoughtAfter>;
+  let sensingSince: number | undefined;
   return {
     /** Changes what Puddles thinks of as a copy-me `cue` happens at `now` ms. */
     follow(cue: CopyCue, now: number): void {
       thought = thoughtAfter(thought, cue, now);
     },
+    /** Starts or stops Puddles sensing a photo at `now` ms. */
+    sense(on: boolean, now: number): void {
+      sensingSince = on ? now : undefined;
+      thought = on ? senseThought(now) : undefined;
+    },
+    /** Whether Puddles is waiting to find out what he was shown. */
+    sensing: (): boolean => sensingSince !== undefined,
     /** Shows both bubbles at `now` ms above Puddles at `x`, `height` off the ground, starting `next` if he has a new line. */
     draw(x: number, height: number, now: number, next?: Line): void {
       if (next) line = next;
       const centres = bubbleCentres(x);
       say(bubbleAt(line, now), centres.speech, x, height);
       think(thoughtAt(thought, now), centres.thought, x, height);
+      const ring = sensingSince === undefined ? undefined : sensingRing(now - sensingSince);
+      sparkle(ring, centres.thought, height);
     },
   };
 }
 
 type Cue = ReturnType<ReturnType<typeof createActing>["update"]>;
 
-/** Shows Puddles acting out a cue, or idling on the bank between cues, turned towards a kid watching through the window. */
-function posing() {
+/**
+ * Shows Puddles acting out a cue, or idling on the bank between cues, turned towards a kid
+ * watching through the window, and curious while `sensing` a photo.
+ */
+function posing(sensing: () => boolean) {
   let idle: IdleState | undefined;
   return (cue: Cue, duck: Duck, dt: number, glass: AtWindow): Shown => {
     if (cue) {
@@ -133,7 +148,7 @@ function posing() {
       height: 0,
       wing: 0,
       look,
-      mood: "happy",
+      mood: sensing() ? "curious" : "happy",
       shake: 0,
       glass,
     };
@@ -172,6 +187,8 @@ export interface Actor {
   see(gesture: BodyGesture): CopyCue;
   /** Shows Puddles the latest camera frame, or that nobody is in view. */
   watching(frame: PoseFrame | undefined): void;
+  /** Starts or stops Puddles sensing a photo while the server works out his reaction. */
+  sense(on: boolean): void;
 }
 
 /**
@@ -189,7 +206,7 @@ export function playDemo(
   const acting = createActing();
   const glass = createGlass();
   let duck: Duck = { x: SCENE_WIDTH / 2, facing: 1 };
-  const pose = posing();
+  const pose = posing(bubbles.sensing);
   let clockMs = 0;
   const sticker = stickers(scene, play);
   const copying = copier(runner, bubbles);
@@ -198,8 +215,7 @@ export function playDemo(
 
   app.ticker.add((ticker) => {
     clockMs += ticker.deltaMS;
-    const objectHeight = GROUND - target.bounds.min.y;
-    const where = { object: target.position.x, objectHeight };
+    const where = { object: target.position.x, objectHeight: GROUND - target.bounds.min.y };
     const cue = acting.update(runner.update(clockMs), clockMs, duck, where);
     for (const sound of cue?.sounds ?? []) play(sound);
     const atWindow = glass.update(ticker.deltaMS / 1000, freeToWatch(cue?.frame.pose));
@@ -219,12 +235,13 @@ export function playDemo(
     play(script: readonly Step[]): void {
       runner.play(script, clockMs);
     },
-    see(gesture: BodyGesture): CopyCue {
-      return copying.see(gesture, clockMs);
-    },
+    see: (gesture: BodyGesture): CopyCue => copying.see(gesture, clockMs),
     watching(frame: PoseFrame | undefined): void {
       glass.see(frame);
       copying.watching(frame !== undefined);
+    },
+    sense(on: boolean): void {
+      bubbles.sense(on, clockMs);
     },
   };
 }
