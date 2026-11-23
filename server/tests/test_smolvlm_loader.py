@@ -146,7 +146,7 @@ def test_loader_decodes_under_the_schema_with_fresh_processors_per_reply(
 
 
 def test_loader_generates_freely_when_xgrammar_cannot_compile(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     vlm = install_fakes(monkeypatch, module("xgrammar"))
 
@@ -154,6 +154,7 @@ def test_loader_generates_freely_when_xgrammar_cannot_compile(
 
     assert generate(b"jpeg") == "decoded out(CHAT(You are P),jpeg/RGB,cuda)[7:]"
     assert vlm.logits_processors == [[]]
+    assert "constrained decoding is off for this model" in caplog.text
 
 
 def module(name: str, **attributes: Any) -> ModuleType:

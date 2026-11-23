@@ -8,6 +8,7 @@ import copy
 import importlib
 import io
 import json
+import logging
 import os
 import re
 from collections.abc import Callable
@@ -28,6 +29,8 @@ TRAILING_COMMA = re.compile(r",\s*([}\]])")
 STRING = re.compile(r'"(?:[^"\\]|\\.)*"')
 # A whole string (maybe cut off before its closing quote) or one bracket.
 TOKEN = re.compile(r'"(?:[^"\\]|\\.)*(?:"|\\?$)|[{}\[\]]')
+# A reply cut off mid-escape: closing it with a quote would escape the quote.
+LONE_BACKSLASH = re.compile(r"(?<!\\)(?:\\\\)*\\$")
 
 # Mirrors the game's DEFAULT_SCRIPT: curious stands in for the missing "confused" mood.
 CONFUSED_REACTION: dict[str, Any] = {
@@ -41,6 +44,7 @@ CONFUSED_REACTION: dict[str, Any] = {
 }
 
 Generate = Callable[[bytes], str]
+LOG = logging.getLogger(__name__)
 
 
 def build_messages(prompt: str) -> list[dict[str, Any]]:
@@ -65,7 +69,14 @@ def first_json_object(text: str) -> str | None:
             closers.pop()
             if not closers:
                 return text[start : token.end()]
-    return text[start:] + tail + "".join(reversed(closers))
+    return close_string(text[start:], tail) + "".join(reversed(closers))
+
+
+def close_string(body: str, tail: str) -> str:
+    """Add the missing quote, dropping a lone backslash that would escape it."""
+    if tail and LONE_BACKSLASH.search(body):
+        body = body[:-1]
+    return body + tail
 
 
 def parse_reaction(text: str) -> dict[str, Any]:
@@ -137,6 +148,7 @@ def constrain(model: Any, processor: Any) -> Callable[[], list[Any]]:
         compiler = xgrammar.GrammarCompiler(info)
         grammar = compiler.compile_json_schema(decoding_schema(), any_whitespace=False)
     except Exception:
+        LOG.warning("constrained decoding is off for this model", exc_info=True)
         return list
     return lambda: [xgrammar_hf.LogitsProcessor(grammar)]
 
