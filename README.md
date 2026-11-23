@@ -9,3 +9,13 @@ Under the hood, one fine-tuned small vision-language model (SmolVLM + LoRA) writ
 The project is also a demonstration of agent-driven development with enforced quality gates: work is planned as GitHub issues, implemented in small PRs, and merged only through automated checks and review.
 
 Status: bootstrapping.
+
+## Running the server on SmolVLM
+
+The server's `/react` uses a fixed fake reaction by default. To use base SmolVLM instead (`HuggingFaceTB/SmolVLM-256M-Instruct`; set `PUDDLES_SMOLVLM_ID` for another size), install the optional `vlm` dependency group and start it with:
+
+```bash
+PUDDLES_MODEL=smolvlm uv run --group vlm uvicorn --app-dir server puddles_server.app:app
+```
+
+`just bench-vlm ml/bench/photos` reports its valid-JSON rate, latency and sample reactions.
