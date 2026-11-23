@@ -3,6 +3,7 @@
  * and whether Puddles comes up to the glass to meet them.
  */
 
+import { idleFacing, type IdleState } from "./idle";
 import type { Landmark, PoseFrame } from "./poseFixture";
 import { POND } from "./pond";
 import type { Facing, Pose } from "./verbs";
@@ -104,6 +105,20 @@ export function freeToWatch(pose: Pose | undefined): boolean {
 export function facingKid(gaze: number, facing: Facing): Facing {
   if (Math.abs(gaze) < TURN_ABOVE) return facing;
   return gaze > 0 ? 1 : -1;
+}
+
+/**
+ * Which way Puddles faces while idling with a kid at the window: he turns to the kid only while
+ * resting, so he never faces one way and walks the other.
+ */
+export function idleFacingKid(
+  idle: IdleState,
+  facing: Facing,
+  kid: { readonly watching: boolean; readonly gaze: number },
+): Facing {
+  const walking = idleFacing(idle, facing);
+  const resting = idle.action.to === idle.action.from;
+  return resting && kid.watching ? facingKid(kid.gaze, walking) : walking;
 }
 
 /** Watches the kid through the window and walks Puddles to the glass and back. */

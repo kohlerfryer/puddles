@@ -1,4 +1,5 @@
 import type { Random } from "./random";
+import type { Facing } from "./verbs";
 import { BANK } from "./world";
 
 export type IdleKind = "wander" | "preen" | "nap";
@@ -11,7 +12,7 @@ interface IdleAction {
   readonly seconds: number;
 }
 
-interface IdleState {
+export interface IdleState {
   readonly action: IdleAction;
   readonly elapsed: number;
 }
@@ -67,4 +68,10 @@ export function advanceIdle(state: IdleState, dt: number, random: Random): IdleS
 export function idlePosition({ action, elapsed }: IdleState): number {
   const progress = action.seconds > 0 ? Math.min(elapsed / action.seconds, 1) : 1;
   return action.from + (action.to - action.from) * progress;
+}
+
+/** Which way Puddles faces in the idle loop: the way he walks, or as he was while staying put. */
+export function idleFacing({ action }: IdleState, facing: Facing): Facing {
+  if (action.to === action.from) return facing;
+  return action.to > action.from ? 1 : -1;
 }
