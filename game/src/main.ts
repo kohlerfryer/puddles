@@ -1,4 +1,3 @@
-import { GESTURE_REACTIONS } from "./core/gestureWatch";
 import { gameTitle } from "./core/title";
 import { watchCamera } from "./render/camera";
 import { createDevPanel } from "./render/devPanel";
@@ -21,15 +20,12 @@ void createStage(document.body).then((app) => {
   createDevPanel(document.body, puddles);
   watchCamera(
     (gesture) => {
-      const reaction = GESTURE_REACTIONS[gesture];
-      hud.gesture(gesture, reaction.say);
-      puddles.think(gesture);
-      puddles.react(reaction);
+      hud.gesture(gesture, puddles.see(gesture).step.say);
     },
     (frame) => {
       hud.status("watching");
       hud.frame(frame);
-      puddles.see(frame);
+      puddles.watching(frame);
     },
   ).catch((error: unknown) => {
     hud.status(`unavailable (${String(error)})`);
