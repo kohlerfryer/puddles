@@ -21,7 +21,7 @@ async function reactTo(photo: Blob, puddles: Actor, hud: Hud): Promise<void> {
   const { reaction, readout } = await ask(image, post, REACT_URL, () => performance.now());
   puddles.sense(false);
   hud.server(readout);
-  puddles.spawn(reaction.traits);
+  puddles.spawn(reaction.traits, await createImageBitmap(photo));
   puddles.play(reaction.script);
   await new Promise((done) => setTimeout(done, scriptMs(reaction.script)));
 }
