@@ -22,6 +22,7 @@ void createStage(document.body).then((app) => {
     (frame) => {
       hud.status("watching");
       hud.frame(frame);
+      puddles.see(frame);
     },
   ).catch((error: unknown) => {
     hud.status(`unavailable (${String(error)})`);
