@@ -87,4 +87,49 @@ describe("createActing", () => {
     const cue = acting.update(playing(peck, 0), 600, duck, { object: 460 });
     expect(cue?.nudge).toEqual({ at: 0.5, x: 4, y: -6 });
   });
+
+  it("quacks a step's line once, when the step starts", () => {
+    const acting = createActing();
+    const hello: Step = { ...peck, mood: "happy", say: "Yum!" };
+    const cues = [0, 500].map((now) => acting.update(playing(hello, 0), now, duck, scene));
+    expect(cues.map((cue) => cue?.sounds)).toEqual([["yes"], undefined]);
+  });
+
+  it("makes no sound for a silent step", () => {
+    const acting = createActing();
+    const cues = [0, 700, 1400].map((now) => acting.update(playing(walk, 0), now, duck, scene));
+    expect(cues.map((cue) => cue?.sounds)).toEqual([undefined, undefined, undefined]);
+  });
+
+  it("boings once at each hop's takeoff", () => {
+    const acting = createActing();
+    const dance: Step = { do: "dance", mood: "silly" };
+    const times = Array.from({ length: 21 }, (_, index) => index * 100);
+    const boings = times.filter((now) =>
+      acting.update(playing(dance, 0), now, duck, scene)?.sounds?.includes("boing"),
+    );
+    expect(boings).toEqual([0, 500, 1000, 1500]);
+  });
+
+  it("quacks and boings together when a talking jump starts", () => {
+    const jump: Step = { do: "jump", mood: "happy", say: "Boing!" };
+    expect(createActing().update(playing(jump, 0), 0, duck, scene)?.sounds).toEqual([
+      "yes",
+      "boing",
+    ]);
+  });
+
+  it("shakes the head along with a no quack", () => {
+    const acting = createActing();
+    const yuck: Step = { do: "sniff", target: "object", mood: "grossed_out", say: "Yuck!" };
+    const shakes = [0, 100, 200, 300].map(
+      (now) => acting.update(playing(yuck, 0), now, duck, scene)?.shake ?? 0,
+    );
+    expect(shakes.map((shake) => shake !== 0)).toEqual([false, true, true, true]);
+  });
+
+  it("keeps the head still for any other step", () => {
+    const fine: Step = { do: "sniff", target: "object", mood: "happy", say: "Nice!" };
+    expect(createActing().update(playing(fine, 0), 200, duck, scene)?.shake).toBe(0);
+  });
 });
