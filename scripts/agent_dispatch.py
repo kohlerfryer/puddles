@@ -1,4 +1,4 @@
-"""Pick the next agent:ready issue an agent may start, or explain why none can start.
+"""Pick the agent:ready issues agents may start now, or explain why none can start.
 
 Rules (docs/workflow.md): at most MAX_AGENTS issues in progress, no new work while
 main is red, and an issue waits until every issue it is blocked by is closed.
@@ -10,7 +10,7 @@ import re
 import subprocess
 from dataclasses import dataclass
 
-MAX_AGENTS = 2
+MAX_AGENTS = 4
 BLOCKED_BY = re.compile(r"blocked by\W*((?:#\d+[\s,]*)+)", re.IGNORECASE)
 
 
@@ -26,19 +26,24 @@ def blockers(body: str) -> set[int]:
 
 def pick(
     ready: list[Issue], open_numbers: set[int], in_progress: int, main_red: bool
-) -> tuple[int | None, str]:
-    """Return (issue number, reason). Ready issues are tried oldest first."""
+) -> tuple[list[int], str]:
+    """Return (issue numbers to start, reason), filling free agent slots oldest first."""
     if not ready:
-        return None, "no issues are labeled agent:ready"
+        return [], "no issues are labeled agent:ready"
     if main_red:
-        return None, "main is red; fix it before starting new work"
-    if in_progress >= MAX_AGENTS:
-        return None, f"{in_progress} issues already in progress (limit {MAX_AGENTS})"
-    for issue in sorted(ready, key=lambda i: i.number):
-        waiting = sorted(blockers(issue.body) & open_numbers)
-        if not waiting:
-            return issue.number, f"starting #{issue.number}"
-    return None, "every ready issue is blocked by an open issue"
+        return [], "main is red; fix it before starting new work"
+    slots = MAX_AGENTS - in_progress
+    if slots <= 0:
+        return [], f"{in_progress} issues already in progress (limit {MAX_AGENTS})"
+    unblocked = [
+        i.number
+        for i in sorted(ready, key=lambda i: i.number)
+        if not blockers(i.body) & open_numbers
+    ]
+    if not unblocked:
+        return [], "every ready issue is blocked by an open issue"
+    chosen = unblocked[:slots]
+    return chosen, "starting " + ", ".join(f"#{n}" for n in chosen)
 
 
 def gh_json(*args: str) -> list[dict[str, object]]:
@@ -62,8 +67,8 @@ def main(argv: list[str] | None = None) -> int:
     everything = open_issues()
     main_red = any(str(i["title"]).startswith("main is red") for i in everything)
     open_numbers = {int(str(i["number"])) for i in everything}
-    number, reason = pick(ready, open_numbers, len(open_issues("agent:in-progress")), main_red)
-    print(json.dumps({"issue": number, "reason": reason}))
+    numbers, reason = pick(ready, open_numbers, len(open_issues("agent:in-progress")), main_red)
+    print(json.dumps({"issues": numbers, "reason": reason}))
     return 0
 
 

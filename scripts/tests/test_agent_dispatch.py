@@ -16,11 +16,20 @@ def test_reads_blockers_from_plain_and_form_bodies() -> None:
 def test_picks_oldest_unblocked_issue() -> None:
     ready = [Issue(9, ""), Issue(7, "Blocked by: #2"), Issue(8, "")]
 
-    assert pick(ready, open_numbers={2, 7, 8, 9}, in_progress=0, main_red=False)[0] == 8
+    assert pick(ready, open_numbers={2, 7, 8, 9}, in_progress=0, main_red=False)[0] == [8, 9]
+
+
+def test_fills_only_free_slots() -> None:
+    ready = [Issue(n, "") for n in (1, 2, 3, 4, 5)]
+
+    assert pick(ready, set(range(1, 6)), in_progress=MAX_AGENTS - 2, main_red=False) == (
+        [1, 2],
+        "starting #1, #2",
+    )
 
 
 def test_starts_issue_once_blockers_close() -> None:
-    assert pick([Issue(7, "Blocked by: #2")], {7}, 0, False)[0] == 7
+    assert pick([Issue(7, "Blocked by: #2")], {7}, 0, False)[0] == [7]
 
 
 @pytest.mark.parametrize(
@@ -28,20 +37,20 @@ def test_starts_issue_once_blockers_close() -> None:
     [(MAX_AGENTS, False, "already in progress"), (0, True, "main is red")],
 )
 def test_waits_when_busy_or_red(in_progress: int, main_red: bool, reason: str) -> None:
-    number, why = pick([Issue(5, "")], {5}, in_progress, main_red)
+    numbers, why = pick([Issue(5, "")], {5}, in_progress, main_red)
 
-    assert number is None
+    assert numbers == []
     assert reason in why
 
 
 def test_reports_when_nothing_is_ready() -> None:
-    assert pick([], set(), 0, False) == (None, "no issues are labeled agent:ready")
+    assert pick([], set(), 0, False) == ([], "no issues are labeled agent:ready")
 
 
 def test_reports_when_everything_is_blocked() -> None:
-    number, why = pick([Issue(5, "Blocked by #4")], {4, 5}, 0, False)
+    numbers, why = pick([Issue(5, "Blocked by #4")], {4, 5}, 0, False)
 
-    assert number is None
+    assert numbers == []
     assert "blocked" in why
 
 
@@ -56,7 +65,7 @@ def test_main_reads_github(
     monkeypatch.setattr(agent_dispatch, "open_issues", lambda label="": issues[label])
 
     assert agent_dispatch.main(["--issue", "6"]) == 0
-    assert json.loads(capsys.readouterr().out) == {"issue": 6, "reason": "starting #6"}
+    assert json.loads(capsys.readouterr().out) == {"issues": [6], "reason": "starting #6"}
 
 
 def test_gh_json_parses_output(monkeypatch: pytest.MonkeyPatch) -> None:
