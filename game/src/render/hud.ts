@@ -1,11 +1,12 @@
 import { feetInView } from "../core/gestures";
 import type { PoseFrame } from "../core/poseFixture";
 
-/** Corner readout of what the camera sees, so a missed gesture can be told from a slow duck. */
+/** Corner readout of what the camera sees, so a missed gesture can be told from a slow duck, and the sound. */
 export interface Hud {
   status(text: string): void;
   frame(frame: PoseFrame | undefined): void;
   gesture(name: string, line: string | undefined): void;
+  sound(text: string): void;
 }
 
 export function createHud(host: HTMLElement): Hud {
@@ -16,7 +17,8 @@ export function createHud(host: HTMLElement): Hud {
   const camera = document.createElement("div");
   const body = document.createElement("div");
   const last = document.createElement("div");
-  box.append(camera, body, last);
+  const sound = document.createElement("div");
+  box.append(camera, body, last, sound);
   host.appendChild(box);
   camera.textContent = "Camera: starting...";
   last.textContent = "Last gesture: none yet";
@@ -37,6 +39,9 @@ export function createHud(host: HTMLElement): Hud {
     gesture(name, line) {
       const time = new Date().toLocaleTimeString();
       last.textContent = `Last gesture: ${name} at ${time}${line ? ` ("${line}")` : ""}`;
+    },
+    sound(text) {
+      sound.textContent = `Sound: ${text}`;
     },
   };
 }
