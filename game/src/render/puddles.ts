@@ -1,5 +1,6 @@
 import { Container, Graphics } from "pixi.js";
 
+import type { createGlass } from "../core/glass";
 import type { IdleKind } from "../core/idle";
 import { GROUND } from "../core/pond";
 import type { Mood } from "../core/reaction";
@@ -8,8 +9,14 @@ import type { Facing, Hold, Pose } from "../core/verbs";
 /** What Puddles is doing: a verb's pose or an idle action. */
 type Look = Pose | IdleKind;
 
+/** How Puddles stands at the window this frame, as worked out in core. */
+export type AtWindow = Pick<
+  ReturnType<ReturnType<typeof createGlass>["update"]>,
+  "watching" | "gaze" | "depth" | "scale" | "walking" | "tap"
+>;
+
 /** Puddles as drawn this frame, `height` above the ground with one wing raised `wing` radians. */
-interface Shown {
+export interface Shown {
   readonly x: number;
   readonly facing: Facing;
   readonly height: number;
@@ -18,6 +25,7 @@ interface Shown {
   readonly mood: Mood;
   /** How far the head is turned in a head shake, in radians. */
   readonly shake: number;
+  readonly glass: AtWindow;
 }
 
 const COLOURS = {
@@ -56,6 +64,12 @@ const HOLD_AT: Record<Hold, { x: number; y: number }> = {
 };
 /** How narrow the body looks once Puddles has turned to face the viewer. */
 const TURNED_WIDTH = 0.8;
+/** How far the head and face turn towards a kid at the edge of the window, and how far a tap pushes the face. */
+const HEAD_TURN = 8;
+const FACE_TURN = 6;
+const TAP_REACH = 12;
+/** The ring a tap leaves on the glass, spreading from the beak. */
+const RING = { from: 6, to: 40, width: 3, color: COLOURS.white };
 
 function beak(g: Graphics, open: boolean): void {
   if (open) {
@@ -165,11 +179,24 @@ function drawHead(): { head: Container; face: Graphics } {
 
 /** Where on screen a sticker Puddles holds `on` the beak or head sits this frame. */
 export function holdPoint(
-  shown: Pick<Shown, "x" | "facing" | "height">,
+  shown: Pick<Shown, "x" | "facing" | "height" | "glass">,
   on: Hold,
 ): { x: number; y: number } {
   const at = HOLD_AT[on];
-  return { x: shown.x + shown.facing * at.x, y: GROUND - shown.height + at.y };
+  const { depth, scale } = shown.glass;
+  return {
+    x: shown.x + shown.facing * at.x * scale,
+    y: GROUND - shown.height + depth + at.y * scale,
+  };
+}
+
+/** Draws the ring a tap leaves on the glass, `spread` from 0 to 1, or nothing. */
+function drawRing(ring: Graphics, spread: number | undefined): void {
+  ring.clear();
+  if (spread === undefined) return;
+  ring
+    .circle(0, 0, RING.from + spread * (RING.to - RING.from))
+    .stroke({ width: RING.width, color: RING.color, alpha: 1 - spread });
 }
 
 /** Draws placeholder Puddles into `scene` and returns how to show Puddles each frame. */
@@ -178,18 +205,24 @@ export function drawPuddles(scene: Container): (shown: Shown, clock: number) => 
   const body = drawBody();
   const wing = drawWing();
   const { head, face } = drawHead();
-  duck.addChild(body, head, wing);
+  const ring = new Graphics();
+  ring.position.set(HOLD_AT.beak.x, HOLD_AT.beak.y);
+  duck.addChild(body, head, wing, ring);
   scene.addChild(duck);
   let shownFace = "";
 
   return (shown, clock) => {
-    duck.position.set(shown.x, GROUND - shown.height);
+    const { gaze, depth, scale, walking, tap } = shown.glass;
+    duck.position.set(shown.x, GROUND - shown.height + depth);
     const turned = shown.look === "look_camera";
-    duck.scale.x = shown.facing * (turned ? TURNED_WIDTH : 1);
+    duck.scale.set(shown.facing * (turned ? TURNED_WIDTH : 1) * scale, scale);
     const at = turned ? HEAD_AT.viewer : HEAD_AT.side;
-    head.position.set(at.x, at.y);
+    const towards = gaze * shown.facing;
+    head.position.set(at.x + towards * HEAD_TURN, at.y);
+    face.position.x = towards * FACE_TURN + tap.bob * TAP_REACH;
+    drawRing(ring, tap.ring);
     wing.rotation = shown.wing;
-    const waddle = WADDLE_SPEED[shown.look];
+    const waddle = WADDLE_SPEED[walking ? "walk" : shown.look];
     duck.rotation = waddle === undefined ? 0 : Math.sin(clock * waddle) * WADDLE;
     head.rotation = (HEAD_TILT[shown.look]?.(clock) ?? 0) + shown.shake;
 
