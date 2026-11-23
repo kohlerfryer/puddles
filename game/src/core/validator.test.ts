@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Step, Traits, Verb } from "./reaction";
-import { DEFAULT_SCRIPT, safeScript } from "./validator";
+import { DEFAULT_SCRIPT, DEFAULT_TRAITS, safeReaction, safeScript } from "./validator";
 
 const smallSnack: Traits = { size: "small", weight: "light", shape: "round", edible: true };
 
@@ -139,5 +139,23 @@ describe("caps", () => {
       ]),
     );
     expect(first?.say).toBe(expected);
+  });
+});
+
+describe("safeReaction", () => {
+  it("keeps a valid reply's traits with its safe script", () => {
+    const raw = reaction([
+      { do: "sniff", target: "object", mood: "curious" },
+      { do: "eat", target: "object", mood: "happy" },
+    ]);
+    expect(safeReaction(raw)).toEqual({ valid: true, traits: smallSnack, script: safeScript(raw) });
+  });
+
+  it("falls back to default traits and the confused script for an invalid reply", () => {
+    expect(safeReaction("{not json")).toEqual({
+      valid: false,
+      traits: DEFAULT_TRAITS,
+      script: DEFAULT_SCRIPT,
+    });
   });
 });
