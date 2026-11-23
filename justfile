@@ -112,3 +112,7 @@ github-settings:
 # Coverage of the lines changed since a base ref (CI runs this on PRs)
 diff-coverage base="origin/main":
     uv run diff-cover coverage.xml game/coverage/cobertura-coverage.xml --compare-branch={{base}} --fail-under=90
+
+# Bench a reaction model on a folder of photos (installs the optional vlm group)
+bench-vlm folder:
+    PUDDLES_MODEL="${PUDDLES_MODEL:-smolvlm}" PYTHONPATH=server uv run --group vlm python -m scripts.bench_reactions {{folder}}
