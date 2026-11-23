@@ -27,6 +27,10 @@ void createStage(document.body).then((app) => {
       hud.frame(frame);
       puddles.watching(frame);
     },
+    (photo) => {
+      hud.gesture("hold up", `photo, ${String(Math.round(photo.size / 1024))} KB`);
+      return Promise.resolve();
+    },
   ).catch((error: unknown) => {
     hud.status(`unavailable (${String(error)})`);
   });
