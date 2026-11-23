@@ -1,8 +1,9 @@
 name: agent implement
 
 # Agents implement ready issues in parallel and open PRs (docs/workflow.md).
-# Dispatch runs when the owner labels an issue agent:ready, whenever main changes
-# (a merge frees a slot or closes a blocker), every 15 minutes, or by hand.
+# Dispatch runs when the owner labels an issue agent:ready, when the owner or the
+# manager routine pushes to main, every 15 minutes, or by hand. Auto-merges made by
+# github-actions[bot] don't trigger workflows, so those are picked up by the 15-minute run.
 # Set the repo variable AGENTS_PAUSED=true to stop agents.
 
 on:
