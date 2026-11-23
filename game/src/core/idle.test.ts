@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   advanceIdle,
   IDLE_MARGIN,
+  idleFacing,
   type IdleKind,
   idlePosition,
   pickIdle,
@@ -94,5 +95,21 @@ describe("advanceIdle", () => {
     const next = advanceIdle(state, state.action.seconds, sequence(0.6, 0));
     expect(next.action).toEqual({ kind: "preen", from: 800, to: 800, seconds: 2 });
     expect(next.elapsed).toBe(0);
+  });
+});
+
+describe("idleFacing", () => {
+  const wander = (from: number, to: number) => ({
+    action: { kind: "wander" as const, from, to, seconds: 2 },
+    elapsed: 0,
+  });
+
+  it("faces the way Puddles is walking", () => {
+    expect(idleFacing(wander(600, 300), 1)).toBe(-1);
+    expect(idleFacing(wander(300, 600), -1)).toBe(1);
+  });
+
+  it("keeps facing the same way while staying put", () => {
+    expect(idleFacing(wander(400, 400), -1)).toBe(-1);
   });
 });

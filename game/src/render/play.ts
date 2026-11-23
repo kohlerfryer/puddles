@@ -2,8 +2,8 @@ import { type Application, type Container, Graphics } from "pixi.js";
 
 import { createActing } from "../core/acting";
 import { DEMO_SCRIPT, DEMO_TRAITS, demoDrop } from "../core/demo";
-import { createGlass, facingKid, freeToWatch } from "../core/glass";
-import { advanceIdle, idlePosition, startIdle } from "../core/idle";
+import { createGlass, freeToWatch, idleFacingKid } from "../core/glass";
+import { advanceIdle, type IdleState, idlePosition, startIdle } from "../core/idle";
 import { createPhysics } from "../core/physics";
 import { heldScale } from "../core/objectVerbs";
 import { GROUND, SCENE_WIDTH, STICKER_POND } from "../core/pond";
@@ -14,23 +14,15 @@ import type { PoseFrame } from "../core/poseFixture";
 import { type Sound, soundFor } from "../core/sounds";
 import { bubbleAt, type Line } from "../core/speech";
 import { bubbleCentres, gestureThought, thoughtAt } from "../core/thought";
-import type { Duck, Facing, Hold } from "../core/verbs";
+import type { Duck, Hold } from "../core/verbs";
 import { drawBubble, drawThought } from "./bubble";
 import { type AtWindow, drawPuddles, holdPoint, type Shown } from "./puddles";
-
-type IdleState = ReturnType<typeof startIdle>;
 
 const STICKER_COLOUR = "#e0457b";
 /** Longest physics step, so a slow frame can't drop the sticker through the ground. */
 const MAX_STEP_MS = 1000 / 60;
 /** How big a sticker shows once Puddles holds it, so a hat fits the head. */
 const HELD_SCALE = 0.6;
-
-function idleFacing(idle: IdleState, facing: Facing): Facing {
-  const { from, to } = idle.action;
-  if (to === from) return facing;
-  return to > from ? 1 : -1;
-}
 
 type Body = ReturnType<ReturnType<typeof createPhysics>["addSticker"]>;
 
@@ -131,8 +123,7 @@ function posing() {
       return { x, facing, height, wing, look: pose, mood: cue.mood, shake: cue.shake, glass };
     }
     idle = idle ? advanceIdle(idle, dt, Math.random) : startIdle(duck.x, Math.random);
-    const walking = idleFacing(idle, duck.facing);
-    const facing = glass.watching ? facingKid(glass.gaze, walking) : walking;
+    const facing = idleFacingKid(idle, duck.facing, glass);
     const look = idle.action.kind;
     return {
       x: idlePosition(idle),

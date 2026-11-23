@@ -10,6 +10,7 @@ import {
   gazeTarget,
   glassPlacement,
   glassTap,
+  idleFacingKid,
   LOST_SECONDS,
   stepApproach,
   TAP_EVERY,
@@ -179,6 +180,26 @@ describe("facingKid", () => {
   it("keeps facing the same way when the kid is straight ahead", () => {
     expect(facingKid(0.05, -1)).toBe(-1);
     expect(facingKid(-0.05, 1)).toBe(1);
+  });
+});
+
+describe("idleFacingKid", () => {
+  const idle = (from: number, to: number) => ({
+    action: { kind: from === to ? ("preen" as const) : ("wander" as const), from, to, seconds: 2 },
+    elapsed: 0,
+  });
+  const kidOnRight = { watching: true, gaze: 0.6 };
+
+  it("keeps facing the way he walks while wandering, wherever the kid is", () => {
+    expect(idleFacingKid(idle(600, 300), 1, kidOnRight)).toBe(-1);
+  });
+
+  it("turns to the kid while resting", () => {
+    expect(idleFacingKid(idle(400, 400), -1, kidOnRight)).toBe(1);
+  });
+
+  it("keeps his facing while resting with nobody watching", () => {
+    expect(idleFacingKid(idle(400, 400), -1, { watching: false, gaze: 0.6 })).toBe(-1);
   });
 });
 
