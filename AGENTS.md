@@ -13,9 +13,9 @@
 
 ## Repo Shape
 
-- `server/puddles_server/`: FastAPI app (SmolVLM inference later). Tests in `server/tests/`.
+- `server/puddles_server/`: FastAPI app. `/react` runs the `ReactionModel` named by `PUDDLES_MODEL` (`fake` by default, `smolvlm` for base SmolVLM). Tests in `server/tests/`.
 - `game/`: Vite + TypeScript game. Logic in `src/core/` (pure, tested, no PixiJS or DOM); drawing and input in `src/render/` (PixiJS, MediaPipe; no tests, excluded from coverage). Tests sit next to code as `*.test.ts`.
-- `shared/`: contracts used across game, server and evals. `reaction.schema.json` is the reaction format; game types are generated from it (`pnpm -C game gen:types`, checked by `just generated`).
+- `shared/`: contracts used across game, server and evals. `reaction.schema.json` is the reaction format and `puddles_prompt.md` the VLM prompt; game types are generated from it (`pnpm -C game gen:types`, checked by `just generated`).
 - `scripts/`: repo tooling in Python, with tests in `scripts/tests/`.
 - `docs/adr/`: decisions. `docs/workflow.md`, `docs/coding-standards.md`.
 - Python 3.12 via `uv`; Node via `pnpm` inside `game/`. TypeScript is pinned to 6.x.
@@ -29,6 +29,13 @@ just lint | types | complexity | dupes | deadcode | test
 just check-files <paths>     # fast lint/types/complexity on specific files
 just fix                     # auto-format and auto-fix lint
 just report                  # every gate; violations as file:line:rule in .quality/report.json
+just bench-vlm <folder>      # bench SmolVLM on a folder of photos (installs the vlm group)
+```
+
+The ML libraries live in the optional `vlm` dependency group; `just check` never needs them. To run the server on base SmolVLM (downloads the weights from Hugging Face on first run):
+
+```bash
+PUDDLES_MODEL=smolvlm uv run --group vlm uvicorn --app-dir server puddles_server.app:app
 ```
 
 Hooks in `.claude/settings.json` check each edited file, block finishing while `just check` fails, and deny force-pushes, pushes to `main` and `--no-verify`. In CI agent runs they also deny edits to gate files.
@@ -53,3 +60,4 @@ Stop, label the issue `needs-human` and comment why when: acceptance criteria ar
 - Agent commits carry a Claude co-author trailer: `docs/adr/2026-11-22-agent-commits-carry-a-co-author-trailer.md`
 - TypeScript stays on 6.x until typescript-eslint supports 7: `docs/adr/2026-11-22-typescript-stays-on-6.md`
 - Game logic in core, drawing in render: `docs/adr/2026-11-22-game-logic-in-core-drawing-in-render.md`
+- Base SmolVLM runs now, behind a swappable model: `docs/adr/2026-11-23-base-smolvlm-behind-a-swappable-model.md`
