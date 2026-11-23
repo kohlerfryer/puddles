@@ -9,6 +9,7 @@ import { GROUND, SCENE_WIDTH, STICKER_POND } from "../core/pond";
 import type { Step, Traits } from "../core/reaction";
 import { createRunner } from "../core/runner";
 import type { BodyGesture } from "../core/gestures";
+import { type Sound, soundFor } from "../core/sounds";
 import { bubbleAt, type Line } from "../core/speech";
 import { bubbleCentres, gestureThought, thoughtAt } from "../core/thought";
 import type { Duck, Facing, Hold } from "../core/verbs";
@@ -49,7 +50,7 @@ function drawSticker({ body, art }: Drawn, at?: { x: number; y: number }, scale 
 }
 
 /** Drops stickers into one physics world and draws each wherever its body is, or Puddles holds it. */
-function stickers(scene: Container) {
+function stickers(scene: Container, play: (sound: Sound | undefined) => void) {
   const physics = createPhysics(STICKER_POND);
   const drawn: Drawn[] = [];
   const forget = (sticker: Drawn): void => {
@@ -76,8 +77,12 @@ function stickers(scene: Container) {
       const sticker = drawn.find((other) => other.body === body);
       if (sticker) sticker.held = { on, since: now };
     },
+    /** Moves and draws the stickers, splashing those that land in the water. */
     step(deltaMs: number, now: number, puddles: Parameters<typeof holdPoint>[0]): void {
-      physics.step(Math.min(deltaMs, MAX_STEP_MS));
+      const splashes = physics.step(Math.min(deltaMs, MAX_STEP_MS));
+      splashes.forEach(() => {
+        play(soundFor({ kind: "landed" }));
+      });
       for (const sticker of drawn) {
         const { held } = sticker;
         if (!held) {
@@ -112,6 +117,31 @@ function talk(scene: Container) {
   };
 }
 
+/** Puddles idling between scripts, starting afresh after each one. */
+function idler() {
+  let idle: IdleState | undefined;
+  return {
+    stop(): void {
+      idle = undefined;
+    },
+    /** Moves the idle on `deltaMs` from `duck` and returns Puddles as shown. */
+    next(deltaMs: number, duck: Duck) {
+      idle = idle ? advanceIdle(idle, deltaMs / 1000, Math.random) : startIdle(duck.x, Math.random);
+      const facing = idleFacing(idle, duck.facing);
+      const look = idle.action.kind;
+      return {
+        x: idlePosition(idle),
+        facing,
+        height: 0,
+        wing: 0,
+        look,
+        mood: "happy",
+        shake: 0,
+      } as const;
+    },
+  };
+}
+
 /** Lets other inputs (the camera, the dev panel) drive Puddles on the same clock as the demo. */
 export interface Actor {
   react(step: Step): void;
@@ -123,42 +153,44 @@ export interface Actor {
   think(gesture: BodyGesture): void;
 }
 
-/** Plays the six-verb demo, then idles: Puddles follows plans from core and decides nothing here. */
-export function playDemo(app: Application, scene: Container): Actor {
+/**
+ * Plays the six-verb demo, then idles: Puddles follows plans from core and decides nothing here,
+ * and `play` sounds the cues core gives.
+ */
+export function playDemo(
+  app: Application,
+  scene: Container,
+  play: (sound: Sound | undefined) => void,
+): Actor {
   const show = drawPuddles(scene);
   const bubbles = talk(scene);
   const runner = createRunner();
   const acting = createActing();
   let duck: Duck = { x: SCENE_WIDTH / 2, facing: 1 };
-  let idle: IdleState | undefined;
+  const idling = idler();
   let clockMs = 0;
-  const sticker = stickers(scene);
+  const sticker = stickers(scene, play);
   let target = sticker.drop(DEMO_TRAITS, duck.x);
   runner.play(DEMO_SCRIPT, clockMs);
 
   app.ticker.add((ticker) => {
     clockMs += ticker.deltaMS;
-    const status = runner.update(clockMs);
     const objectHeight = GROUND - target.bounds.min.y;
-    const cue = acting.update(status, clockMs, duck, { object: target.position.x, objectHeight });
+    const where = { object: target.position.x, objectHeight };
+    const cue = acting.update(runner.update(clockMs), clockMs, duck, where);
+    for (const sound of cue?.sounds ?? []) play(sound);
     if (cue) {
-      idle = undefined;
       if (cue.nudge) sticker.physics.nudge(target, cue.nudge);
       if (cue.take) sticker.take(target, cue.take.to, clockMs);
-      duck = { x: cue.frame.x, facing: cue.frame.facing };
-      const { height, pose, wing } = cue.frame;
-      show({ ...duck, height, wing, look: pose, mood: cue.mood }, clockMs / 1000);
-      bubbles.draw(duck.x, height, clockMs, cue.line);
-      sticker.step(ticker.deltaMS, clockMs, { ...duck, height });
-      return;
+      idling.stop();
     }
-    idle = idle
-      ? advanceIdle(idle, ticker.deltaMS / 1000, Math.random)
-      : startIdle(duck.x, Math.random);
-    duck = { x: idlePosition(idle), facing: idleFacing(idle, duck.facing) };
-    show({ ...duck, height: 0, wing: 0, look: idle.action.kind, mood: "happy" }, clockMs / 1000);
-    bubbles.draw(duck.x, 0, clockMs);
-    sticker.step(ticker.deltaMS, clockMs, { ...duck, height: 0 });
+    const shown = cue
+      ? { ...cue.frame, look: cue.frame.pose, mood: cue.mood, shake: cue.shake }
+      : idling.next(ticker.deltaMS, duck);
+    duck = { x: shown.x, facing: shown.facing };
+    show(shown, clockMs / 1000);
+    bubbles.draw(shown.x, shown.height, clockMs, cue?.line);
+    sticker.step(ticker.deltaMS, clockMs, shown);
   });
   return {
     react(step: Step): void {
