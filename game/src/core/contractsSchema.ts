@@ -15,7 +15,7 @@ const ajv = new Ajv2020({ allErrors: true, allowUnionTypes: true }).addSchema(re
 
 /** One validator per contract. Compile order matters: a schema's $refs must be compiled first. */
 export const contractValidators = {
-  event: ajv.compile<types.Event>(events),
+  event: ajv.compile<types.KernelEvent>(events),
   observation: ajv.compile<types.Observation>(observation),
   step: ajv.compile<types.Step>(step),
   intent: ajv.compile<types.Intent>(intent),

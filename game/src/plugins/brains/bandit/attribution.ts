@@ -4,7 +4,7 @@
  * the bit started; with no face in the window there is no data.
  */
 
-import type { Event } from "../../../core/contracts";
+import type { KernelEvent } from "../../../core/contracts";
 import type { Payoff } from "./model";
 
 /** How long after the punchline a smile, laugh or walk-away counts for the bit. */
@@ -31,11 +31,11 @@ export interface Attributed {
   readonly windowMs: number;
 }
 
-const smiles = (events: readonly Event[]) =>
+const smiles = (events: readonly KernelEvent[]) =>
   events.filter((e) => e.type === "observation.smile").map((e) => Number(e.data.level));
 
 /** How the kid took `bit`, from the events around it; null when no face was seen after it. */
-export function attribute(bit: Played, events: readonly Event[]): Attributed | null {
+export function attribute(bit: Played, events: readonly KernelEvent[]): Attributed | null {
   const after = events.filter((e) => e.t > bit.doneAt && e.t <= bit.doneAt + WINDOW_MS);
   const walkedAway = after.some((e) => e.type === "observation.walk_away");
   const reactions = smiles(after);

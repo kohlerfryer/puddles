@@ -1,4 +1,4 @@
-import type { Event } from "../core/contracts";
+import type { KernelEvent } from "../core/contracts";
 import { contractValidators } from "../core/contractsSchema";
 import { type Kernel, createKernel } from "./kernel";
 import type { PluginFolder } from "./plugins";
@@ -14,17 +14,17 @@ export interface ReplayOptions {
 export interface DecisionDiff {
   readonly t: number;
   readonly brain: string;
-  readonly recorded: Event["data"] | null;
-  readonly replayed: Event["data"] | null;
+  readonly recorded: KernelEvent["data"] | null;
+  readonly replayed: KernelEvent["data"] | null;
 }
 
 export interface Replay {
   /** Every event the replayed session logged. */
-  readonly events: Event[];
+  readonly events: KernelEvent[];
   readonly diffs: DecisionDiff[];
 }
 
-function parseLine(line: string, index: number): Event[] {
+function parseLine(line: string, index: number): KernelEvent[] {
   if (!line.trim()) return [];
   let event: unknown;
   try {
@@ -40,7 +40,7 @@ function parseLine(line: string, index: number): Event[] {
 }
 
 /** Reads a recorded event log: the JSON lines the kernel's `sink` wrote to the save. */
-export function parseLog(text: string): Event[] {
+export function parseLog(text: string): KernelEvent[] {
   return text.split("\n").flatMap(parseLine);
 }
 
@@ -48,7 +48,7 @@ const isSense = ({ manifest }: PluginFolder) =>
   typeof manifest === "object" && manifest !== null && Reflect.get(manifest, "kind") === "sense";
 
 /** A sense that appends the recorded observations at their tick, keeping their source and order. */
-function playback(observations: readonly Event[], kernel: () => Kernel): PluginFolder[] {
+function playback(observations: readonly KernelEvent[], kernel: () => Kernel): PluginFolder[] {
   if (!observations.length) return [];
   let next = 0;
   const sense: PluginFolder = {
@@ -83,12 +83,15 @@ const canonical = (value: unknown): string =>
       : inner,
   );
 
-const proposals = (events: readonly Event[]) =>
+const proposals = (events: readonly KernelEvent[]) =>
   events.filter((event) => event.type === "intent.proposed");
 
-const keyOf = ({ t, source }: Event) => `${String(t)} ${source}`;
+const keyOf = ({ t, source }: KernelEvent) => `${String(t)} ${source}`;
 
-function diffDecisions(recorded: readonly Event[], replayed: readonly Event[]): DecisionDiff[] {
+function diffDecisions(
+  recorded: readonly KernelEvent[],
+  replayed: readonly KernelEvent[],
+): DecisionDiff[] {
   const before = new Map(proposals(recorded).map((event) => [keyOf(event), event.data]));
   const after = new Map(proposals(replayed).map((event) => [keyOf(event), event.data]));
   const all = [...proposals(recorded), ...proposals(replayed)].sort((a, b) => a.t - b.t);
@@ -112,7 +115,7 @@ function diffDecisions(recorded: readonly Event[], replayed: readonly Event[]): 
  * `observation.*` events are played back at their ticks, and brain decisions are diffed. The
  * replay stops at the last recorded event, so decisions a new brain would make later don't show.
  */
-export function replay(recorded: readonly Event[], { plugins, seed }: ReplayOptions): Replay {
+export function replay(recorded: readonly KernelEvent[], { plugins, seed }: ReplayOptions): Replay {
   const lines: string[] = [];
   const observations = recorded.filter((event) => event.type.startsWith("observation."));
   const kernel: Kernel = createKernel({
@@ -123,6 +126,6 @@ export function replay(recorded: readonly Event[], { plugins, seed }: ReplayOpti
   });
   const end = recorded.at(-1)?.t ?? 0;
   while (kernel.clock.t < end) kernel.tick();
-  const events = lines.map((line) => JSON.parse(line) as Event);
+  const events = lines.map((line) => JSON.parse(line) as KernelEvent);
   return { events, diffs: diffDecisions(recorded, events) };
 }

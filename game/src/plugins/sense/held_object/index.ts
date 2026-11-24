@@ -1,5 +1,5 @@
 import { newSamples, type Point, type ReadCamera } from "../../../core/cameraSample";
-import type { Event } from "../../../core/contracts";
+import type { KernelEvent } from "../../../core/contracts";
 import type { PluginFolder } from "../../../kernel/plugins";
 import { armRaised, createHoldWatch, highestHand } from "./hold";
 import manifest from "./manifest.json";
@@ -53,7 +53,7 @@ const isPoint = (value: unknown): value is Point =>
   typeof Reflect.get(value, "y") === "number";
 
 /** The hand's corners from an `observation.held` event, or nothing for any other event. */
-export function heldHand({ type, data }: Event): Point[] | undefined {
+export function heldHand({ type, data }: KernelEvent): Point[] | undefined {
   const { hand } = data;
   if (type !== HELD || !Array.isArray(hand) || !hand.every(isPoint)) return undefined;
   return hand;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Event } from "../core/contracts";
+import type { KernelEvent } from "../core/contracts";
 import { type Kernel, createKernel } from "../kernel/kernel";
 import { type SimulatedKid, simulatedKid } from "./kid";
 import { type Bit, bitSkills, bits, fixedPolicy } from "./policies";
@@ -26,7 +26,7 @@ function play(profile: KidProfile, played: Bit, seconds: number, seed = 3) {
   return { kid, events: kernel.log.events() };
 }
 
-const ofType = (events: Event[], type: string) => events.filter((e) => e.type === type);
+const ofType = (events: KernelEvent[], type: string) => events.filter((e) => e.type === type);
 
 describe("simulatedKid", () => {
   it("reacts to each finished bit with a smile from the kid", () => {
@@ -72,7 +72,7 @@ describe("simulatedKid", () => {
   it("smiles more at a bit it loves than one it doesn't", () => {
     const loved = ofType(play(slapstickFan, bit("pratfall"), 9).events, "observation.smile");
     const meh = ofType(play(slapstickFan, bit("nap"), 9).events, "observation.smile");
-    const mean = (events: Event[]) =>
+    const mean = (events: KernelEvent[]) =>
       events.reduce((sum, e) => sum + (e.data as { level: number }).level, 0) / events.length;
     expect(mean(loved)).toBeGreaterThan(mean(meh));
   });

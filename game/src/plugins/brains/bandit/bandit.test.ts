@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Event } from "../../../core/contracts";
+import type { KernelEvent } from "../../../core/contracts";
 import { checkPlugin } from "../../../kernel/harness";
 import { type Kernel, createKernel } from "../../../kernel/kernel";
 import type { Emitted, PluginFolder } from "../../../kernel/plugins";
@@ -45,7 +45,7 @@ function run(brain: Bandit, extra: (log: () => Kernel["log"]) => PluginFolder[],
   return kernel.log.events();
 }
 
-const proposals = (events: readonly Event[]) =>
+const proposals = (events: readonly KernelEvent[]) =>
   events.filter((e) => e.type === "intent.proposed" && e.source === "bandit");
 
 describe("bandit", () => {

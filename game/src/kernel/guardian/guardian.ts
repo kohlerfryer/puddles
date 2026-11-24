@@ -4,7 +4,7 @@
  * past the session soft limit Puddles yawns and suggests a break. Each verdict is an event.
  */
 
-import type { Event, Intent } from "../../core/contracts";
+import type { KernelEvent, Intent } from "../../core/contracts";
 import { contractValidators } from "../../core/contractsSchema";
 import { type Limits, type Violation, violation } from "./rules";
 
@@ -24,12 +24,12 @@ export interface GuardianSettings extends Limits {
 /** What plays instead of the intent (null when it is dropped), and the event to log. */
 export interface Verdict {
   readonly intent: Intent | null;
-  readonly event: Event;
+  readonly event: KernelEvent;
 }
 
 export interface ModelCallVerdict {
   readonly allowed: boolean;
-  readonly event: Event;
+  readonly event: KernelEvent;
 }
 
 export interface Guardian {
@@ -42,14 +42,14 @@ export interface Guardian {
   modelCall(brain: string, t: number): ModelCallVerdict;
 }
 
-const event = (t: number, type: string, data: Record<string, unknown>): Event => ({
+const event = (t: number, type: string, data: Record<string, unknown>): KernelEvent => ({
   t,
   type: `guardian.${type}`,
   source: SOURCE,
   data,
 });
 
-const rejected = (t: number, brain: string, broken: Violation): Event =>
+const rejected = (t: number, brain: string, broken: Violation): KernelEvent =>
   event(t, "rejected", { brain, rule: broken.rule, reason: broken.reason });
 
 const fallback = (priority: number, reason: string): Intent => ({

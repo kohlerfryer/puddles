@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { Event } from "../core/contracts";
+import type { KernelEvent } from "../core/contracts";
 import { createEventLog } from "./eventLog";
 
-const event = (t: number, type = "observation.smile"): Event => ({
+const event = (t: number, type = "observation.smile"): KernelEvent => ({
   t,
   type,
   source: "smile",

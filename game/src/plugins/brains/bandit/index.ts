@@ -4,7 +4,7 @@
  * then learns from how the kid took it. Every choice is logged with its propensity.
  */
 
-import type { Event, Intent, Step } from "../../../core/contracts";
+import type { KernelEvent, Intent, Step } from "../../../core/contracts";
 import type { Random } from "../../../core/random";
 import type { PluginContext, PluginFolder } from "../../../kernel/plugins";
 import { type Attributed, WINDOW_MS, attribute, payoff } from "./attribution";
@@ -81,7 +81,7 @@ function routineOf(arm: Arm): [Step, ...Step[]] {
 }
 
 /** Notes the bit's start and punchline; says whether it ended without playing through. */
-function follow(open: Open, events: readonly Event[]): boolean {
+function follow(open: Open, events: readonly KernelEvent[]): boolean {
   for (const { t, type, data } of events) {
     if (data.brain !== manifest.id) continue;
     if (ENDED.has(type)) return true;
@@ -97,7 +97,7 @@ interface State {
   readonly choices: Choice[];
   readonly played: Arm[];
   /** Recent observations, for attributing the open bit. */
-  observed: Event[];
+  observed: KernelEvent[];
   archetype: string;
   /** The brain whose intent is playing, if any. */
   running: string | null;
@@ -133,7 +133,7 @@ function choose(state: State, { arms, model }: BanditOptions, ctx: PluginContext
   return { brain: id, priority: PRIORITY, kind: "routine", steps: routineOf(arm), why, features };
 }
 
-function watch(state: State, events: readonly Event[]) {
+function watch(state: State, events: readonly KernelEvent[]) {
   for (const { type, data } of events) {
     if (type === "observation.held_object" && typeof data.archetype === "string")
       state.archetype = data.archetype;

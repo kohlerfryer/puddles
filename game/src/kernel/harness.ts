@@ -5,7 +5,7 @@
  * sessions logged the same events.
  */
 
-import type { Event, Manifest, Step } from "../core/contracts";
+import type { KernelEvent, Manifest, Step } from "../core/contracts";
 import { contractValidators } from "../core/contractsSchema";
 import { TICK_HZ } from "./clock";
 import { MAX_SCARED_STEPS, violation } from "./guardian/rules";
@@ -54,7 +54,7 @@ function drivers(manifest: Manifest, options: HarnessOptions): PluginFolder[] {
 
 interface Session {
   readonly manifest: Manifest;
-  readonly events: readonly Event[];
+  readonly events: readonly KernelEvent[];
   /** What the plugin threw, if the session stopped early. */
   readonly crash: string | null;
   /** How many times the kernel asked the plugin to decide. */
@@ -96,7 +96,7 @@ function session(make: () => PluginFolder, options: HarnessOptions): Session {
 const isMoreSpecific = (type: string, declared: string) =>
   type === declared || type.startsWith(`${declared}.`);
 
-function senseProblems(emits: readonly string[], events: readonly Event[]): string[] {
+function senseProblems(emits: readonly string[], events: readonly KernelEvent[]): string[] {
   return events
     .filter((event) => !emits.some((declared) => isMoreSpecific(event.type, declared)))
     .map((event) => `schema: emitted ${event.type}, which the manifest does not declare`);
@@ -113,17 +113,24 @@ function intentProblem(id: string, kinds: readonly string[], intent: unknown): s
   return intent.brain === id ? null : `schema: proposed an intent as ${intent.brain}`;
 }
 
-const proposed = (events: readonly Event[]) =>
+const proposed = (events: readonly KernelEvent[]) =>
   events.filter((event) => event.type === "intent.proposed").map((event) => event.data);
 
-function brainProblems(id: string, kinds: readonly string[], events: readonly Event[]): string[] {
+function brainProblems(
+  id: string,
+  kinds: readonly string[],
+  events: readonly KernelEvent[],
+): string[] {
   return proposed(events)
     .map((intent) => intentProblem(id, kinds, intent))
     .filter((problem) => problem !== null);
 }
 
 /** Runs the guardian's content rules on each valid intent; a good brain passes every time. */
-function guardianProblems(skills: HarnessOptions["skills"], events: readonly Event[]): string[] {
+function guardianProblems(
+  skills: HarnessOptions["skills"],
+  events: readonly KernelEvent[],
+): string[] {
   const limits = {
     skillSeconds: new Map(Object.entries(skills ?? {})),
     maxScaredSteps: MAX_SCARED_STEPS,
@@ -138,7 +145,7 @@ function guardianProblems(skills: HarnessOptions["skills"], events: readonly Eve
 }
 
 /** Times each call of the skill from its start to its outcome. */
-function skillProblems(durationS: number, events: readonly Event[]): string[] {
+function skillProblems(durationS: number, events: readonly KernelEvent[]): string[] {
   const problems: string[] = [];
   let startedAt: number | null = null;
   let finished = 0;
@@ -156,7 +163,7 @@ function skillProblems(durationS: number, events: readonly Event[]): string[] {
   return problems;
 }
 
-function budgetProblems(id: string, events: readonly Event[]): string[] {
+function budgetProblems(id: string, events: readonly KernelEvent[]): string[] {
   const over = events.filter((e) => e.type === "guardian.over_budget" && e.data.plugin === id);
   const [first] = over;
   if (!first || over.length <= TICKS * SLOW_SHARE) return [];
@@ -183,10 +190,13 @@ function kindProblems({ manifest, events, decisions }: Session, options: Harness
 }
 
 /** Events that must replay exactly: everything but wall-clock budget measurements. */
-const replayed = (events: readonly Event[]) =>
+const replayed = (events: readonly KernelEvent[]) =>
   events.filter((e) => e.type !== "guardian.over_budget");
 
-function determinismProblems(first: readonly Event[], second: readonly Event[]): string[] {
+function determinismProblems(
+  first: readonly KernelEvent[],
+  second: readonly KernelEvent[],
+): string[] {
   const [a, b] = [replayed(first), replayed(second)];
   const same = (i: number) => JSON.stringify(a[i]) === JSON.stringify(b[i]);
   const at = Array.from({ length: Math.max(a.length, b.length) }, (_, i) => i).find(

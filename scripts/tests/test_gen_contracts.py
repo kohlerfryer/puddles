@@ -125,9 +125,61 @@ def test_common_fields_with_one_of_become_a_base_class_and_a_union(tmp_path: Pat
 
 
 def test_unsupported_schemas_are_refused(tmp_path: Path) -> None:
-    write(tmp_path, "root.schema.json", {"title": "Root", "allOf": []})
+    write(tmp_path, "root.schema.json", {"title": "Root", "type": "null"})
 
     with pytest.raises(ValueError, match="unsupported schema"):
+        generate(tmp_path / "root.schema.json")
+
+
+@pytest.mark.parametrize("keyword", ["allOf", "anyOf", "not", "if", "patternProperties"])
+def test_unsupported_keywords_next_to_a_supported_type_are_refused(
+    tmp_path: Path, keyword: str
+) -> None:
+    write(
+        tmp_path,
+        "root.schema.json",
+        {
+            "title": "Root",
+            "type": "object",
+            "properties": {"name": {"type": "string", keyword: {}}},
+        },
+    )
+
+    with pytest.raises(ValueError, match=f"unsupported keyword {keyword}"):
+        generate(tmp_path / "root.schema.json")
+
+
+def test_unsupported_keywords_on_an_object_are_refused(tmp_path: Path) -> None:
+    write(
+        tmp_path,
+        "root.schema.json",
+        {"title": "Root", "type": "object", "properties": {}, "patternProperties": {}},
+    )
+
+    with pytest.raises(ValueError, match="unsupported keyword patternProperties"):
+        generate(tmp_path / "root.schema.json")
+
+
+def test_one_title_declared_from_two_locations_is_refused(tmp_path: Path) -> None:
+    write(
+        tmp_path,
+        "other.schema.json",
+        {"title": "Mood", "enum": ["happy"], "$defs": {"Mood": {"title": "Mood", "enum": ["sad"]}}},
+    )
+    write(
+        tmp_path,
+        "root.schema.json",
+        {
+            "title": "Root",
+            "type": "object",
+            "properties": {
+                "a": {"$ref": "other.schema.json"},
+                "b": {"$ref": "other.schema.json#/$defs/Mood"},
+            },
+        },
+    )
+
+    with pytest.raises(ValueError, match="title Mood is declared twice"):
         generate(tmp_path / "root.schema.json")
 
 
@@ -138,4 +190,5 @@ def test_main_writes_the_server_contracts_from_the_shared_index(tmp_path: Path) 
     text = out.read_text()
     assert text.startswith('"""Generated from shared/contracts.schema.json')
     assert "class Contracts(TypedDict):" in text
+    assert "class KernelEvent(TypedDict):" in text
     assert "type Manifest = SenseManifest | BrainManifest | SkillManifest | ContentManifest" in text

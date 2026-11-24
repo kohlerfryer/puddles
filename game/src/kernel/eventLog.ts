@@ -1,4 +1,4 @@
-import type { Event } from "../core/contracts";
+import type { KernelEvent } from "../core/contracts";
 import { contractValidators } from "../core/contractsSchema";
 
 export interface EventLogOptions {
@@ -12,11 +12,11 @@ export interface EventLogOptions {
 export interface EventLog {
   /** Events appended so far, including forgotten ones. */
   readonly count: number;
-  append(event: Event): void;
+  append(event: KernelEvent): void;
   /** Copies of the events still in memory, oldest first. */
-  events(): Event[];
+  events(): KernelEvent[];
   /** Copies of the events in memory that were appended after the first `count`. */
-  since(count: number): Event[];
+  since(count: number): KernelEvent[];
 }
 
 export function createEventLog({ capacity = 10_000, sink }: EventLogOptions = {}): EventLog {
@@ -25,7 +25,7 @@ export function createEventLog({ capacity = 10_000, sink }: EventLogOptions = {}
   let lastT = 0;
   const since = (from: number) => {
     const skip = Math.max(0, from - (count - buffer.length));
-    return buffer.slice(skip).map((line) => JSON.parse(line) as Event);
+    return buffer.slice(skip).map((line) => JSON.parse(line) as KernelEvent);
   };
   return {
     get count() {
