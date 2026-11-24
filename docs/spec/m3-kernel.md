@@ -8,7 +8,7 @@ Puddles becomes a small, closed **kernel** plus four kinds of **plugins** that t
 
 ## 1. Principles
 
-1. **Small closed kernel, open everything else.** The kernel is clock, event log, registry, guardian, save and replay. It changes rarely and is reviewed carefully.
+1. **Small closed kernel, open everything else.** The kernel is clock, event log, registry, guardian, executor, save and replay. It changes rarely and is reviewed carefully.
 2. **Plugins only talk through events.** No plugin imports another plugin. Contracts live in `shared/`.
 3. **Data over code.** Places, props, scenes, personalities, bits and art are data packs. A new tree needs no code.
 4. **Every output passes the guardian.** Brains can be swapped freely because safety is checked in one place.
@@ -16,14 +16,14 @@ Puddles becomes a small, closed **kernel** plus four kinds of **plugins** that t
 6. **Local and private.** Camera, microphone and photos never leave the machine. Only the object matcher sees the held-object crop, once, on the local server; every other brain sees summaries. Raw media never enters intents, memory, logs or saves.
 7. **Delight, not engagement.** We reward smiles per bit, never session length. Puddles gets sleepy and suggests breaks.
 8. **The magic window.** The kid stays in their room; Puddles lives behind the glass. No avatar. Interactions reach *through* the window.
-9. **Graceful degradation.** Planner → small model → templates → reflexes. Puddles never freezes.
+9. **Graceful degradation.** Planner → bandit → templates → reflexes. Puddles never freezes.
 
 ## 2. Architecture
 
 ```
-                 ┌───────────────── KERNEL (small, closed) ─────────────────┐
-                 │ clock · event log · registry · guardian · save · replay  │
-                 └──────────────────────────────────────────────────────────┘
+                 ┌────────────────────── KERNEL (small, closed) ──────────────────────┐
+                 │ clock · event log · registry · guardian · executor · save · replay │
+                 └────────────────────────────────────────────────────────────────────┘
  SENSE plugins ──events──►  BRAIN plugins ──intents──►  guardian ──►  SKILL plugins ──events──► (log)
  pose, hands, smiles,       reflexes, object matcher,                  walk, peck, wear,
  voice, held object         bandit, planner                            juggle, hide_in …
@@ -114,7 +114,7 @@ Atomic actions. Manifest declares `params`, `needs` (affordances or conditions),
 | **character** | body art (rig parts), skill set, personality reference: Puddles, or a frog, or a puppy |
 | **personality** | trait weights, need dynamics, starting opinions and bits |
 | **bit pack** | routines (§6.2) with features and lines |
-| **art / sound pack** | reskins against the style guide (§13), quack language patterns |
+| **art / sound pack** | reskins against the style guide (§15), quack language patterns |
 
 ## 6. Body
 
@@ -173,7 +173,7 @@ Checks every intent and outward signal. Rejections are logged with a reason and 
 
 ## 11. Saves and parent controls
 
-`~/Puddles/save/` (inspectable JSON): memory (episodes summary, facts, opinions, learned tricks), bandit statistics, house collection, settings. Controls: mic on/off, camera on/off, autonomy level, session limit, theme, **forget everything**. Transcripts and photos are never saved.
+The local server owns the save at `~/Puddles/save/` (inspectable JSON; the browser game reads and writes it through the server): memory (episodes summary, facts, opinions, learned tricks), bandit statistics, house collection, settings. Controls: mic on/off, camera on/off, autonomy level, session limit, theme, **forget everything**. Transcripts and photos are never saved.
 
 ## 12. Learning: feature-based bandit over behaviors
 
@@ -248,7 +248,7 @@ Exit: the game runs on the kernel with today's features as plugins; replay works
 
 | # | Ticket | Who | Blocked by |
 | --- | --- | --- | --- |
-| K0 | Install M3 dependencies (miniplex, LDtk loader, Playwright, a plotting library) with a reason each | owner | – |
+| K0 | Install M3 dependencies (miniplex, LDtk loader, Playwright, a plotting library) with a reason each; list unused ones in knip's `ignoreDependencies` until their first consumer removes the entry | owner | – |
 | K1 | Contracts in `shared/`: events, observation, intent, step, outcome, reward, manifest (+ generated TS/Python types) | owner | – |
 | K2 | Kernel core: clock, event log, registry, executor (headless, tested) | agent | K1 |
 | K3 | Guardian v1: budgets, content checks, vetted request list, fallback | agent | K1 |
@@ -257,7 +257,7 @@ Exit: the game runs on the kernel with today's features as plugins; replay works
 | K6 | Port verbs to skill plugins (manifests with tags and needs) | agent | K5 |
 | K7 | Port senses to sense plugins (pose, gestures, hands/held object) | agent | K5 |
 | K8 | Port brains: reflexes, copy-me behavior, object matcher (server `/react`) | agent | K5 |
-| K9 | World ECS (miniplex) and pond as a content plugin; render reads world state | agent | K6, K0 |
+| K9 | World ECS (miniplex) and pond as a content plugin (an LDtk scene); render reads world state | agent | K6, K0 |
 | K10 | Smile sense spike: face crop + blendshapes at play distance (needs the owner for a test) | owner + agent | K7 |
 | K11 | Simulator + simulated kids + regret plot script | agent | K4, K0 |
 | K12 | Bandit brain: Thompson over features, attribution window, logging propensities | agent | K11 |
