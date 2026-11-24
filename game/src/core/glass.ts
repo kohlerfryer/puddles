@@ -6,7 +6,7 @@
 import { idleFacing, type IdleState } from "./idle";
 import type { Landmark, PoseFrame } from "./poseFixture";
 import { POND } from "./pond";
-import type { Facing, Pose } from "./verbs";
+import type { Facing, Pose } from "../plugins/skill/verbs";
 
 /** MediaPipe Pose landmark indices. */
 const LEFT_SHOULDER = 11;

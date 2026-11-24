@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { IDLE_MARGIN } from "./idle";
-import { POND } from "./pond";
-import type { Step, Target, Verb } from "./reaction";
-import { VERB_SECONDS } from "./validator";
+import { IDLE_MARGIN } from "../../core/idle";
+import { POND } from "../../core/pond";
+import type { Step, Target, Verb } from "../../core/reaction";
+import { VERB_SECONDS } from "../../core/validator";
 import { planVerb } from "./planVerb";
 import { type Plan, frameAt } from "./verbs";
-import { waveWing } from "./wave";
-import { BANK } from "./world";
+import { waveWing } from "../../core/wave";
+import { BANK } from "../../core/world";
 
 const step = (verb: Verb, target?: Target): Step =>
   target ? { do: verb, target, mood: "curious" } : { do: verb, mood: "curious" };

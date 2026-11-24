@@ -1,9 +1,4 @@
-import type { Mood, Step } from "./reaction";
-import { planVerb } from "./planVerb";
-import type { RunnerStatus } from "./runner";
-import { shakeHead, type Sound, soundFor } from "./sounds";
-import type { Line } from "./speech";
-import { VERB_SECONDS } from "./validator";
+import { planVerb } from "../plugins/skill/planVerb";
 import {
   type Duck,
   type Frame,
@@ -12,7 +7,12 @@ import {
   type Plan,
   type Scene,
   type Take,
-} from "./verbs";
+} from "../plugins/skill/verbs";
+import type { Mood, Step } from "./reaction";
+import type { RunnerStatus } from "./runner";
+import { shakeHead, type Sound, soundFor } from "./sounds";
+import type { Line } from "./speech";
+import { VERB_SECONDS } from "./validator";
 
 /**
  * What Puddles shows this frame, what happens to the object sticker if it happens now,

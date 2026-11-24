@@ -1,9 +1,9 @@
 import type Matter from "matter-js";
 
-import { heldScale } from "./objectVerbs";
+import { heldScale } from "../plugins/skill/objectVerbs";
+import type { Hold } from "../plugins/skill/verbs";
 import { type createPhysics, stickerProps, stickerSize } from "./physics";
 import type { Traits } from "./reaction";
-import type { Hold } from "./verbs";
 
 /** Most stickers in the pond at once; dropping another lets the oldest go. */
 export const MAX_STICKERS = 10;
