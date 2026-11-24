@@ -1,4 +1,5 @@
-import { POND, SCENE_WIDTH } from "./pond";
+import { affording } from "../kernel/world";
+import { POND_WORLD, SCENE_WIDTH } from "./pond";
 
 /**
  * Puddles' world is one line along the bank, in the pond scene's units (`SCENE_WIDTH`
@@ -7,7 +8,7 @@ import { POND, SCENE_WIDTH } from "./pond";
 export const BANK = { left: 0, right: SCENE_WIDTH } as const;
 
 interface HidingSpot {
-  readonly kind: "reed" | "rock";
+  readonly kind: string;
   readonly x: number;
   readonly halfWidth: number;
 }
@@ -21,10 +22,14 @@ interface Hide {
 /** Space left between Puddles and the spot Puddles hides behind. */
 const HIDE_GAP = 20;
 
-export const HIDING_SPOTS: readonly HidingSpot[] = [
-  ...POND.reeds.map((reed) => ({ kind: "reed" as const, x: reed.x, halfWidth: reed.width / 2 })),
-  { kind: "rock", x: POND.rock.x, halfWidth: POND.rock.width / 2 },
-];
+/** Everything in the pond Puddles can hide behind. */
+export const HIDING_SPOTS: readonly HidingSpot[] = affording(POND_WORLD, "hide_behind").map(
+  ({ kind, position, size }) => ({
+    kind,
+    x: position.x + size.width / 2,
+    halfWidth: size.width / 2,
+  }),
+);
 
 /** The point mirrored across the middle of the bank; positions off the bank count as its nearest edge. */
 export function farSideOf(x: number): number {

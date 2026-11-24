@@ -1,8 +1,29 @@
 import { describe, expect, it } from "vitest";
 
-import { fitScene, GROUND, POND, SCENE_HEIGHT, SCENE_WIDTH, STICKER_POND } from "./pond";
+import { ofKind } from "../kernel/world";
+import {
+  fitScene,
+  GROUND,
+  POND,
+  POND_WORLD,
+  SCENE_HEIGHT,
+  SCENE_WIDTH,
+  STICKER_POND,
+} from "./pond";
 
 describe("POND layout", () => {
+  it("reads the bands and props from the pond's world", () => {
+    const [rock] = ofKind(POND_WORLD, "rock");
+    expect(POND.rock).toEqual({ x: 1000, width: 180, height: 110 });
+    expect(rock?.position).toEqual({ x: 910, y: 550 });
+    expect(POND.reeds).toHaveLength(ofKind(POND_WORLD, "reed").length);
+    expect(POND.water).toEqual({ top: 360, height: 300 });
+  });
+
+  it("is as big as the pond's level", () => {
+    expect({ width: SCENE_WIDTH, height: SCENE_HEIGHT }).toEqual({ width: 1600, height: 900 });
+  });
+
   it("stacks sky, water and bank to fill the scene height", () => {
     expect(POND.sky.top).toBe(0);
     expect(POND.water.top).toBe(POND.sky.top + POND.sky.height);

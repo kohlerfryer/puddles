@@ -1,0 +1,148 @@
+{
+  "__header__": { "fileType": "LDtk Project JSON", "app": "LDtk", "appVersion": "0.7.2" },
+  "jsonVersion": "0.7.2",
+  "defaultPivotX": 0.5,
+  "defaultPivotY": 1,
+  "defaultGridSize": 20,
+  "bgColor": "#cfe8f3",
+  "worldLayout": "Free",
+  "worldGridWidth": 1600,
+  "worldGridHeight": 900,
+  "externalLevels": false,
+  "defs": {
+    "layers": [
+      { "__type": "Entities", "identifier": "Entities", "type": "Entities", "uid": 1, "gridSize": 20 }
+    ],
+    "entities": [
+      { "identifier": "Sky", "uid": 10, "pivotX": 0, "pivotY": 0, "tilesetId": null },
+      { "identifier": "Water", "uid": 11, "pivotX": 0, "pivotY": 0, "tilesetId": null },
+      { "identifier": "Bank", "uid": 12, "pivotX": 0, "pivotY": 0, "tilesetId": null },
+      { "identifier": "Reed", "uid": 13, "pivotX": 0.5, "pivotY": 1, "tilesetId": null },
+      { "identifier": "Rock", "uid": 14, "pivotX": 0.5, "pivotY": 1, "tilesetId": null }
+    ],
+    "tilesets": [],
+    "enums": [],
+    "externalEnums": [],
+    "levelFields": []
+  },
+  "levels": [
+    {
+      "identifier": "pond",
+      "uid": 0,
+      "worldX": 0,
+      "worldY": 0,
+      "pxWid": 1600,
+      "pxHei": 900,
+      "__bgColor": "#cfe8f3",
+      "__bgPos": null,
+      "bgRelPath": null,
+      "bgPivotX": 0.5,
+      "bgPivotY": 0.5,
+      "externalRelPath": null,
+      "fieldInstances": [],
+      "__neighbours": [],
+      "layerInstances": [
+        {
+          "__identifier": "Entities",
+          "__type": "Entities",
+          "__cWid": 80,
+          "__cHei": 45,
+          "__gridSize": 20,
+          "__opacity": 1,
+          "__pxTotalOffsetX": 0,
+          "__pxTotalOffsetY": 0,
+          "__tilesetDefUid": null,
+          "__tilesetRelPath": null,
+          "levelId": 0,
+          "layerDefUid": 1,
+          "pxOffsetX": 0,
+          "pxOffsetY": 0,
+          "visible": true,
+          "intGridCsv": [],
+          "autoLayerTiles": [],
+          "gridTiles": [],
+          "entityInstances": [
+            {
+              "__identifier": "Sky",
+              "__grid": [0, 0],
+              "__pivot": [0, 0],
+              "__tile": null,
+              "defUid": 10,
+              "px": [0, 0],
+              "fieldInstances": [
+                { "__identifier": "width", "__type": "Int", "__value": 1600, "defUid": 100 },
+                { "__identifier": "height", "__type": "Int", "__value": 360, "defUid": 101 }
+              ]
+            },
+            {
+              "__identifier": "Water",
+              "__grid": [0, 18],
+              "__pivot": [0, 0],
+              "__tile": null,
+              "defUid": 11,
+              "px": [0, 360],
+              "fieldInstances": [
+                { "__identifier": "width", "__type": "Int", "__value": 1600, "defUid": 100 },
+                { "__identifier": "height", "__type": "Int", "__value": 300, "defUid": 101 }
+              ]
+            },
+            {
+              "__identifier": "Bank",
+              "__grid": [0, 33],
+              "__pivot": [0, 0],
+              "__tile": null,
+              "defUid": 12,
+              "px": [0, 660],
+              "fieldInstances": [
+                { "__identifier": "width", "__type": "Int", "__value": 1600, "defUid": 100 },
+                { "__identifier": "height", "__type": "Int", "__value": 240, "defUid": 101 }
+              ]
+            },
+            {
+              "__identifier": "Reed",
+              "__grid": [9, 33],
+              "__pivot": [0.5, 1],
+              "__tile": null,
+              "defUid": 13,
+              "px": [180, 660],
+              "fieldInstances": [
+                { "__identifier": "width", "__type": "Int", "__value": 60, "defUid": 100 },
+                { "__identifier": "height", "__type": "Int", "__value": 220, "defUid": 101 },
+                { "__identifier": "affords", "__type": "Array<String>", "__value": ["hide_behind"], "defUid": 102 },
+                { "__identifier": "slots", "__type": "Array<String>", "__value": [], "defUid": 103 }
+              ]
+            },
+            {
+              "__identifier": "Reed",
+              "__grid": [69, 33],
+              "__pivot": [0.5, 1],
+              "__tile": null,
+              "defUid": 13,
+              "px": [1380, 660],
+              "fieldInstances": [
+                { "__identifier": "width", "__type": "Int", "__value": 70, "defUid": 100 },
+                { "__identifier": "height", "__type": "Int", "__value": 260, "defUid": 101 },
+                { "__identifier": "affords", "__type": "Array<String>", "__value": ["hide_behind"], "defUid": 102 },
+                { "__identifier": "slots", "__type": "Array<String>", "__value": [], "defUid": 103 }
+              ]
+            },
+            {
+              "__identifier": "Rock",
+              "__grid": [50, 33],
+              "__pivot": [0.5, 1],
+              "__tile": null,
+              "defUid": 14,
+              "px": [1000, 660],
+              "fieldInstances": [
+                { "__identifier": "width", "__type": "Int", "__value": 180, "defUid": 100 },
+                { "__identifier": "height", "__type": "Int", "__value": 110, "defUid": 101 },
+                { "__identifier": "affords", "__type": "Array<String>", "__value": ["hide_behind", "sit_on"], "defUid": 102 },
+                { "__identifier": "slots", "__type": "Array<String>", "__value": ["top"], "defUid": 103 }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

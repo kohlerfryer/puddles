@@ -1,7 +1,15 @@
+import { createWorld, loadScene, ofKind, only, type Thing } from "../kernel/world";
+import manifest from "../plugins/content/pond/manifest.json";
+import ldtk from "../plugins/content/pond/pond.ldtk?raw";
 import type { Pond } from "./physics";
 
-export const SCENE_WIDTH = 1600;
-export const SCENE_HEIGHT = 900;
+const scene = loadScene(manifest, ldtk);
+
+/** The pond's entities, loaded from the pond content plugin's scene. */
+export const POND_WORLD = createWorld(scene.things);
+
+export const SCENE_WIDTH = scene.size.width;
+export const SCENE_HEIGHT = scene.size.height;
 
 interface Band {
   readonly top: number;
@@ -23,15 +31,23 @@ interface PondLayout {
   readonly rock: Prop;
 }
 
+const band = (kind: string): Band => {
+  const { position, size } = only(POND_WORLD, kind);
+  return { top: position.y, height: size.height };
+};
+
+const prop = ({ position, size }: Thing): Prop => ({
+  x: position.x + size.width / 2,
+  width: size.width,
+  height: size.height,
+});
+
 export const POND: PondLayout = {
-  sky: { top: 0, height: 360 },
-  water: { top: 360, height: 300 },
-  bank: { top: 660, height: 240 },
-  reeds: [
-    { x: 180, width: 60, height: 220 },
-    { x: 1380, width: 70, height: 260 },
-  ],
-  rock: { x: 1000, width: 180, height: 110 },
+  sky: band("sky"),
+  water: band("water"),
+  bank: band("bank"),
+  reeds: ofKind(POND_WORLD, "reed").map(prop),
+  rock: prop(only(POND_WORLD, "rock")),
 };
 
 /** The line along the bank where Puddles stands and stickers come to rest. */
