@@ -79,6 +79,13 @@ def test_main_scaffolds_and_says_where(tmp_path: Path, capsys: pytest.CaptureFix
     assert "already exists" in capsys.readouterr().err
 
 
+def test_just_new_runs_the_scaffolder(tmp_path: Path) -> None:
+    command = ["just", "--justfile", str(ROOT / "justfile"), "new", "skill", "hop"]
+    subprocess.run([*command, "--root", str(tmp_path)], check=True)
+
+    assert (tmp_path / "skill" / "hop" / "manifest.json").exists()
+
+
 @pytest.mark.parametrize("kind", ["sense", "brain", "skill", "content"])
 def test_a_new_plugin_passes_lint_and_the_harness_in_the_game(kind: str) -> None:
     plugins = ROOT / "game" / "src" / "plugins"

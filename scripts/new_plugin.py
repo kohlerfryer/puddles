@@ -1,4 +1,4 @@
-"""Scaffold a plugin folder that already passes the plugin harness: `puddles new <kind> <id>`.
+"""Scaffold a plugin folder that already passes the plugin harness: `just new <kind> <id>`.
 
 Writes `game/src/plugins/<kind>/<id>/` with a manifest, the code its kind needs, and a test
 that runs the harness on it (docs/spec/m3-kernel.md §5 and §14).
