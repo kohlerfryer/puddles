@@ -1,0 +1,32 @@
+name: Playtest notes
+description: Quick notes after playing with kids. The lead turns them into draft tickets for your approval.
+title: "Playtest: "
+labels: ["playtest"]
+body:
+  - type: markdown
+    attributes:
+      value: No names, photos or transcripts. Describe players by age only.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything that happened, in your own words.
+    validations:
+      required: true
+  - type: input
+    id: who
+    attributes:
+      label: Who played
+      description: Ages and how many, like "two kids, 4 and 6".
+  - type: textarea
+    id: laughs
+    attributes:
+      label: What made them laugh
+  - type: textarea
+    id: flat
+    attributes:
+      label: What fell flat
+  - type: textarea
+    id: ideas
+    attributes:
+      label: Ideas
