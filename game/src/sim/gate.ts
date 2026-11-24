@@ -6,7 +6,7 @@
 
 import type { Event, Manifest, SkillManifest } from "../core/contracts";
 import { contractValidators } from "../core/contractsSchema";
-import { type Limits, type Violation, violation } from "../kernel/guardian/rules";
+import { type Limits, MAX_SCARED_STEPS, type Violation, violation } from "../kernel/guardian/rules";
 import type { Punchline } from "./kid";
 import { bitSkills } from "./policies";
 import { type KidProfile, profiles } from "./profiles";
@@ -20,13 +20,10 @@ import {
   run,
 } from "./simulator";
 
-/** The scared-step cap intents are checked against until settings set one per personality. */
-const MAX_SCARED_STEPS = 1;
-
 export interface GateOptions extends RegretOptions {
   /** The policies to check; the simulator's own by default. */
   readonly policies?: readonly Policy[];
-  /** Wall-clock ms for the time budgets; tests pass a fake one. */
+  /** Wall-clock ms for the time budgets; `performance.now` unless a test passes a fake one. */
   readonly now?: () => number;
 }
 
@@ -73,8 +70,8 @@ function checked(profile: KidProfile, policy: Policy, seed: number, options: Gat
     const broken = type === "intent.proposed" ? unsafety(data) : null;
     if (broken) unsafe.push(`${broken.rule}: ${broken.reason}`);
   };
-  const { horizon, now } = options;
-  const result = run(profile, policy[1](), { seed, horizon, sink, ...(now && { now }) });
+  const { horizon, now = () => performance.now() } = options;
+  const result = run(profile, policy[1](), { seed, horizon, sink, now });
   return { ...result, unsafe, overBudget } satisfies Checked;
 }
 
