@@ -23,6 +23,9 @@ export function createHud(host: HTMLElement): Hud {
   const sound = document.createElement("div");
   const server = document.createElement("div");
   const moment = document.createElement("div");
+  // The screenshot script reads these two lines to know when to take a picture.
+  camera.id = "hud-camera";
+  moment.id = "hud-moment";
   box.append(camera, body, last, sound, server, moment);
   host.appendChild(box);
   camera.textContent = "Camera: starting...";
