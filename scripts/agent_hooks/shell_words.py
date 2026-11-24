@@ -19,14 +19,21 @@ WRAPPERS: dict[str, frozenset[str]] = {
     "nohup": frozenset(),
     "exec": frozenset({"-a"}),
     "command": frozenset(),
-    "sudo": frozenset({"-u", "--user", "-g", "--group", "-C", "-D", "-h", "-p", "-r", "-t", "-U"}),
+    "sudo": frozenset(
+        {
+            *("-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-T", "-R"),
+            *("--user", "--group", "--close-from", "--chdir", "--host", "--prompt", "--role"),
+            *("--type", "--other-user", "--command-timeout", "--chroot"),
+        }
+    ),
     "nice": frozenset({"-n", "--adjustment"}),
     "xargs": frozenset(
-        {"-a", "-d", "-E", "-I", "-L", "-n", "-P", "-s", "--arg-file", "--delimiter"}
+        {
+            *("-a", "-d", "-E", "-I", "-L", "-n", "-P", "-s", "--arg-file", "--delimiter"),
+            *("--max-args", "--max-lines", "--max-procs", "--max-chars", "--process-slot-var"),
+        }
     ),
 }
-# `env -S '<command>'` splits the string into words and runs them.
-ENV_SPLIT_STRING = ("--split-string=", "--split-string", "-S")
 SHELLS = frozenset({"bash", "sh", "zsh", "dash"})
 
 
@@ -95,17 +102,31 @@ def split_words(text: str) -> list[str]:
         return text.split()
 
 
+def abbreviates(word: str, option: str) -> bool:
+    """True for long `option` or a prefix git or getopt expands to it, with or without `=value`."""
+    name = word.split("=", 1)[0]
+    return name.startswith("--") and name != "--" and option.startswith(name)
+
+
+def env_split_string(word: str) -> tuple[bool, str] | None:
+    """For an `env -S` option word (`-S`, `-iS'cmd'`, `--split-str=cmd`): (inline, value)."""
+    if word.startswith("--"):
+        name, eq, value = word.partition("=")
+        return (bool(eq), value) if abbreviates(name, "--split-string") else None
+    flags, s, value = word[1:].partition("S")
+    return (bool(value), value) if s and "u" not in flags else None
+
+
 def expand_env_split_string(words: list[str]) -> list[str]:
     """Replace a leading `env -S '<command>'` option with the words of its string."""
     i = 0
     while i < len(words) and words[i].startswith("-"):
-        word = words[i]
-        prefix = next((p for p in ENV_SPLIT_STRING if word.startswith(p)), None)
-        if prefix and word != prefix:
-            return [*words[:i], *split_words(word[len(prefix) :]), *words[i + 1 :]]
-        if prefix:
+        found = env_split_string(words[i])
+        if found and found[0]:
+            return [*words[:i], *split_words(found[1]), *words[i + 1 :]]
+        if found:
             return [*words[:i], *split_words(" ".join(words[i + 1 : i + 2])), *words[i + 2 :]]
-        i += 2 if word in WRAPPERS["env"] else 1
+        i += 2 if words[i] in WRAPPERS["env"] else 1
     return words
 
 
