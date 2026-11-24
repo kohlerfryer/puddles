@@ -8,6 +8,7 @@ from typing import Any
 
 from scripts.agent_hooks.hook_io import is_ci_agent, read_event
 from scripts.agent_hooks.shell_words import (
+    heredoc_substitutions,
     nested_commands,
     segments,
     skip_options,
@@ -28,6 +29,7 @@ GIT_OPTIONS_WITH_VALUE = frozenset({"-C", "-c", "--git-dir", "--work-tree", "--n
 COMMIT_FLAGS = re.compile(r"-([^mFCctSu]*)([mFCctSu]?)(.*)")
 COMMIT_SHORT_WITH_VALUE = frozenset("mFCct")
 COMMIT_LONG_WITH_VALUE = frozenset({"--message", "--file", "--template", "--author", "--trailer"})
+GH_OPTIONS_WITH_VALUE = frozenset({"-R", "--repo"})
 
 GATE_PATHS = (
     ".github/",
@@ -54,13 +56,19 @@ GATE_FILES = frozenset(
 )
 
 
+def abbreviates(word: str, option: str) -> bool:
+    """True for `option` or a prefix git expands to it (`--forc`), with or without `=value`."""
+    name = word.split("=", 1)[0]
+    return name not in ("-", "--") and option.startswith(name)
+
+
 def commit_skips_hooks(args: list[str]) -> bool:
     """True for `--no-verify` or an `n` among combined short flags (`-anm`)."""
     words = iter(args)
     for arg in words:
         if arg == "--":
             return False
-        if arg == "--no-verify":
+        if abbreviates(arg, "--no-verify"):
             return True
         cluster = COMMIT_FLAGS.fullmatch(arg) if not arg.startswith("--") else None
         if cluster and "n" in cluster[1]:
@@ -74,7 +82,7 @@ def commit_skips_hooks(args: list[str]) -> bool:
 
 def is_force_flag(word: str) -> bool:
     if word.startswith("--"):
-        return word in ("--force", "--force-with-lease") or word.startswith("--force-with-lease=")
+        return abbreviates(word, "--force") or abbreviates(word, "--force-with-lease")
     return word.startswith("-") and "f" in word[1:]
 
 
@@ -86,8 +94,10 @@ def targets_main(word: str, branch: str) -> bool:
 def push_denial(args: list[str], branch: str) -> str | None:
     if any(is_force_flag(a) or a.startswith("+") for a in args):
         return "Force-pushing is not allowed."
-    if "--no-verify" in args:
+    if any(abbreviates(a, "--no-verify") for a in args):
         return "Skipping git hooks with --no-verify is not allowed."
+    if any(abbreviates(a, o) for a in args for o in ("--mirror", "--all", "--branches")):
+        return "Pushing every ref pushes main too; push your branch by name."
     refs = [a for a in args if not a.startswith("-")]
     if any(targets_main(r, branch) for r in refs[1:]) or (len(refs) <= 1 and branch == "main"):
         return "Pushing to main is not allowed; open a PR from a branch."
@@ -113,9 +123,15 @@ def segment_denial(words: list[str], branch: str, ci_agent: bool) -> str | None:
             return reason
     if words[0] == "git":
         return git_denial(words[1:], branch)
-    if ci_agent and words[:3] == ["gh", "pr", "merge"]:
+    if ci_agent and words[0] == "gh" and gh_merges(words[1:]):
         return "Agents never merge PRs; the risk gate and the owner do."
     return None
+
+
+def gh_merges(args: list[str]) -> bool:
+    """`gh pr merge`, with options like `-R owner/repo` before either subcommand."""
+    args = skip_options(args, GH_OPTIONS_WITH_VALUE)
+    return args[:1] == ["pr"] and skip_options(args[1:], GH_OPTIONS_WITH_VALUE)[:1] == ["merge"]
 
 
 def regex_denial(command: str) -> str | None:
@@ -137,12 +153,13 @@ def bash_denial(command: str, branch: str, ci_agent: bool) -> str | None:
     prefixes are skipped, and strings run by `bash -c`, `eval` or command substitution are
     checked as commands too. Here-document bodies are text, apart from their substitutions.
     """
-    for body in substitutions(strip_heredocs(command, quoted_only=True)):
+    stripped = strip_heredocs(command)
+    for body in substitutions(stripped) + heredoc_substitutions(command):
         reason = bash_denial(body, branch, ci_agent)
         if reason:
             return reason
     try:
-        parts = segments(strip_heredocs(command))
+        parts = segments(stripped)
     except ValueError:
         return regex_denial(command)
     for words in parts:
