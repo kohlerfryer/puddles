@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { KernelEvent } from "../core/contracts";
+import { createGuardian, type GuardianSettings } from "./guardian/guardian";
 import { createKernel } from "./kernel";
-import type { PluginFolder } from "./plugins";
+import type { Behavior, PluginFolder } from "./plugins";
 import { fakeBrain, fakeSense, fakeSkill, routine } from "./testing";
 
 /** A held object every 10 ticks; a matcher that answers it with a random skill; a bored bandit. */
@@ -86,5 +87,90 @@ describe("createKernel", () => {
   it("lists plugins it refused", () => {
     const kernel = createKernel({ plugins: [{ manifest: {} }] });
     expect(kernel.registry.rejected).toHaveLength(1);
+  });
+
+  it("plays behaviors it was given", () => {
+    const wander: Behavior = () => (last) => last ?? { skill: "walk", args: {} };
+    const brain = fakeBrain("bandit", "tick", () => ({
+      brain: "bandit",
+      priority: 1,
+      kind: "behavior",
+      behavior: { id: "wander", params: {} },
+      why: "test",
+    }));
+    const kernel = createKernel({
+      plugins: [brain, fakeSkill("walk", 2)],
+      behaviors: new Map([["wander", wander]]),
+      now: () => 0,
+    });
+    for (let i = 0; i < 3; i++) kernel.tick();
+    expect(executorEvents(kernel.log.events())).toEqual([
+      "intent.started",
+      "intent.dropped",
+      "outcome.done",
+      "intent.done",
+      "intent.started",
+    ]);
+  });
+});
+
+const GUARDED: GuardianSettings = {
+  skillSeconds: new Map([
+    ["look_at", 1],
+    ["nap", 3],
+    ["walk", 1],
+  ]),
+  maxScaredSteps: 1,
+  intentsPerSecond: 1,
+  modelCallsPerMinute: 1,
+  sessionSoftLimitMs: 60 * 60_000,
+};
+
+/** A kernel whose one brain says `say` every tick, checked by a guardian. */
+function guarded(say: string) {
+  const brain = fakeBrain("bandit", "tick", () => ({
+    ...routine("bandit", 2, "walk"),
+    steps: [{ skill: "walk", args: {}, say }],
+  }));
+  return createKernel({
+    plugins: [brain, fakeSkill("walk", 30), fakeSkill("look_at", 30), fakeSkill("nap", 90)],
+    guardian: createGuardian(GUARDED),
+    now: () => 0,
+  });
+}
+
+const executorEvents = (events: readonly KernelEvent[]) =>
+  events.filter((e) => e.source === "executor").map((e) => e.type);
+
+const started = (events: readonly KernelEvent[]) =>
+  events.filter((e) => e.type === "intent.started").map((e) => e.data.brain);
+
+describe("createKernel with a guardian", () => {
+  it("plays an intent the guardian passed and logs the verdict", () => {
+    const kernel = guarded("Wheee!");
+    kernel.tick();
+    expect(kernel.log.events().map((e) => `${e.source} ${e.type}`)).toEqual([
+      "bandit intent.proposed",
+      "guardian guardian.passed",
+      "executor intent.started",
+    ]);
+    expect(started(kernel.log.events())).toEqual(["bandit"]);
+  });
+
+  it("plays the guardian's fallback instead of a rejected intent, and logs why", () => {
+    const kernel = guarded("you are dumb");
+    kernel.tick();
+    const [, verdict] = kernel.log.events();
+    expect(verdict).toMatchObject({ type: "guardian.rejected", data: { rule: "blocklist" } });
+    expect(started(kernel.log.events())).toEqual(["guardian"]);
+  });
+
+  it("never offers an intent the guardian dropped", () => {
+    const kernel = guarded("Wheee!");
+    for (let i = 0; i < 10; i++) kernel.tick();
+    const events = kernel.log.events();
+    const verdicts = events.filter((e) => e.source === "guardian").map((e) => e.data.rule);
+    expect(verdicts).toEqual([undefined, ...Array<string>(9).fill("rate")]);
+    expect(executorEvents(events)).toEqual(["intent.started"]);
   });
 });

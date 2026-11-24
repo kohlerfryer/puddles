@@ -3,9 +3,40 @@ import { describe, expect, it } from "vitest";
 import type { Intent } from "../core/contracts";
 import { seededRandom } from "../core/random";
 import { createExecutor } from "./executor";
-import type { Emitted } from "./plugins";
+import type { Behavior, Emitted } from "./plugins";
 import { createRegistry } from "./registry";
 import { fakeSkill, routine } from "./testing";
+
+/** Pecks `times` times (from its params), then walks off; gives up if a step fails. */
+const pecking: Behavior = ({ times }) => {
+  let left = Number(times);
+  return (last) => {
+    if (last?.status === "failed") return { status: "failed", reason: "gave up" };
+    left -= 1;
+    if (left >= 0) return { skill: "peck", args: {} };
+    return left === -1 ? { skill: "walk", args: {} } : { status: "done", effects: { fed: true } };
+  };
+};
+
+/** Tries to trip once, which always fails, and ends the way the trip did. */
+const clumsy: Behavior = () => (last) => last ?? { skill: "trip", args: {} };
+
+/** Asks for a skill nobody installed. */
+const juggling: Behavior = () => () => ({ skill: "juggle", args: {} });
+
+const BEHAVIORS = new Map([
+  ["pecking", pecking],
+  ["clumsy", clumsy],
+  ["juggling", juggling],
+]);
+
+const behavior = (brain: string, priority: number, id: string, params = {}): Intent => ({
+  brain,
+  priority,
+  kind: "behavior",
+  behavior: { id, params },
+  why: "test",
+});
 
 function setup() {
   const emitted: Emitted[] = [];
@@ -14,7 +45,7 @@ function setup() {
     fakeSkill("peck", 1),
     fakeSkill("trip", 1, "failed"),
   ]);
-  const executor = createExecutor(registry.skills, (e) => emitted.push(e));
+  const executor = createExecutor(registry.skills, (e) => emitted.push(e), BEHAVIORS);
   let t = 0;
   const ctx = () => ({ t, events: [], random: seededRandom(1) });
   const tick = (n = 1) => {
@@ -89,22 +120,84 @@ describe("createExecutor", () => {
     expect(executor.current?.brain).toBe("bandit");
   });
 
-  it("drops intents it can't play yet", () => {
+  it("drops goals, which it can't play yet", () => {
     const { offer, emitted } = setup();
-    const behavior: Intent = {
-      brain: "copy",
-      priority: 1,
-      kind: "behavior",
-      behavior: { id: "copy_me", params: {} },
-      why: "x",
-    };
-    expect(offer(behavior)).toBe(false);
+    const goal: Intent = { brain: "planner", priority: 1, kind: "goal", why: "x" };
+    expect(offer(goal)).toBe(false);
     expect(emitted).toEqual([
       {
         type: "intent.dropped",
-        data: { brain: "copy", reason: "the executor plays routines only" },
+        data: { brain: "planner", reason: "the executor plays routines and behaviors only" },
       },
     ]);
+  });
+
+  it("plays a behavior through its skills and reports one outcome at the end", () => {
+    const { executor, tick, offer, types, emitted } = setup();
+    expect(offer(behavior("bandit", 1, "pecking", { times: 2 }))).toBe(true);
+    tick(3);
+    expect(executor.current?.brain).toBe("bandit");
+    tick();
+    expect(types()).toEqual(["intent.started", "outcome.done", "intent.done"]);
+    expect(emitted[1]?.data).toEqual({ step: 0, status: "done", effects: { fed: true } });
+    expect(executor.current).toBeNull();
+  });
+
+  it("lets the behavior decide what a failed skill means", () => {
+    const { tick, offer, types, emitted } = setup();
+    offer(behavior("bandit", 1, "clumsy"));
+    tick();
+    expect(types()).toEqual(["intent.started", "outcome.failed", "intent.failed"]);
+    expect(emitted[1]?.data).toEqual({ step: 0, status: "failed", reason: "trip failed" });
+    expect(emitted[2]?.data).toEqual({ brain: "bandit", step: 0 });
+  });
+
+  it("fails a behavior that asks for a skill that isn't installed", () => {
+    const { offer, types, emitted } = setup();
+    offer(behavior("bandit", 1, "juggling"));
+    expect(types()).toEqual(["intent.started", "outcome.failed", "intent.failed"]);
+    expect(emitted[1]?.data).toEqual({
+      step: 0,
+      status: "failed",
+      reason: "unknown skill: juggle",
+    });
+  });
+
+  it("drops a behavior that isn't registered", () => {
+    const { executor, offer, emitted } = setup();
+    expect(offer(behavior("copy", 1, "copy_me"))).toBe(false);
+    expect(emitted).toEqual([
+      { type: "intent.dropped", data: { brain: "copy", reason: "unknown behavior: copy_me" } },
+    ]);
+    expect(executor.current).toBeNull();
+  });
+
+  it("lets a higher priority intent interrupt a running behavior, with its one outcome", () => {
+    const { executor, tick, offer, types, emitted } = setup();
+    offer(behavior("bandit", 1, "pecking", { times: 3 }));
+    tick(2);
+    expect(offer(routine("reflexes", 4, "walk"))).toBe(true);
+    expect(types()).toEqual([
+      "intent.started",
+      "outcome.interrupted",
+      "intent.preempted",
+      "intent.started",
+    ]);
+    expect(emitted[1]?.data).toEqual({
+      step: 0,
+      status: "interrupted",
+      reason: "preempted by reflexes",
+    });
+    expect(executor.current?.brain).toBe("reflexes");
+  });
+
+  it("keeps a running behavior when an equal or lower priority intent arrives", () => {
+    const { executor, offer, types } = setup();
+    offer(behavior("bandit", 2, "pecking", { times: 3 }));
+    expect(offer(routine("planner", 2, "walk"))).toBe(false);
+    expect(offer(behavior("reflexes", 1, "clumsy"))).toBe(false);
+    expect(types()).toEqual(["intent.started", "intent.dropped", "intent.dropped"]);
+    expect(executor.current?.brain).toBe("bandit");
   });
 
   it("does nothing when idle", () => {
