@@ -1,6 +1,6 @@
 # Bench photos
 
-Photos of common household objects for `just bench-vlm ml/bench/photos`. Only CC0, CC BY or public-domain images, each listed here with its source and license.
+Photos of common household objects for `just bench-vlm ml/bench/photos`. Only CC0, public-domain, CC BY or CC BY-SA images, each listed here with its source and license (BY-SA photos stay under BY-SA; attribution is on each source page).
 
 | File | Object | Source | License | Author |
 | --- | --- | --- | --- | --- |
