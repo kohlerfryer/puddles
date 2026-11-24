@@ -47,6 +47,7 @@ describe("createKernel", () => {
       "executor outcome.interrupted",
       "executor intent.preempted",
       "executor intent.started",
+      "executor action.started",
     ]);
   });
 
@@ -106,10 +107,12 @@ describe("createKernel", () => {
     for (let i = 0; i < 3; i++) kernel.tick();
     expect(executorEvents(kernel.log.events())).toEqual([
       "intent.started",
+      "action.started",
       "intent.dropped",
       "outcome.done",
       "intent.done",
       "intent.started",
+      "action.started",
     ]);
   });
 });
@@ -153,6 +156,7 @@ describe("createKernel with a guardian", () => {
       "bandit intent.proposed",
       "guardian guardian.passed",
       "executor intent.started",
+      "executor action.started",
     ]);
     expect(started(kernel.log.events())).toEqual(["bandit"]);
   });
@@ -171,6 +175,6 @@ describe("createKernel with a guardian", () => {
     const events = kernel.log.events();
     const verdicts = events.filter((e) => e.source === "guardian").map((e) => e.data.rule);
     expect(verdicts).toEqual([undefined, ...Array<string>(9).fill("rate")]);
-    expect(executorEvents(events)).toEqual(["intent.started"]);
+    expect(executorEvents(events)).toEqual(["intent.started", "action.started"]);
   });
 });

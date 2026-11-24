@@ -73,6 +73,7 @@ function play(player: Player, run: Running, next: Step | Finished, ctx: PluginCo
   }
   const skill = player.skills.get(next.skill);
   if (skill) {
+    player.emit({ type: "action.started", data: { brain: run.intent.brain, ...next } });
     run.activity = skill.start(next.args, ctx);
     return;
   }
@@ -143,7 +144,7 @@ export function createExecutor(
     offer: (intent, ctx) => offer(player, intent, ctx),
     tick(ctx) {
       const run = player.running;
-      const status = run?.activity?.tick(ctx.t);
+      const status = run?.activity?.tick(ctx.t, ctx.events);
       if (run && status && status !== "running") finish(player, run, status, ctx);
     },
   };

@@ -34,9 +34,9 @@ export interface Finished {
   readonly effects?: Record<string, unknown>;
 }
 
-/** One running skill call; the executor ticks it until it finishes. */
+/** One running skill call; the executor ticks it with the tick's new events until it finishes. */
 export interface Activity {
-  tick(t: number): "running" | Finished;
+  tick(t: number, events: readonly KernelEvent[]): "running" | Finished;
 }
 
 /**

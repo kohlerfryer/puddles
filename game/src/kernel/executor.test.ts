@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { Intent } from "../core/contracts";
+import type { Intent, KernelEvent } from "../core/contracts";
 import { seededRandom } from "../core/random";
 import { createExecutor } from "./executor";
-import type { Behavior, Emitted } from "./plugins";
+import type { Activity, Behavior, Emitted, PluginFolder } from "./plugins";
 import { createRegistry } from "./registry";
 import { fakeSkill, routine } from "./testing";
 
@@ -24,6 +24,17 @@ const clumsy: Behavior = () => (last) => last ?? { skill: "trip", args: {} };
 /** Asks for a skill nobody installed. */
 const juggling: Behavior = () => () => ({ skill: "juggle", args: {} });
 
+/** A skill that runs until it hears a `bell` event. */
+const listening: PluginFolder = {
+  ...fakeSkill("listen", 1),
+  code: {
+    start: (): Activity => ({
+      tick: (_t, events) =>
+        events.some((e) => e.type === "bell") ? { status: "done" } : "running",
+    }),
+  },
+};
+
 const BEHAVIORS = new Map([
   ["pecking", pecking],
   ["clumsy", clumsy],
@@ -40,14 +51,21 @@ const behavior = (brain: string, priority: number, id: string, params = {}): Int
 
 function setup() {
   const emitted: Emitted[] = [];
+  const actions: Emitted[] = [];
   const registry = createRegistry([
     fakeSkill("walk", 2),
     fakeSkill("peck", 1),
     fakeSkill("trip", 1, "failed"),
+    listening,
   ]);
-  const executor = createExecutor(registry.skills, (e) => emitted.push(e), BEHAVIORS);
+  const executor = createExecutor(
+    registry.skills,
+    (e) => (e.type.startsWith("action.") ? actions : emitted).push(e),
+    BEHAVIORS,
+  );
   let t = 0;
-  const ctx = () => ({ t, events: [], random: seededRandom(1) });
+  let events: KernelEvent[] = [];
+  const ctx = () => ({ t, events, random: seededRandom(1) });
   const tick = (n = 1) => {
     for (let i = 0; i < n; i++) {
       t += 33;
@@ -56,7 +74,10 @@ function setup() {
   };
   const offer = (intent: Intent) => executor.offer(intent, ctx());
   const types = () => emitted.map((e) => e.type);
-  return { emitted, executor, tick, offer, types };
+  const hear = (heard: KernelEvent[]) => {
+    events = heard;
+  };
+  return { emitted, actions, executor, tick, offer, types, hear };
 }
 
 describe("createExecutor", () => {
@@ -198,6 +219,36 @@ describe("createExecutor", () => {
     expect(offer(behavior("reflexes", 1, "clumsy"))).toBe(false);
     expect(types()).toEqual(["intent.started", "intent.dropped", "intent.dropped"]);
     expect(executor.current?.brain).toBe("bandit");
+  });
+
+  it("logs each skill step as it starts, with the brain that asked", () => {
+    const { tick, offer, actions } = setup();
+    const steps: Intent["steps"] = [
+      { skill: "walk", args: { to: 3 }, say: "Hi!" },
+      { skill: "peck", args: {} },
+    ];
+    offer({ ...routine("reflexes", 1, "walk"), steps });
+    expect(actions).toEqual([
+      {
+        type: "action.started",
+        data: { brain: "reflexes", skill: "walk", args: { to: 3 }, say: "Hi!" },
+      },
+    ]);
+    tick(2);
+    expect(actions[1]).toEqual({
+      type: "action.started",
+      data: { brain: "reflexes", skill: "peck", args: {} },
+    });
+  });
+
+  it("lets a running skill hear the tick's events", () => {
+    const { tick, offer, types, hear } = setup();
+    offer(routine("copy", 1, "listen"));
+    tick(3);
+    expect(types()).toEqual(["intent.started"]);
+    hear([{ t: 99, type: "bell", source: "test", data: {} }]);
+    tick();
+    expect(types()).toEqual(["intent.started", "outcome.done", "intent.done"]);
   });
 
   it("does nothing when idle", () => {
