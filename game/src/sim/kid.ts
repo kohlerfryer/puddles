@@ -27,6 +27,7 @@ const CALM = 0.1;
 const SMILE = 0.6;
 /** A smile this big comes with a clap. */
 const CLAP = 0.9;
+const EMITS = ["observation.smile", "observation.gesture", "observation.walk_away"];
 
 function smileAt(chance: number, random: Random): Emitted[] {
   const level = random() < chance ? SMILE + (1 - SMILE) * random() : CALM * random();
@@ -67,13 +68,13 @@ export function simulatedKid(profile: KidProfile, log: () => EventLog): Simulate
     return type === "intent.done" && present ? react(t, random) : [];
   };
 
-  const plugin = fakeSense("kid", ({ t, random }) => {
+  const sense = fakeSense("kid", ({ t, random }) => {
     const events = log().since(read);
     read = log().count;
     return events.flatMap((event) => follow(event, t, random));
   });
   return {
-    plugin,
+    plugin: { ...sense, manifest: { ...(sense.manifest as object), emits: EMITS } },
     punchlines,
     get present() {
       return present;
