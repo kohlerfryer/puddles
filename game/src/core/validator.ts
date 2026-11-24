@@ -1,4 +1,5 @@
 import schema from "../../../shared/reaction.schema.json";
+import { type Prop, propFor } from "../plugins/content/props";
 import { SKILLS } from "../plugins/skill";
 import type { Step, Traits, Verb } from "./reaction";
 import { isReaction } from "./reactionSchema";
@@ -38,11 +39,15 @@ export const DEFAULT_TRAITS: Traits = {
   edible: false,
 };
 
-/** What the game plays for a reply: its traits and script, and whether the reply was valid. */
+/**
+ * What the game plays for a reply: its traits and script, whether the reply was valid, and the
+ * prop to spawn when the matcher's answer names one; the prop's traits replace the model's.
+ */
 export interface SafeReaction {
   readonly valid: boolean;
   readonly traits: Traits;
   readonly script: Step[];
+  readonly prop?: Prop;
 }
 
 /** What Puddles does instead of a verb whose skill needs something the object lacks. */
@@ -104,8 +109,10 @@ export function safeReaction(raw: string): SafeReaction {
   if (!isReaction(reaction)) {
     return { valid: false, traits: DEFAULT_TRAITS, script: [...DEFAULT_SCRIPT] };
   }
-  const steps = reaction.script.map((step) => cutSay(swapVerb(step, reaction.traits)));
-  return { valid: true, traits: reaction.traits, script: fitTime(steps) };
+  const prop = reaction.prop && propFor(reaction.prop, reaction.traits.size);
+  const traits = prop?.traits ?? reaction.traits;
+  const steps = reaction.script.map((step) => cutSay(swapVerb(step, traits)));
+  return { valid: true, traits, script: fitTime(steps), ...(prop && { prop }) };
 }
 
 /** Turns raw model output into a script the game can always play. */

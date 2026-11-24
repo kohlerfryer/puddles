@@ -151,6 +151,50 @@ describe("safeReaction", () => {
     expect(safeReaction(raw)).toEqual({ valid: true, traits: smallSnack, script: safeScript(raw) });
   });
 
+  it("spawns the library prop the matcher named and plays the script against its traits", () => {
+    const raw = JSON.stringify({
+      ...JSON.parse(
+        reaction([
+          { do: "sniff", mood: "curious" },
+          { do: "wear", mood: "proud" },
+        ]),
+      ),
+      prop: { id: "blanket" },
+    });
+    const { traits, script, prop } = safeReaction(raw);
+    expect(prop?.id).toBe("blanket");
+    expect(traits).toEqual(prop?.traits);
+    expect(verbs(script)).toEqual(["sniff", "push"]);
+  });
+
+  it("spawns a generic prop for other, sized like the object", () => {
+    const other = { id: "other", archetype: "box", color: "#aabbcc" };
+    const raw = JSON.stringify({
+      ...JSON.parse(
+        reaction([
+          { do: "sniff", mood: "curious" },
+          { do: "flap", mood: "happy" },
+        ]),
+      ),
+      prop: other,
+    });
+    expect(safeReaction(raw).prop).toMatchObject({ ...other, traits: { size: "small" } });
+  });
+
+  it("keeps the model's traits and spawns no prop for an id that isn't installed", () => {
+    const raw = JSON.stringify({
+      ...JSON.parse(
+        reaction([
+          { do: "sniff", mood: "curious" },
+          { do: "eat", mood: "happy" },
+        ]),
+      ),
+      prop: { id: "spaceship" },
+    });
+    expect(safeReaction(raw)).toEqual(safeReaction(raw.replace(',"prop":{"id":"spaceship"}', "")));
+    expect(safeReaction(raw).traits).toEqual(smallSnack);
+  });
+
   it("falls back to default traits and the confused script for an invalid reply", () => {
     expect(safeReaction("{not json")).toEqual({
       valid: false,

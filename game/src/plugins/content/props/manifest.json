@@ -1,0 +1,10 @@
+{
+  "kind": "content",
+  "type": "prop",
+  "id": "props",
+  "contract": "1",
+  "name": "Prop library v1",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["uses_object"]
+}
