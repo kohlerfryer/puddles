@@ -23,8 +23,11 @@ NO_VERIFY = re.compile(r"\bgit\s+(commit|push)\b.*\s(--no-verify|-n)\b")
 
 MAIN_REFS = frozenset({"main", "refs/heads/main"})
 GIT_OPTIONS_WITH_VALUE = frozenset({"-C", "-c", "--git-dir", "--work-tree", "--namespace"})
-# Short `git commit` flags whose value may follow in the same word (`-mmsg`).
-COMMIT_VALUE_FLAGS = frozenset("mFCctSu")
+# A cluster of short `git commit` flags: plain flags, then maybe one that takes a value
+# (`-mmsg`, or `-m msg` with the value in the next word; `-S` and `-u` only take it inline).
+COMMIT_FLAGS = re.compile(r"-([^mFCctSu]*)([mFCctSu]?)(.*)")
+COMMIT_SHORT_WITH_VALUE = frozenset("mFCct")
+COMMIT_LONG_WITH_VALUE = frozenset({"--message", "--file", "--template", "--author", "--trailer"})
 
 GATE_PATHS = (
     ".github/",
@@ -53,15 +56,19 @@ GATE_FILES = frozenset(
 
 def commit_skips_hooks(args: list[str]) -> bool:
     """True for `--no-verify` or an `n` among combined short flags (`-anm`)."""
-    for arg in args:
+    words = iter(args)
+    for arg in words:
         if arg == "--":
             return False
         if arg == "--no-verify":
             return True
-        if arg.startswith("-") and not arg.startswith("--"):
-            flags = re.split(f"[{''.join(COMMIT_VALUE_FLAGS)}]", arg[1:], maxsplit=1)[0]
-            if "n" in flags:
-                return True
+        cluster = COMMIT_FLAGS.fullmatch(arg) if not arg.startswith("--") else None
+        if cluster and "n" in cluster[1]:
+            return True
+        if arg in COMMIT_LONG_WITH_VALUE or (
+            cluster and cluster[2] in COMMIT_SHORT_WITH_VALUE and not cluster[3]
+        ):
+            next(words, None)
     return False
 
 
