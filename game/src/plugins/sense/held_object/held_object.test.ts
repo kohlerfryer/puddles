@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { type CameraSample, replayCamera } from "../../../core/cameraSample";
 import type { KernelEvent } from "../../../core/contracts";
 import { LANDMARK_COUNT, type PoseFrame } from "../../../core/poseFixture";
+import { safeReaction } from "../../../core/validator";
 import { createKernel } from "../../../kernel/kernel";
 import { runSense } from "../../../kernel/testing";
 import { COOLDOWN_MS, cropBox, HOLD_MS } from "./hold";
@@ -18,6 +19,16 @@ const hand = [
   { x: 0.45, y: 0.32 },
 ];
 const lowHand = [{ x: 0.1, y: 0.6 }];
+/** What the server's fake model replies for any photo. */
+const REPLY = {
+  holding: true,
+  object: "rubber duck",
+  traits: { size: "small", weight: "light", shape: "round", edible: false },
+  script: [
+    { do: "look_at", target: "object", mood: "curious", say: "Who is that?" },
+    { do: "dance", target: "none", mood: "happy", say: "A friend!" },
+  ],
+};
 
 /** A pose with every landmark in the middle, then the given heights by landmark index. */
 const poseAt = (t: number, heights: Record<number, number>): PoseFrame => ({
@@ -75,5 +86,20 @@ describe("the held_object sense", () => {
     expect(heldHand({ t: 0, type: "observation.kid", source: "pose", data: {} })).toBeUndefined();
     const odd = { t: 0, type: "observation.held", source: "held_object", data: { hand: 1 } };
     expect(heldHand(odd)).toBeUndefined();
+  });
+
+  it("logs the server's reply once as an observation.object carrying only the reaction", () => {
+    const sense = heldObjectSense(replayCamera([]));
+    const kernel = createKernel({ plugins: [sense.folder], now: () => 0 });
+    const reaction = safeReaction(JSON.stringify(REPLY));
+    kernel.tick();
+    sense.reacted(reaction);
+    kernel.tick();
+    kernel.tick();
+    const objects = kernel.log.events().filter((e) => e.type === "observation.object");
+    expect(objects.map(({ source, data }) => ({ source, data }))).toEqual([
+      { source: "held_object", data: { reaction } },
+    ]);
+    expect(JSON.stringify(objects)).not.toMatch(/image|base64|photo|crop/i);
   });
 });

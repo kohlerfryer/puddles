@@ -2,8 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import schema from "../../../../shared/reaction.schema.json";
 import { VERB_SECONDS } from "../../core/validator";
-import { createGuardian } from "../../kernel/guardian/guardian";
-import { MAX_SCARED_STEPS } from "../../kernel/guardian/rules";
+import { liveGuardian } from "../../kernel/guardian/live";
 import { checkPlugin } from "../../kernel/harness";
 import { SKILLS } from "./index";
 
@@ -32,16 +31,7 @@ describe("skill plugins", () => {
   });
 
   it("installs every skill the guardian's own intents use", () => {
-    const skillSeconds = new Map(SKILLS.map(({ manifest }) => [manifest.id, manifest.duration_s]));
-    expect(() =>
-      createGuardian({
-        skillSeconds,
-        maxScaredSteps: MAX_SCARED_STEPS,
-        intentsPerSecond: 2,
-        modelCallsPerMinute: 6,
-        sessionSoftLimitMs: 20 * 60_000,
-      }),
-    ).not.toThrow();
+    expect(() => liveGuardian(SKILLS, 20)).not.toThrow();
   });
 
   it("naps for a few seconds with nothing to target, then ends with one outcome", () => {

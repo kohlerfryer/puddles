@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isReaction } from "./reactionSchema";
+import { isReaction, isScript } from "./reactionSchema";
 
 const toyCat = {
   holding: true,
@@ -36,5 +36,14 @@ describe("reaction schema", () => {
   it("rejects extra fields and missing traits", () => {
     expect(isReaction({ ...toyCat, x: 1 })).toBe(false);
     expect(isReaction({ ...toyCat, traits: { size: "small" } })).toBe(false);
+  });
+});
+
+describe("script schema", () => {
+  it("accepts one or more reaction steps and nothing else", () => {
+    expect(isScript(toyCat.script.slice(0, 1))).toBe(true);
+    expect(isScript([])).toBe(false);
+    expect(isScript([{ do: "teleport", mood: "silly" }])).toBe(false);
+    expect(isScript("look_at")).toBe(false);
   });
 });
