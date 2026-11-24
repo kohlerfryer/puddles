@@ -1,0 +1,39 @@
+name: nightly bench
+
+# The nightly real-model check (docs/spec/m3-kernel.md §14.1, K19w): runs SmolVLM on CPU over
+# ml/bench/photos and compares its replies with the cassettes that PR tests replay. Drift opens or
+# updates one issue; it never fails this job, and `main red` only watches `ci`.
+
+on:
+  schedule:
+    - cron: "30 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: nightly-bench
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    name: model drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0
+        with:
+          python-version: "3.12"
+      - name: Install the vlm group
+        run: uv sync --frozen --group vlm
+      - name: Compare real replies with the cassettes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHONPATH: server
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          uv run --frozen --group vlm python -m scripts.model_drift --summary drift.md --run-url "$RUN_URL"
+          cat drift.md >> "$GITHUB_STEP_SUMMARY"
