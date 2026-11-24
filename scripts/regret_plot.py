@@ -19,9 +19,9 @@ GAME = Path(__file__).resolve().parents[1] / "game"
 # Inside game/node_modules so Node finds the simulator's dependencies from the build.
 BUILD = GAME / "node_modules" / ".cache" / "puddles-sim"
 RUN = """
-const [path, options] = process.argv.slice(1);
-const { regretCurves } = await import(path);
-console.log(JSON.stringify(regretCurves(JSON.parse(options))));
+const [path, name, options] = process.argv.slice(1);
+const module = await import(path);
+console.log(JSON.stringify(module[name](JSON.parse(options))));
 """
 
 
@@ -50,22 +50,30 @@ def parse_curves(text: str) -> list[Curve]:
     return [curve for curve in curves if is_curve(curve)]
 
 
-def simulate(sessions: int, horizon: int, seed: int) -> list[Curve]:
-    """Mean cumulative regret per bit for each policy and simulated kid."""
-    build = ["vite", "build", "--ssr", "src/sim/simulator.ts", "--outDir", str(BUILD)]
+def run_simulator(
+    module: str, function: str, options: dict[str, int], timeout: float | None = None
+) -> str:
+    """Builds `game/src/sim/<module>.ts` and returns `function(options)` as JSON text."""
+    build = ["vite", "build", "--ssr", f"src/sim/{module}.ts", "--outDir", str(BUILD)]
     subprocess.run(
         ["pnpm", "-C", str(GAME), "exec", *build, "--emptyOutDir", "--logLevel", "warn"],
         check=True,
     )
-    options = json.dumps({"sessions": sessions, "horizon": horizon, "seed": seed})
-    module = (BUILD / "simulator.js").as_uri()
+    path = (BUILD / f"{module}.js").as_uri()
     result = subprocess.run(
-        ["node", "--input-type=module", "-e", RUN, module, options],
+        ["node", "--input-type=module", "-e", RUN, path, function, json.dumps(options)],
         check=True,
         capture_output=True,
         text=True,
+        timeout=timeout,
     )
-    return parse_curves(result.stdout)
+    return result.stdout
+
+
+def simulate(sessions: int, horizon: int, seed: int) -> list[Curve]:
+    """Mean cumulative regret per bit for each policy and simulated kid."""
+    options = {"sessions": sessions, "horizon": horizon, "seed": seed}
+    return parse_curves(run_simulator("simulator", "regretCurves", options))
 
 
 def plot(curves: list[Curve], out: Path) -> None:
