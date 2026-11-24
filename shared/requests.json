@@ -1,0 +1,8 @@
+{
+  "description": "The only things Puddles may ask the kid for. An ask_for step's request arg must be one of these ids.",
+  "gesture": ["wave", "clap", "jump", "spin", "hands_up", "thumbs_up", "touch_nose", "flap_arms"],
+  "color": ["red", "orange", "yellow", "green", "blue", "purple", "pink", "white", "black", "brown"],
+  "shape": ["round", "square", "long", "flat", "star"],
+  "food": ["banana", "apple", "carrot", "bread", "orange_fruit", "grapes"],
+  "soft_thing": ["teddy", "plush", "sock", "pillow", "blanket", "hat"]
+}

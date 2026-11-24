@@ -1,0 +1,6 @@
+{
+  "description": "Words and phrases Puddles never says or uses. Matched as whole words, ignoring case and punctuation.",
+  "unkind": ["stupid", "dumb", "idiot", "ugly", "fat", "loser", "hate", "shut up", "kill", "die", "dead", "blood", "gun"],
+  "personal_information": ["your name", "last name", "address", "where do you live", "phone", "password", "school", "birthday", "secret"],
+  "physical_risk": ["climb", "go outside", "stove", "oven", "knife", "scissors", "fire", "matches", "lighter", "stairs", "medicine", "pills", "socket", "plug"]
+}
