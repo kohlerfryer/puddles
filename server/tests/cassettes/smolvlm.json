@@ -1,0 +1,26 @@
+{
+  "model": "smolvlm",
+  "model_id": "HuggingFaceTB/SmolVLM-256M-Instruct",
+  "replies": {
+    "book-cover.jpg": {
+      "sha256": "4d0e825b377531fcb5520334a9e2c213182076f802526dee9726d201dc90ef31",
+      "reply": "Book."
+    },
+    "cereal-bowl.jpg": {
+      "sha256": "d0010c2aab99db5fd1d25bdb52bf74387471b5c32249cc587c5979b5f7944475",
+      "reply": "Bowl."
+    },
+    "toothbrush.jpg": {
+      "sha256": "2bf81e32eb4c2618ef41c727f8f06bdc82b027fa07d71e6da72aeaed1d8021e5",
+      "reply": "Toothbrush."
+    },
+    "toy-car.jpg": {
+      "sha256": "b5393267e116c61078d2c71a5fe734c1a58761cafc9df027204a1fd7719843d1",
+      "reply": "Toy car."
+    },
+    "water-bottle.jpg": {
+      "sha256": "5a3d64374bd9eeb3d195768bab4987a394abec6c2fb4bfdfd21763d3ed4d2546",
+      "reply": "Bottle."
+    }
+  }
+}
