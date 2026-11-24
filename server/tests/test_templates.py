@@ -35,6 +35,9 @@ NAMES = {
         ("Tennis ball", "round"),
         ("Cup", "container"),
         ("Keyboard", "other"),
+        ("Hot dog", "food"),
+        ("A hot dog on a plate", "food"),
+        ("Hot dogs", "food"),
     ],
 )
 def test_sorts_names_into_kinds(raw: str, kind: str) -> None:
@@ -51,6 +54,13 @@ def test_sorts_names_into_kinds(raw: str, kind: str) -> None:
         ("It is a toy car", "toy car"),
         ("This is an orange.", "orange"),
         ("...", "thing"),
+        ("A banana on a table", "banana"),
+        ("I see a cup", "cup"),
+        ("There is a toy car in the hand", "toy car"),
+        ("A cup of tea", "cup"),
+        ("A ball next to a book", "ball"),
+        ("A teddy bear with a bow", "teddy bear"),
+        ("I see a cat.", "cat"),
     ],
 )
 def test_cleans_model_answers(raw: str, name: str) -> None:
@@ -64,6 +74,22 @@ def test_every_kind_gives_schema_valid_reactions() -> None:
             reaction = reaction_for(NAMES[kind], random.Random(seed))
             assert kind_of(reaction["object"]) == kind
             assert list(validator.iter_errors(reaction)) == []
+
+
+@pytest.mark.parametrize(
+    "raw", ["Nothing", "Hand", "Empty", "A hand.", "An empty hand", "Nothing."]
+)
+def test_empty_hands_hold_nothing(raw: str) -> None:
+    validator = Draft202012Validator(SCHEMA)
+    for seed in range(8):
+        reaction = reaction_for(raw, random.Random(seed))
+        assert reaction["holding"] is False
+        assert list(validator.iter_errors(reaction)) == []
+
+
+@pytest.mark.parametrize("raw", ["Hand puppet", "Empty cup", "A cup in a hand"])
+def test_objects_near_hands_are_held(raw: str) -> None:
+    assert reaction_for(raw, random.Random(0))["holding"] is True
 
 
 def test_lines_are_filled_with_the_name() -> None:
