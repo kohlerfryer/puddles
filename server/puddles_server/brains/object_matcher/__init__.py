@@ -98,7 +98,7 @@ def crop_color(image: bytes) -> str:
     try:
         pil_image = importlib.import_module("PIL.Image")
         photo = pil_image.open(io.BytesIO(image)).convert("RGB")
-    except Exception:
+    except (ImportError, OSError):
         return NEUTRAL
     photo.thumbnail((THUMBNAIL, THUMBNAIL))
     data = photo.tobytes()
