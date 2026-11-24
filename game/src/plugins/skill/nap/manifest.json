@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "nap",
+  "contract": "1",
+  "name": "Nap",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["sleepy"],
+  "params": {},
+  "needs": [],
+  "duration_s": 4,
+  "energy": 0.1,
+  "outcomes": ["done"]
+}
