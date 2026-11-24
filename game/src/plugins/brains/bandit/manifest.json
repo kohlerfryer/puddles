@@ -1,0 +1,13 @@
+{
+  "kind": "brain",
+  "id": "bandit",
+  "contract": "1",
+  "name": "Bandit",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["learning"],
+  "cadence": "tick",
+  "autonomy": 1,
+  "latency_budget_ms": 5,
+  "intents": ["routine"]
+}
