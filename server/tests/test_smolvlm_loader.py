@@ -59,14 +59,15 @@ class FakeVLM:
         self.device = ""
         self.config = SimpleNamespace(text_config=SimpleNamespace(vocab_size=99))
         self.logits_processors: list[Any] = []
+        self.token_budgets: list[int] = []
 
     def to(self, device: str) -> "FakeVLM":
         self.device = device
         return self
 
     def generate(self, **inputs: Any) -> FakeTensor:
-        assert inputs["max_new_tokens"] == smolvlm.MAX_NEW_TOKENS
         assert not inputs["do_sample"]
+        self.token_budgets.append(inputs["max_new_tokens"])
         self.logits_processors.append(inputs["logits_processor"])
         return FakeTensor(f"out({inputs['text']},{inputs['images'][0]},{inputs['device']})")
 
@@ -143,6 +144,19 @@ def test_loader_decodes_under_the_schema_with_fresh_processors_per_reply(
     first, second = vlm.logits_processors
     assert [processor.grammar for processor in first + second] == ["grammar(99)"] * 2
     assert first[0] is not second[0]
+    assert vlm.token_budgets == [smolvlm.MAX_NEW_TOKENS] * 2
+
+
+def test_loader_answers_short_questions_freely(monkeypatch: pytest.MonkeyPatch) -> None:
+    vlm = install_fakes(monkeypatch, schema_xgrammar())
+
+    generate = smolvlm.load_generator(
+        "some/model", "What is this?", constrained=False, max_new_tokens=8
+    )
+
+    assert generate(b"jpeg") == "decoded out(CHAT(What is t),jpeg/RGB,cuda)[7:]"
+    assert vlm.logits_processors == [[]]
+    assert vlm.token_budgets == [8]
 
 
 def test_loader_generates_freely_when_xgrammar_cannot_compile(
