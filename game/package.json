@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "node e2e/dev.ts",
+    "screenshots": "node e2e/screenshots.ts",
     "build": "tsc --noEmit && vite build",
     "lint": "eslint . --max-warnings 0",
     "format:check": "prettier --check .",
