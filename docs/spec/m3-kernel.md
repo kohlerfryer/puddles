@@ -264,6 +264,9 @@ Exit: the game runs on the kernel with today's features as plugins; replay works
 | K14 | Prop library v1 (~30 props) + constrained matcher + archetype/color fallback | agent | K8, K9 |
 | K15 | Puppet art: Puddles as layered parts from the concept; style guide | agent | K9 |
 | K16 | Saves + parent controls panel (forget everything) | agent | K2 |
+| K17 | CI simulation gate: simulated-kid sessions per PR with regret, safety and budget thresholds | agent | K11, K3 |
+| K18 | Recorded input streams for senses (`--input`), plus Playwright screenshots in PRs | agent | K7 |
+| K19 | Showcase scenarios as end-to-end tests; recorded model replies; nightly real-model bench | agent | K17, K8 |
 
 ### M4: Mind
 Local planner brain (spike: Qwen2.5-VL 3B/7B, SmolVLM2 2.2B on the Mac), voice commands and wake word, needs/boredom/personality, laugh sense, planner-proposed routines.
