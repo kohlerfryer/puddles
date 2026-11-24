@@ -1,6 +1,6 @@
 /** Recognize body gestures from MediaPipe Pose landmark sequences. */
 
-import { GESTURES, type Gesture, type Landmark, type PoseFrame } from "./poseFixture";
+import { GESTURES, type Gesture, type Landmark, type PoseFrame } from "../../../core/poseFixture";
 
 export type BodyGesture = Exclude<Gesture, "idle">;
 

@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { ASK_MS, COPY_STEPS, createCopyMe, IDLE_BEFORE_ASK_MS } from "./copyMe";
-import { GESTURE_REACTIONS } from "./gestureWatch";
-import { BODY_GESTURES } from "./gestures";
+import { BODY_GESTURES } from "../plugins/sense/gestures/gestures";
+import { ASK_MS, COPY_STEPS, createCopyMe, GESTURE_REACTIONS, IDLE_BEFORE_ASK_MS } from "./copyMe";
 import { soundFor } from "./sounds";
 
 /** A random source that always rolls `roll`. */

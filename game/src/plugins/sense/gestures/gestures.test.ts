@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
+import { isPoseFixture, LANDMARK_COUNT, type PoseFixture } from "../../../core/poseFixture";
 import { detectGestures, feetInView } from "./gestures";
-import { isPoseFixture, LANDMARK_COUNT, type PoseFixture } from "./poseFixture";
 
-const files = import.meta.glob<unknown>("./fixtures/*.json", { eager: true, import: "default" });
+const files = import.meta.glob<unknown>("../../../core/fixtures/*.json", {
+  eager: true,
+  import: "default",
+});
 const fixtures = Object.entries(files).map(([path, data]): [string, PoseFixture] => {
   if (!isPoseFixture(data)) throw new Error(`${path} is not a pose fixture`);
   return [path, data];

@@ -8,9 +8,9 @@ import {
   HOLD_MS,
   type HandSample,
   highestHand,
-  type Point,
 } from "./hold";
-import { LANDMARK_COUNT, type PoseFrame } from "./poseFixture";
+import type { Point } from "../../../core/cameraSample";
+import { LANDMARK_COUNT, type PoseFrame } from "../../../core/poseFixture";
 
 const STEP_MS = 66;
 

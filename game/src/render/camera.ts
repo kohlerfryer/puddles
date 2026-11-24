@@ -1,9 +1,14 @@
 import { FilesetResolver, HandLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
 
-import { createGestureWatch } from "../core/gestureWatch";
-import type { BodyGesture } from "../core/gestures";
-import { armRaised, type Box, createHoldWatch, cropBox, highestHand } from "../core/hold";
+import type { CameraSample, Point } from "../core/cameraSample";
 import { type PoseFrame, toFrame } from "../core/poseFixture";
+import { TICK_HZ } from "../kernel/clock";
+import { createKernel } from "../kernel/kernel";
+import { gestureOf, gesturesSense } from "../plugins/sense/gestures";
+import type { BodyGesture } from "../plugins/sense/gestures/gestures";
+import { heldHand, heldObjectSense } from "../plugins/sense/held_object";
+import { type Box, cropBox } from "../plugins/sense/held_object/hold";
+import { poseSense } from "../plugins/sense/pose";
 
 // Assets load from the MediaPipe CDN for now; bundling them for offline play is a follow-up.
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
@@ -58,31 +63,10 @@ async function photograph(video: HTMLVideoElement, box: Box): Promise<Blob> {
 }
 
 /**
- * Returns a per-sample step that runs Hand Landmarker and, when a raised hand is held still,
- * photographs it and calls `onPhoto`. The watch re-arms once `onPhoto` settles, after a cooldown.
- */
-async function watchHands(
-  video: HTMLVideoElement,
-  onPhoto: (photo: Blob) => Promise<void>,
-): Promise<(now: number, frame: PoseFrame | undefined) => void> {
-  const hands = await loadHands();
-  const watch = createHoldWatch();
-  return (now, frame) => {
-    const hand = highestHand(hands.detectForVideo(video, now).landmarks);
-    const raised = frame !== undefined && armRaised(frame);
-    if (!watch.push({ t: now, raised, hand }) || !hand) return;
-    void photograph(video, cropBox(hand, video.videoWidth, video.videoHeight))
-      .then(onPhoto)
-      .finally(() => {
-        watch.finished(performance.now());
-      });
-  };
-}
-
-/**
- * Runs MediaPipe Pose on the webcam and calls `onGesture` for each gesture the player makes.
- * `now` is `performance.now()` when the gesture was seen. With `onPhoto`, it also runs Hand
- * Landmarker and passes a photo of anything held up still; `onPhoto` resolves when the reaction finishes.
+ * Runs MediaPipe Pose on the webcam and feeds the landmarks to the sense plugins in a kernel;
+ * calls `onGesture` for each gesture the player makes, with `now` as `performance.now()` when it
+ * was seen. With `onPhoto`, it also runs Hand Landmarker and passes a photo of anything held up
+ * still; `onPhoto` resolves when the reaction finishes. Only render ever touches the image.
  */
 export async function watchCamera(
   onGesture: (gesture: BodyGesture, now: number) => void,
@@ -94,8 +78,13 @@ export async function watchCamera(
   video.playsInline = true;
   await openCamera(video);
   const pose = await loadPose();
-  const holdStep = onPhoto ? await watchHands(video, onPhoto) : undefined;
-  const watch = createGestureWatch();
+  const hands = onPhoto ? await loadHands() : undefined;
+  let latest: CameraSample | undefined;
+  const read = () => latest;
+  const held = heldObjectSense(read);
+  const kernel = createKernel({
+    plugins: [poseSense(read), gesturesSense(read), ...(hands ? [held.folder] : [])],
+  });
   let sampledAt = -Infinity;
 
   const sample = (now: number): void => {
@@ -105,9 +94,26 @@ export async function watchCamera(
     const person = pose.detectForVideo(video, now).landmarks[0];
     const frame = person ? toFrame(now, person) : undefined;
     onFrame?.(frame);
-    holdStep?.(now, frame);
-    if (!frame) return;
-    for (const gesture of watch.push(frame)) onGesture(gesture, now);
+    latest = { t: now, pose: frame, hands: hands?.detectForVideo(video, now).landmarks ?? [] };
   };
+  const photo = (hand: Point[]): void => {
+    if (!onPhoto) return;
+    void photograph(video, cropBox(hand, video.videoWidth, video.videoHeight))
+      .then(onPhoto)
+      .finally(() => {
+        held.finished(performance.now());
+      });
+  };
+  let seen = 0;
+  setInterval(() => {
+    kernel.tick();
+    for (const event of kernel.log.since(seen)) {
+      const gesture = gestureOf(event);
+      if (gesture) onGesture(gesture, performance.now());
+      const hand = heldHand(event);
+      if (hand) photo(hand);
+    }
+    seen = kernel.log.count;
+  }, 1000 / TICK_HZ);
   requestAnimationFrame(sample);
 }

@@ -1,16 +1,7 @@
-/** Turns a live stream of pose frames into gestures, and gestures into Puddles' reactions. */
+/** Turns a live stream of pose frames into gestures. */
 
+import type { PoseFrame } from "../../../core/poseFixture";
 import { type BodyGesture, detectGestures } from "./gestures";
-import type { PoseFrame } from "./poseFixture";
-import type { Step } from "./reaction";
-
-/** What Puddles does when the player makes each gesture. */
-export const GESTURE_REACTIONS: Record<BodyGesture, Step> = {
-  jump: { do: "jump", mood: "happy", say: "Boing!" },
-  wave: { do: "look_at", target: "camera", mood: "happy", say: "Hi friend!" },
-  flap: { do: "flap", mood: "silly", say: "Flap flap flap!" },
-  crouch: { do: "freeze", mood: "curious", say: "Where did you go?" },
-};
 
 /** How much recent movement the detector sees: long enough for a held wave or two flaps. */
 const WINDOW_MS = 2500;

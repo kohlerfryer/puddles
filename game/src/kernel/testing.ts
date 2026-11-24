@@ -1,4 +1,5 @@
-import type { Intent } from "../core/contracts";
+import type { Event, Intent } from "../core/contracts";
+import { createKernel } from "./kernel";
 import type { Activity, Emitted, PluginContext, PluginFolder } from "./plugins";
 
 const common = { contract: "1", authors: ["Puddles"], license: "MIT" };
@@ -46,6 +47,13 @@ export function fakeSense(id: string, emit: (ctx: PluginContext) => Emitted[]): 
     },
     code: { sense: emit },
   };
+}
+
+/** Ticks a headless kernel running only `sense` until `ms` of kernel time have passed. */
+export function runSense(sense: PluginFolder, ms: number): Event[] {
+  const kernel = createKernel({ plugins: [sense], now: () => 0 });
+  while (kernel.clock.t <= ms) kernel.tick();
+  return kernel.log.events();
 }
 
 /** A brain with the given cadence that decides with `decide`. */

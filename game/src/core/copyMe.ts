@@ -1,9 +1,16 @@
 /** "Copy me!": after a while idling, Puddles does a gesture himself and waits for the kid to copy it. */
 
-import { GESTURE_REACTIONS } from "./gestureWatch";
-import { BODY_GESTURES, type BodyGesture } from "./gestures";
+import { BODY_GESTURES, type BodyGesture } from "../plugins/sense/gestures/gestures";
 import type { Random } from "./random";
 import type { Step } from "./reaction";
+
+/** What Puddles does when the player makes each gesture. */
+export const GESTURE_REACTIONS: Record<BodyGesture, Step> = {
+  jump: { do: "jump", mood: "happy", say: "Boing!" },
+  wave: { do: "look_at", target: "camera", mood: "happy", say: "Hi friend!" },
+  flap: { do: "flap", mood: "silly", say: "Flap flap flap!" },
+  crouch: { do: "freeze", mood: "curious", say: "Where did you go?" },
+};
 
 /** How long Puddles idles with a body in view before asking. */
 export const IDLE_BEFORE_ASK_MS = 15_000;

@@ -1,0 +1,11 @@
+{
+  "kind": "sense",
+  "id": "pose",
+  "contract": "1",
+  "name": "Pose",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "inputs": ["pose landmarks"],
+  "emits": ["observation.kid"],
+  "budget_ms": 2
+}

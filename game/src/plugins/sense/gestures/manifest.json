@@ -1,0 +1,11 @@
+{
+  "kind": "sense",
+  "id": "gestures",
+  "contract": "1",
+  "name": "Gestures",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "inputs": ["pose landmarks"],
+  "emits": ["observation.gesture"],
+  "budget_ms": 4
+}
