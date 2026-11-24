@@ -1,17 +1,19 @@
 import base64
+import json
 import math
 import os
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from puddles_server.models import ReactionModel, load_model
+from puddles_server.saves import MAX_SAVE_BYTES, read_save, write_save
 
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
 MAX_IMAGE_CHARS = 4 * math.ceil(MAX_IMAGE_BYTES / 3)
@@ -30,7 +32,7 @@ app = FastAPI(title="Puddles server", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=DEV_ORIGINS,
-    allow_methods=["POST"],
+    allow_methods=["GET", "POST", "PUT"],
     allow_headers=["Content-Type"],
     expose_headers=[MODEL_HEADER, LATENCY_HEADER],
 )
@@ -75,3 +77,23 @@ def react(body: ReactRequest, model: Annotated[ReactionModel, Depends(get_model)
     latency_ms = round((time.perf_counter() - start) * 1000)
     headers = {MODEL_HEADER: model.name, LATENCY_HEADER: str(latency_ms)}
     return JSONResponse(content, status_code=status, headers=headers)
+
+
+@app.get("/save")
+def get_save() -> dict[str, Any]:
+    return read_save()
+
+
+@app.put("/save", status_code=204)
+async def put_save(request: Request) -> Response:
+    body = await request.body()
+    if len(body) > MAX_SAVE_BYTES:
+        raise HTTPException(413, "save is over 256 KB")
+    try:
+        save = json.loads(body)
+    except ValueError as error:
+        raise HTTPException(422, "save is not JSON") from error
+    if not isinstance(save, dict):
+        raise HTTPException(422, "save is not a JSON object")
+    write_save(save)
+    return Response(status_code=204)
