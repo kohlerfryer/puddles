@@ -60,10 +60,9 @@ describe("regretCurves", () => {
   };
 
   it("gives a curve for each policy and simulated kid", () => {
+    const policies = ["random", `fixed ${pratfall?.id ?? ""}`, "bandit beta", "bandit linear"];
     expect(curves.map((c) => `${c.policy} ${c.profile}`)).toEqual(
-      ["random", `fixed ${pratfall?.id ?? ""}`].flatMap((policy) =>
-        profiles.map((p) => `${policy} ${p.id}`),
-      ),
+      policies.flatMap((policy) => profiles.map((p) => `${policy} ${p.id}`)),
     );
     expect(curves.every((c) => c.regret.length === 12)).toBe(true);
   });
@@ -86,5 +85,20 @@ describe("regretCurves", () => {
 
   it("is the same for the same seed", () => {
     expect(regretCurves({ sessions: 6, horizon: 12, seed: 1 })).toEqual(curves);
+  });
+});
+
+describe("the bandit brain in the simulator", () => {
+  const curves = regretCurves({ sessions: 40, horizon: 20, seed: 1 });
+  const final = (policy: string, profile: string) =>
+    curves.find((c) => c.policy === policy && c.profile === profile)?.regret.at(-1) ?? 0;
+  const total = (policy: string) => profiles.reduce((sum, p) => sum + final(policy, p.id), 0);
+
+  it.each(["bandit beta", "bandit linear"])("%s beats random on every kid", (policy) => {
+    for (const { id } of profiles) expect(final(policy, id)).toBeLessThan(final("random", id));
+  });
+
+  it.each(["bandit beta", "bandit linear"])("%s beats the fixed bit across the kids", (policy) => {
+    expect(total(policy)).toBeLessThan(total(`fixed ${pratfall?.id ?? ""}`));
   });
 });

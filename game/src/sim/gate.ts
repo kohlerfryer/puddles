@@ -6,6 +6,7 @@
 
 import type { Event, Manifest, SkillManifest } from "../core/contracts";
 import { contractValidators } from "../core/contractsSchema";
+import type { PluginFolder } from "../kernel/plugins";
 import { type Limits, MAX_SCARED_STEPS, type Violation, violation } from "../kernel/guardian/rules";
 import type { Punchline } from "./kid";
 import { bitSkills } from "./policies";
@@ -61,7 +62,12 @@ interface Checked extends Run {
 }
 
 /** One session, watching every event it logs for unsafe intents and budget overruns. */
-function checked(profile: KidProfile, policy: Policy, seed: number, options: GateOptions) {
+function checked(
+  profile: KidProfile,
+  make: () => PluginFolder,
+  seed: number,
+  options: GateOptions,
+) {
   const unsafe: string[] = [];
   let overBudget = 0;
   const sink = (line: string) => {
@@ -71,7 +77,7 @@ function checked(profile: KidProfile, policy: Policy, seed: number, options: Gat
     if (broken) unsafe.push(`${broken.rule}: ${broken.reason}`);
   };
   const { horizon, now = () => performance.now() } = options;
-  const result = run(profile, policy[1](), { seed, horizon, sink, now });
+  const result = run(profile, make(), { seed, horizon, sink, now });
   return { ...result, unsafe, overBudget } satisfies Checked;
 }
 
@@ -84,8 +90,9 @@ function smilesPerBit(punchlines: readonly Punchline[]): number {
 
 function curve(policy: Policy, profile: KidProfile, options: GateOptions): GateCurve {
   const { sessions, horizon, seed } = options;
+  const make = policy[1]();
   const runs = Array.from({ length: sessions }, (_, s) =>
-    checked(profile, policy, seed + s, options),
+    checked(profile, make, seed + s, options),
   );
   const ticks = runs.reduce((sum, r) => sum + r.ticks, 0);
   return {

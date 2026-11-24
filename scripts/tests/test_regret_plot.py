@@ -106,5 +106,10 @@ def test_main_plots_and_prints_the_summary(
 def test_simulate_runs_the_real_simulator() -> None:
     curves = simulate(sessions=1, horizon=3, seed=1)
 
-    assert {curve["policy"] for curve in curves} == {"random", "fixed pratfall"}
+    assert {curve["policy"] for curve in curves} == {
+        "random",
+        "fixed pratfall",
+        "bandit beta",
+        "bandit linear",
+    }
     assert all(len(curve["regret"]) == 3 for curve in curves)
