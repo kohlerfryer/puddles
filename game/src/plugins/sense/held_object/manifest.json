@@ -5,7 +5,7 @@
   "name": "Held object",
   "authors": ["Puddles"],
   "license": "MIT",
-  "inputs": ["pose landmarks", "hand landmarks"],
-  "emits": ["observation.held"],
+  "inputs": ["pose landmarks", "hand landmarks", "server reply"],
+  "emits": ["observation.held", "observation.object"],
   "budget_ms": 2
 }

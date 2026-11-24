@@ -1,5 +1,6 @@
-import { ask, type Post, reactUrl, scriptMs, toBase64 } from "./core/ask";
+import { ask, type Post, reactUrl, toBase64 } from "./core/ask";
 import { gameTitle } from "./core/title";
+import type { SafeReaction } from "./core/validator";
 import { loadSave, type SaveServer, saveUrl } from "./kernel/saves";
 import { gestureOf } from "./plugins/sense/gestures";
 import { watchCamera } from "./render/camera";
@@ -33,8 +34,11 @@ const saves: SaveServer = {
   },
 };
 
-/** Sends `photo` to the server while Puddles senses it, then plays his reaction; resolves once it ends. */
-async function reactTo(photo: Blob, puddles: Actor, hud: Hud): Promise<void> {
+/**
+ * Sends `photo` to the server while Puddles senses it and drops it in as a sticker; resolves with
+ * the reaction, which the object matcher brain plays.
+ */
+async function reactTo(photo: Blob, puddles: Actor, hud: Hud): Promise<SafeReaction> {
   puddles.sense(true);
   hud.server("asking...");
   const image = toBase64(new Uint8Array(await photo.arrayBuffer()));
@@ -42,8 +46,7 @@ async function reactTo(photo: Blob, puddles: Actor, hud: Hud): Promise<void> {
   puddles.sense(false);
   hud.server(readout);
   puddles.spawn(reaction.traits, await createImageBitmap(photo));
-  puddles.play(reaction.script);
-  await new Promise((done) => setTimeout(done, scriptMs(reaction.script)));
+  return reaction;
 }
 
 document.title = gameTitle();
@@ -67,6 +70,7 @@ void Promise.all([createStage(document.body), loadSave(saves)]).then(([app, save
     return;
   }
   watchCamera(
+    save.settings.session_limit_min,
     (event) => {
       const gesture = gestureOf(event);
       if (gesture) hud.gesture(gesture);

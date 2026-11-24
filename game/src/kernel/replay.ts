@@ -10,6 +10,8 @@ export interface ReplayOptions {
   readonly seed: number;
   /** The behaviors the brains' behavior intents may name, by id. */
   readonly behaviors?: KernelOptions["behaviors"];
+  /** Checks the replayed brains' intents, as the live game's guardian does. */
+  readonly guardian?: KernelOptions["guardian"];
 }
 
 /** A tick where a brain decided differently, or only on one side; null means it didn't decide. */
@@ -119,7 +121,7 @@ function diffDecisions(
  */
 export function replay(
   recorded: readonly KernelEvent[],
-  { plugins, seed, behaviors }: ReplayOptions,
+  { plugins, seed, behaviors, guardian }: ReplayOptions,
 ): Replay {
   const lines: string[] = [];
   const observations = recorded.filter((event) => event.type.startsWith("observation."));
@@ -127,6 +129,7 @@ export function replay(
     plugins: [...playback(observations, () => kernel), ...plugins.filter((p) => !isSense(p))],
     seed,
     ...(behaviors && { behaviors }),
+    ...(guardian && { guardian }),
     now: () => 0,
     sink: (line) => lines.push(line),
   });

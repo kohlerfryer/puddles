@@ -1,14 +1,18 @@
 import { newSamples, type Point, type ReadCamera } from "../../../core/cameraSample";
 import type { KernelEvent } from "../../../core/contracts";
-import type { PluginFolder } from "../../../kernel/plugins";
+import type { SafeReaction } from "../../../core/validator";
+import type { Emitted, PluginFolder } from "../../../kernel/plugins";
 import { armRaised, createHoldWatch, highestHand } from "./hold";
 import manifest from "./manifest.json";
 
 const HELD = "observation.held";
+const OBJECT = "observation.object";
 
-/** The sense, and how the game tells it the reaction to the last hold has finished. */
+/** The sense, and how the game tells it what the server made of the photo and when that ended. */
 export interface HeldObjectSense {
   readonly folder: PluginFolder;
+  /** The server's reply about the photo; logged on the next tick, without the photo. */
+  reacted(reaction: SafeReaction): void;
   /** The reaction finished at `t`, on the camera samples' clock; the sense re-arms after a cooldown. */
   finished(t: number): void;
 }
@@ -25,12 +29,14 @@ function corners(hand: readonly Point[]): Point[] {
 
 /**
  * Emits `observation.held` when the kid holds a raised hand still, with only the hand's corners,
- * so the game knows where to take the photo; the landmarks and the image stay out of the log.
+ * so the game knows where to take the photo, and `observation.object` with the server's reaction
+ * to it; the landmarks and the image stay out of the log.
  */
 export function heldObjectSense(read: ReadCamera): HeldObjectSense {
   const fresh = newSamples(read);
   const watch = createHoldWatch();
-  const sense = (t: number) => {
+  const replies: Emitted[] = [];
+  const hold = (t: number): Emitted[] => {
     const sample = fresh(t);
     if (!sample) return [];
     const hand = highestHand(sample.hands);
@@ -39,7 +45,10 @@ export function heldObjectSense(read: ReadCamera): HeldObjectSense {
     return [{ type: HELD, data: { hand: corners(hand) } }];
   };
   return {
-    folder: { manifest, code: { sense: ({ t }) => sense(t) } },
+    folder: { manifest, code: { sense: ({ t }) => [...replies.splice(0), ...hold(t)] } },
+    reacted: (reaction) => {
+      replies.push({ type: OBJECT, data: { reaction } });
+    },
     finished: (t) => {
       watch.finished(t);
     },

@@ -1,15 +1,19 @@
 import { FilesetResolver, HandLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
 
+import { scriptMs } from "../core/ask";
 import type { CameraSample, Point } from "../core/cameraSample";
 import type { KernelEvent } from "../core/contracts";
 import { type PoseFrame, toFrame } from "../core/poseFixture";
+import type { SafeReaction } from "../core/validator";
 import { TICK_HZ } from "../kernel/clock";
+import { liveGuardian } from "../kernel/guardian/live";
 import { createKernel } from "../kernel/kernel";
 import type { PluginFolder } from "../kernel/plugins";
 import { copyMe, copyMeBrain } from "../plugins/brains/copyMe";
+import { matcherBrain } from "../plugins/brains/matcher";
 import { reflexesBrain } from "../plugins/brains/reflexes";
 import { gesturesSense } from "../plugins/sense/gestures";
-import { heldHand, heldObjectSense } from "../plugins/sense/held_object";
+import { type HeldObjectSense, heldHand, heldObjectSense } from "../plugins/sense/held_object";
 import { SKILLS } from "../plugins/skill";
 import { type Box, cropBox } from "../plugins/sense/held_object/hold";
 import { poseSense } from "../plugins/sense/pose";
@@ -68,25 +72,53 @@ async function photograph(video: HTMLVideoElement, box: Box): Promise<Blob> {
   });
 }
 
-/** The live game's kernel: the camera's `senses`, the reflexes and copy-me brains, and the skills. */
-function liveKernel(senses: readonly PluginFolder[]) {
+/**
+ * The live game's kernel: the camera's `senses`, the reflexes, copy-me and object matcher brains,
+ * and the skills, behind a guardian that suggests a break after `sessionLimitMin` minutes.
+ */
+function liveKernel(senses: readonly PluginFolder[], sessionLimitMin: number) {
   return createKernel({
-    plugins: [...senses, reflexesBrain(), copyMeBrain(), ...SKILLS],
+    plugins: [...senses, reflexesBrain(), copyMeBrain(), matcherBrain(), ...SKILLS],
     behaviors: new Map([["copy_me", copyMe]]),
+    guardian: liveGuardian(SKILLS, sessionLimitMin),
     seed: Math.floor(Math.random() * SEEDS),
   });
 }
 
 /**
+ * Photographs the hand held up in `video` and passes the photo to `onPhoto`, then logs the reaction
+ * it resolves with through the `held` sense, and re-arms the sense once the reaction has played.
+ */
+function photographer(
+  video: HTMLVideoElement,
+  held: HeldObjectSense,
+  onPhoto: (photo: Blob) => Promise<SafeReaction>,
+) {
+  return (hand: Point[]): void => {
+    void photograph(video, cropBox(hand, video.videoWidth, video.videoHeight))
+      .then(onPhoto)
+      .then(async (reaction) => {
+        held.reacted(reaction);
+        await new Promise((done) => setTimeout(done, scriptMs(reaction.script)));
+      })
+      .finally(() => {
+        held.finished(performance.now());
+      });
+  };
+}
+
+/**
  * Runs MediaPipe Pose on the webcam and feeds the landmarks to the sense plugins in a kernel that
- * also runs the reflexes and copy-me brains and the skills; calls `onEvent` with each event the
- * kernel logs. With `onPhoto`, it also runs Hand Landmarker and passes a photo of anything held up
- * still; `onPhoto` resolves when the reaction finishes. Only render ever touches the image.
+ * also runs the brains and the skills; calls `onEvent` with each event the kernel logs. With
+ * `onPhoto`, it also runs Hand Landmarker and passes a photo of anything held up still; the
+ * reaction `onPhoto` resolves with is logged for the object matcher, and the sense re-arms once it
+ * has played. Only render ever touches the image.
  */
 export async function watchCamera(
+  sessionLimitMin: number,
   onEvent: (event: KernelEvent) => void,
   onFrame?: (frame: PoseFrame | undefined) => void,
-  onPhoto?: (photo: Blob) => Promise<void>,
+  onPhoto?: (photo: Blob) => Promise<SafeReaction>,
 ): Promise<void> {
   const video = document.createElement("video");
   video.muted = true;
@@ -97,11 +129,10 @@ export async function watchCamera(
   let latest: CameraSample | undefined;
   const read = () => latest;
   const held = heldObjectSense(read);
-  const kernel = liveKernel([
-    poseSense(read),
-    gesturesSense(read),
-    ...(hands ? [held.folder] : []),
-  ]);
+  const kernel = liveKernel(
+    [poseSense(read), gesturesSense(read), ...(hands ? [held.folder] : [])],
+    sessionLimitMin,
+  );
   let sampledAt = -Infinity;
 
   const sample = (now: number): void => {
@@ -113,21 +144,14 @@ export async function watchCamera(
     onFrame?.(frame);
     latest = { t: now, pose: frame, hands: hands?.detectForVideo(video, now).landmarks ?? [] };
   };
-  const photo = (hand: Point[]): void => {
-    if (!onPhoto) return;
-    void photograph(video, cropBox(hand, video.videoWidth, video.videoHeight))
-      .then(onPhoto)
-      .finally(() => {
-        held.finished(performance.now());
-      });
-  };
+  const photo = onPhoto ? photographer(video, held, onPhoto) : undefined;
   let seen = 0;
   setInterval(() => {
     kernel.tick();
     for (const event of kernel.log.since(seen)) {
       onEvent(event);
       const hand = heldHand(event);
-      if (hand) photo(hand);
+      if (hand) photo?.(hand);
     }
     seen = kernel.log.count;
   }, 1000 / TICK_HZ);
