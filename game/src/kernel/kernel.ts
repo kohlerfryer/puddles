@@ -7,7 +7,10 @@ import { type Registry, createRegistry } from "./registry";
 
 export interface KernelOptions extends EventLogOptions {
   readonly plugins: readonly PluginFolder[];
-  /** Seeds the only random source plugins get, so a session replays exactly. */
+  /**
+   * Seeds the only random sources plugins get, so a session replays exactly. Senses draw from
+   * their own stream, so replaying without them leaves the brains' and skills' numbers unchanged.
+   */
   readonly seed?: number;
   /** Wall-clock ms, used only to check plugin time budgets. */
   readonly now?: () => number;
@@ -23,6 +26,9 @@ export interface Kernel {
   tick(): void;
 }
 
+/** Mixed into the seed for the senses' stream, so it differs from the brains' stream. */
+const SENSE_STREAM = 0x5e45e;
+
 export function createKernel({
   plugins,
   seed = 0,
@@ -33,6 +39,7 @@ export function createKernel({
   const log = createEventLog(logOptions);
   const registry = createRegistry(plugins);
   const random = seededRandom(seed);
+  const senseRandom = seededRandom(seed ^ SENSE_STREAM);
   const append = (source: string, { type, data }: Emitted) => {
     log.append({ t: clock.t, type, source, data });
   };
@@ -55,7 +62,7 @@ export function createKernel({
     const t = clock.tick();
     for (const { manifest, sense } of registry.senses) {
       const emitted = timed(manifest.id, manifest.budget_ms, () =>
-        sense({ t, events: [], random }),
+        sense({ t, events: [], random: senseRandom }),
       );
       for (const event of emitted) append(manifest.id, event);
     }

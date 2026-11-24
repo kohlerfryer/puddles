@@ -37,11 +37,16 @@ function brains(decideMatcher = matcher, decideBandit = bandit): PluginFolder[] 
   ];
 }
 
+/** A simulated kid who smiles at random, drawing from the same seed as the brains. */
+const kid = fakeSense("kid", ({ random }) =>
+  random() < 0.1 ? [{ type: "observation.smile", data: {} }] : [],
+);
+
 /** Records a 10 s session to JSON lines, as the kernel writes it to the save. */
-function record(seed = 7): string {
+function record(seed = 7, senses: PluginFolder[] = []): string {
   const lines: string[] = [];
   const kernel = createKernel({
-    plugins: [hands(), pose(), ...brains()],
+    plugins: [hands(), pose(), ...senses, ...brains()],
     seed,
     now: () => 0,
     sink: (line) => lines.push(line),
@@ -80,6 +85,14 @@ describe("replay", () => {
   it("makes the same decisions with the same plugins and seed", () => {
     const recorded = parseLog(record());
     const result = replay(recorded, { plugins: [noSense, ...brains()], seed: 7 });
+    expect(result.diffs).toEqual([]);
+    expect(result.events).toEqual(recorded);
+  });
+
+  it("makes the same decisions when a recorded sense drew random numbers", () => {
+    const recorded = parseLog(record(7, [kid]));
+    expect(recorded.some((e) => e.type === "observation.smile")).toBe(true);
+    const result = replay(recorded, { plugins: brains(), seed: 7 });
     expect(result.diffs).toEqual([]);
     expect(result.events).toEqual(recorded);
   });
@@ -139,6 +152,6 @@ describe("replay", () => {
   });
 
   it("replays an empty log to nothing", () => {
-    expect(replay([], { plugins: brains() })).toEqual({ events: [], diffs: [] });
+    expect(replay([], { plugins: brains(), seed: 0 })).toEqual({ events: [], diffs: [] });
   });
 });
