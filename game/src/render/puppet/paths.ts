@@ -34,19 +34,17 @@ export function fluffFill(stops: readonly [string, string, string], middle: numb
   });
 }
 
-/** The bill's top-to-bottom orange fill. */
-export function billFill(): FillGradient {
-  return new FillGradient({
-    type: "linear",
-    start: { x: 0, y: 0 },
-    end: { x: 0, y: 1 },
-    colorStops: [
-      { offset: 0, color: PALETTE.bill[0] },
-      { offset: 1, color: PALETTE.bill[1] },
-    ],
-    textureSpace: "local",
-  });
-}
+/** The bill's top-to-bottom orange fill, built once: each gradient owns a texture, and the face redraws often. */
+export const BILL_FILL = new FillGradient({
+  type: "linear",
+  start: { x: 0, y: 0 },
+  end: { x: 0, y: 1 },
+  colorStops: [
+    { offset: 0, color: PALETTE.bill[0] },
+    { offset: 1, color: PALETTE.bill[1] },
+  ],
+  textureSpace: "local",
+});
 
 /**
  * Traces SVG-style relative quadratic curves (`q cx cy ex ey`, both points from the current one)
