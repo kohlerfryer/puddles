@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kohlerfryer/puddles/shared/intent.schema.json",
+  "title": "Intent",
+  "description": "What a brain wants Puddles to do. The guardian checks it before the executor plays it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["brain", "priority", "kind", "why"],
+  "properties": {
+    "brain": { "type": "string", "minLength": 1, "description": "Id of the brain that decided." },
+    "priority": { "type": "integer", "minimum": 0, "description": "A higher priority preempts." },
+    "kind": { "$ref": "#/$defs/IntentKind" },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "$ref": "step.schema.json" },
+      "description": "A routine's steps."
+    },
+    "behavior": { "$ref": "#/$defs/BehaviorCall" },
+    "why": { "type": "string", "minLength": 1, "description": "Shown in the replay viewer." },
+    "features": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Comedy features the bandit learns from."
+    }
+  },
+  "$defs": {
+    "IntentKind": { "title": "IntentKind", "enum": ["routine", "behavior", "goal"] },
+    "BehaviorCall": {
+      "title": "BehaviorCall",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "params"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "params": {
+          "type": "object",
+          "additionalProperties": { "type": ["string", "number", "boolean"] }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kohlerfryer/puddles/shared/events.schema.json",
+  "title": "Event",
+  "description": "One entry in the kernel's append-only event log. Plugins talk only through events.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["t", "type", "source", "data"],
+  "properties": {
+    "t": { "type": "number", "minimum": 0, "description": "Kernel clock time in ms." },
+    "type": { "$ref": "#/$defs/EventType" },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Id of the plugin or kernel part that emitted it."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "The payload; its shape depends on the type."
+    }
+  },
+  "$defs": {
+    "EventType": {
+      "title": "EventType",
+      "description": "A namespace and a name, e.g. observation.smile or outcome.done.",
+      "type": "string",
+      "pattern": "^(observation|intent|action|outcome|reward|world|memory|guardian)(\\.[a-z][a-z0-9_]*)+$"
+    }
+  }
+}

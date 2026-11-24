@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kohlerfryer/puddles/shared/contracts.schema.json",
+  "title": "Contracts",
+  "description": "One of each kernel contract: the root for type generators and a table of test examples.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "observation", "intent", "step", "outcome", "reward", "manifest"],
+  "properties": {
+    "event": { "$ref": "events.schema.json" },
+    "observation": { "$ref": "observation.schema.json" },
+    "intent": { "$ref": "intent.schema.json" },
+    "step": { "$ref": "step.schema.json" },
+    "outcome": { "$ref": "outcome.schema.json" },
+    "reward": { "$ref": "reward.schema.json" },
+    "manifest": { "$ref": "manifest.schema.json" }
+  }
+}
