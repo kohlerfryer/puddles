@@ -14,13 +14,13 @@ function only(curves: GateCurve[]): GateCurve {
 }
 
 const brain = (decide: Parameters<typeof fakeBrain>[2]) => [
-  ["broken", () => fakeBrain("broken", { every_s: 3 }, decide)] as const,
+  ["broken", () => () => fakeBrain("broken", { every_s: 3 }, decide)] as const,
 ];
 
 describe("simulationGate", () => {
   it("reports a clean run of the simulator's policies", () => {
     const curves = simulationGate(options);
-    expect(curves).toHaveLength(2 * profiles.length);
+    expect(curves).toHaveLength(4 * profiles.length);
     for (const curve of curves) {
       expect(curve).toMatchObject({ crashes: [], hangs: 0, unsafe: [], over_budget_share: 0 });
       expect(curve.regret).toHaveLength(4);
