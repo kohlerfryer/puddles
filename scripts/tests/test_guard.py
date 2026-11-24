@@ -231,6 +231,10 @@ def test_n_inside_combined_commit_flags_counts_as_no_verify(command: str) -> Non
         "git -C /repo push -u origin agent/3-x",
         "git commit -am 'fix and note'",
         "git commit -mnote",
+        "git commit -m x -- -n.txt",
+        "env X=1",
+        "bash script.sh",
+        "echo $(git status",
     ],
 )
 def test_allows_wrapped_and_nested_commands_that_only_mention_a_push(command: str) -> None:
