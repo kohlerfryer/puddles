@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "look_at",
+  "contract": "1",
+  "name": "Look at",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": [],
+  "params": { "target": "target" },
+  "needs": [],
+  "duration_s": 1,
+  "energy": 0,
+  "outcomes": ["done"]
+}

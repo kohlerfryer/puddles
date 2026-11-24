@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "jump",
+  "contract": "1",
+  "name": "Jump",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["slapstick"],
+  "params": { "target": "target" },
+  "needs": [],
+  "duration_s": 1,
+  "energy": -0.03,
+  "outcomes": ["done"]
+}

@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "fall_over",
+  "contract": "1",
+  "name": "Fall over",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["slapstick"],
+  "params": { "target": "target" },
+  "needs": [],
+  "duration_s": 1.5,
+  "energy": -0.02,
+  "outcomes": ["done"]
+}

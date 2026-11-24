@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "flap",
+  "contract": "1",
+  "name": "Flap",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["slapstick"],
+  "params": { "target": "target" },
+  "needs": [],
+  "duration_s": 1,
+  "energy": -0.02,
+  "outcomes": ["done"]
+}

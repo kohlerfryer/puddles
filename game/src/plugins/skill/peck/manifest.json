@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "peck",
+  "contract": "1",
+  "name": "Peck",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["uses_object"],
+  "params": { "target": "target" },
+  "needs": [],
+  "duration_s": 1,
+  "energy": -0.01,
+  "outcomes": ["done"]
+}

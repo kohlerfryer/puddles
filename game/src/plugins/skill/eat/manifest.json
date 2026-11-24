@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "eat",
+  "contract": "1",
+  "name": "Eat",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["uses_object", "gross"],
+  "params": { "target": "target" },
+  "needs": ["target.edible:true", "target.size:tiny|small"],
+  "duration_s": 1.5,
+  "energy": 0.05,
+  "outcomes": ["done"]
+}

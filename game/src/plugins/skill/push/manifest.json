@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "push",
+  "contract": "1",
+  "name": "Push",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["uses_object", "slapstick"],
+  "params": { "target": "target" },
+  "needs": [],
+  "duration_s": 1.5,
+  "energy": -0.03,
+  "outcomes": ["done"]
+}

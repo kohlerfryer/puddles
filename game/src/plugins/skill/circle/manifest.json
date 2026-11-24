@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "circle",
+  "contract": "1",
+  "name": "Circle",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["uses_object"],
+  "params": { "target": "target" },
+  "needs": [],
+  "duration_s": 2,
+  "energy": -0.02,
+  "outcomes": ["done"]
+}
