@@ -19,7 +19,14 @@ WRAPPERS: dict[str, frozenset[str]] = {
     "nohup": frozenset(),
     "exec": frozenset({"-a"}),
     "command": frozenset(),
+    "sudo": frozenset({"-u", "--user", "-g", "--group", "-C", "-D", "-h", "-p", "-r", "-t", "-U"}),
+    "nice": frozenset({"-n", "--adjustment"}),
+    "xargs": frozenset(
+        {"-a", "-d", "-E", "-I", "-L", "-n", "-P", "-s", "--arg-file", "--delimiter"}
+    ),
 }
+# `env -S '<command>'` splits the string into words and runs them.
+ENV_SPLIT_STRING = ("--split-string=", "--split-string", "-S")
 SHELLS = frozenset({"bash", "sh", "zsh", "dash"})
 
 
@@ -81,10 +88,33 @@ def command_name(word: str) -> str:
     return word.rsplit("/", 1)[-1]
 
 
+def split_words(text: str) -> list[str]:
+    try:
+        return shlex.split(text)
+    except ValueError:
+        return text.split()
+
+
+def expand_env_split_string(words: list[str]) -> list[str]:
+    """Replace a leading `env -S '<command>'` option with the words of its string."""
+    i = 0
+    while i < len(words) and words[i].startswith("-"):
+        word = words[i]
+        prefix = next((p for p in ENV_SPLIT_STRING if word.startswith(p)), None)
+        if prefix and word != prefix:
+            return [*words[:i], *split_words(word[len(prefix) :]), *words[i + 1 :]]
+        if prefix:
+            return [*words[:i], *split_words(" ".join(words[i + 1 : i + 2])), *words[i + 2 :]]
+        i += 2 if word in WRAPPERS["env"] else 1
+    return words
+
+
 def strip_wrappers(words: list[str]) -> list[str]:
     """Drop wrapper prefixes and the assignments after them; name commands without their path."""
     while words and (command_name(words[0]) in WRAPPERS or ASSIGNMENT.match(words[0])):
         head, words = command_name(words[0]), words[1:]
+        if head == "env":
+            words = expand_env_split_string(words)
         if head in WRAPPERS:
             words = skip_options(words, WRAPPERS[head])
         if head == "timeout":
@@ -126,8 +156,11 @@ def substitution_at(command: str, i: int) -> tuple[str, int] | None:
     return None
 
 
-def substitutions(command: str) -> list[str]:
-    """Bodies of command substitutions outside single quotes; the shell runs these too."""
+def substitutions(command: str, quotes: bool = True) -> list[str]:
+    """Bodies of command substitutions outside single quotes; the shell runs these too.
+
+    Without `quotes`, quote characters are plain text, as in an unquoted here-document body.
+    """
     bodies: list[str] = []
     quote, i = "", 0
     while i < len(command):
@@ -138,24 +171,35 @@ def substitutions(command: str) -> list[str]:
             continue
         if command[i] == "\\" and quote != "'":
             i += 1
-        elif command[i] in "'\"" and quote in ("", command[i]):
+        elif quotes and command[i] in "'\"" and quote in ("", command[i]):
             quote = "" if quote else command[i]
         i += 1
     return bodies
 
 
-def strip_heredocs(command: str, quoted_only: bool = False) -> str:
+def strip_heredocs(command: str) -> str:
     """Drop here-document bodies, which are text rather than commands.
 
     A body is kept when a shell appears on its marker line (`bash <<EOF`, `cat <<EOF | sh`),
-    since the shell runs it. With `quoted_only`, bodies under an unquoted delimiter are kept
-    too, since the shell still runs the command substitutions in those.
+    since the shell runs it.
     """
 
     def replace(match: re.Match[str]) -> str:
         line = command[command.rfind("\n", 0, match.start()) + 1 : match.end(1)]
         read_by_shell = any(command_name(word) in SHELLS for word in line.split())
-        keep = read_by_shell or (quoted_only and not match[2])
-        return match[0] if keep else match[1]
+        return match[0] if read_by_shell else match[1]
 
     return HEREDOC.sub(replace, command)
+
+
+def heredoc_substitutions(command: str) -> list[str]:
+    """Command substitutions in bodies under an unquoted delimiter, which the shell runs.
+
+    Quotes inside such a body are plain text, so an apostrophe doesn't hide what follows.
+    """
+    return [
+        body
+        for match in HEREDOC.finditer(command)
+        if not match[2]
+        for body in substitutions(match[0][len(match[1]) :], quotes=False)
+    ]
