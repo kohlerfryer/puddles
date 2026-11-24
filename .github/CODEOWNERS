@@ -17,3 +17,4 @@
 /game/tsconfig.json    @kohlerfryer
 /game/vitest.config.ts @kohlerfryer
 /game/knip.json        @kohlerfryer
+/game/src/sim/thresholds.json @kohlerfryer

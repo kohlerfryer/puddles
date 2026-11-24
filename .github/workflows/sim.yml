@@ -1,0 +1,70 @@
+name: sim
+
+# The simulation gate (docs/spec/m3-kernel.md §14.1): simulated-kid sessions in the headless
+# kernel, checked against game/src/sim/thresholds.json. Fails on crashes, hangs, unsafe intents,
+# regret worse than the reviewed baseline beyond the tolerance, or time-budget overruns.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: sim-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: simulation gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Run the simulation gate
+        id: gate
+        run: |
+          set +e
+          uv run python -m scripts.sim_thresholds game/src/sim/thresholds.json --summary sim-summary.md
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+      - name: Plot regret curves
+        if: always()
+        run: uv run python -m scripts.regret_plot --sessions 300 --out regret.png
+      - name: Upload the regret plot
+        id: plot
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: regret-curves
+          path: regret.png
+      - name: Post the summary
+        continue-on-error: true # a fork's read-only token can't comment; the job summary still has it
+        if: always() && hashFiles('sim-summary.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          PLOT: ${{ steps.plot.outputs.artifact-url }}
+        run: |
+          marker="<!-- simulation-gate -->"
+          {
+            echo "$marker"
+            cat sim-summary.md
+            if [ -n "$PLOT" ]; then echo; echo "Regret curves per kid and policy: [regret.png]($PLOT)"; fi
+          } > comment.md
+          cat comment.md >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$PR" ] || exit 0
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments?per_page=100" \
+            --jq "[.[] | select(.body | startswith(\"$marker\"))][0].id // empty")
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$existing" -F body=@comment.md >/dev/null
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@comment.md >/dev/null
+          fi
+      - name: Fail on a failed gate
+        if: steps.gate.outputs.status != '0'
+        run: |
+          echo "The simulation gate failed; see the summary above."
+          exit 1

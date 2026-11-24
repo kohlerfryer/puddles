@@ -190,3 +190,9 @@ def test_the_real_gate_passes_its_own_baseline(tmp_path: Path) -> None:
     path.write_text(json.dumps({**THRESHOLDS, "sessions": 2, "baseline": {}}))
 
     assert main([str(path), "--summary", str(tmp_path / "summary.md")]) == 0
+
+
+def test_the_repos_thresholds_pass_on_main(tmp_path: Path) -> None:
+    thresholds = Path(__file__).resolve().parents[2] / "game" / "src" / "sim" / "thresholds.json"
+
+    assert main([str(thresholds), "--summary", str(tmp_path / "summary.md")]) == 0
