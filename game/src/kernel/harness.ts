@@ -1,14 +1,16 @@
 /**
  * The plugin contract harness: automatic tests every plugin gets from its manifest. It runs the
  * plugin in a headless kernel twice with the same seed and inputs, then checks its manifest and
- * outputs against the contracts, its time budgets, and that both sessions logged the same events.
+ * outputs against the contracts, its time budgets, the guardian's content rules, and that both
+ * sessions logged the same events.
  */
 
 import type { Event, Manifest, Step } from "../core/contracts";
 import { contractValidators } from "../core/contractsSchema";
 import { TICK_HZ } from "./clock";
+import { violation } from "./guardian/rules";
 import { type Kernel, createKernel } from "./kernel";
-import type { Emitted, PluginFolder } from "./plugins";
+import type { Emitted, PluginContext, PluginFolder } from "./plugins";
 import { createRegistry } from "./registry";
 import { fakeBrain, fakeSense, routine } from "./testing";
 
@@ -19,6 +21,8 @@ const SEED = 1;
 const SLOW_SHARE = 0.05;
 const INPUT = "harness-input";
 const PLAYER = "harness-player";
+/** The scared-step cap brains are checked against until settings set one per personality. */
+const MAX_SCARED_STEPS = 1;
 
 export interface HarnessOptions {
   /** Events fed to the kernel each tick, e.g. the ones a brain's cadence waits for. */
@@ -27,6 +31,8 @@ export interface HarnessOptions {
   readonly args?: Step["args"];
   /** Wall-clock ms for the time budgets; tests pass a fake one. */
   readonly now?: () => number;
+  /** Skills a brain expects installed, by id, with their durations in seconds. */
+  readonly skills?: Readonly<Record<string, number>>;
 }
 
 /** Replays the skill under test from a brain of its own whenever the last call ended. */
@@ -53,6 +59,15 @@ interface Session {
   readonly events: readonly Event[];
   /** What the plugin threw, if the session stopped early. */
   readonly crash: string | null;
+  /** How many times the kernel asked the plugin to decide. */
+  readonly decisions: number;
+}
+
+/** The plugin's code, with `decide` counting each call in `calls`. */
+function counted(code: PluginFolder["code"], calls: { n: number }): PluginFolder["code"] {
+  const decide = code?.decide;
+  if (!decide) return code;
+  return { ...code, decide: (ctx: PluginContext) => (calls.n++, decide(ctx)) };
 }
 
 /** Runs the whole session, or up to the tick where something threw, and says what it was. */
@@ -69,13 +84,14 @@ function play(kernel: Kernel): string | null {
 function session(make: () => PluginFolder, options: HarnessOptions): Session {
   const folder = make();
   const manifest = folder.manifest as Manifest;
+  const calls = { n: 0 };
   const kernel = createKernel({
-    plugins: [folder, ...drivers(manifest, options)],
+    plugins: [{ ...folder, code: counted(folder.code, calls) }, ...drivers(manifest, options)],
     seed: SEED,
     ...(options.now && { now: options.now }),
   });
   const crash = play(kernel);
-  return { manifest, events: kernel.log.events(), crash };
+  return { manifest, events: kernel.log.events(), crash, decisions: calls.n };
 }
 
 const isMoreSpecific = (type: string, declared: string) =>
@@ -98,11 +114,28 @@ function intentProblem(id: string, kinds: readonly string[], intent: unknown): s
   return intent.brain === id ? null : `schema: proposed an intent as ${intent.brain}`;
 }
 
+const proposed = (events: readonly Event[]) =>
+  events.filter((event) => event.type === "intent.proposed").map((event) => event.data);
+
 function brainProblems(id: string, kinds: readonly string[], events: readonly Event[]): string[] {
-  return events
-    .filter((event) => event.type === "intent.proposed")
-    .map((event) => intentProblem(id, kinds, event.data))
+  return proposed(events)
+    .map((intent) => intentProblem(id, kinds, intent))
     .filter((problem) => problem !== null);
+}
+
+/** Runs the guardian's content rules on each valid intent; a good brain passes every time. */
+function guardianProblems(skills: HarnessOptions["skills"], events: readonly Event[]): string[] {
+  const limits = {
+    skillSeconds: new Map(Object.entries(skills ?? {})),
+    maxScaredSteps: MAX_SCARED_STEPS,
+  };
+  const intents = proposed(events).filter((intent) => contractValidators.intent(intent));
+  const broken = intents.map((intent) => violation(intent, limits)).filter((v) => v !== null);
+  const [first] = broken;
+  if (!first) return [];
+  const rules = [...new Set(broken.map((v) => v.rule))].join(", ");
+  const rejected = `${String(broken.length)} of ${String(intents.length)} intents`;
+  return [`guardian: rejected ${rejected} (${rules}), first: ${first.reason}`];
 }
 
 /** Times each call of the skill from its start to its outcome. */
@@ -132,13 +165,17 @@ function budgetProblems(id: string, events: readonly Event[]): string[] {
   return [`budget: over ${budget} ms on ${String(over.length)} of ${String(TICKS)} ticks`];
 }
 
-function kindProblems(manifest: Manifest, events: readonly Event[]): string[] {
+function kindProblems({ manifest, events, decisions }: Session, options: HarnessOptions): string[] {
   const own = events.filter((event) => event.source === manifest.id);
   switch (manifest.kind) {
     case "sense":
       return senseProblems(manifest.emits, own);
     case "brain":
-      return brainProblems(manifest.id, manifest.intents, own);
+      if (decisions === 0) return [`cadence: never decided in ${String(TICKS / TICK_HZ)} s`];
+      return [
+        ...brainProblems(manifest.id, manifest.intents, own),
+        ...guardianProblems(options.skills, own),
+      ];
     case "skill":
       return skillProblems(manifest.duration_s, events);
     case "content":
@@ -162,16 +199,18 @@ function determinismProblems(first: readonly Event[], second: readonly Event[]):
 }
 
 /**
- * Checks the plugin `make` returns against its manifest and the contracts; returns each problem
- * found, or nothing. `make` is called once per session, so it must build fresh plugin state.
+ * Checks the plugin `make` returns against its manifest and the contracts; returns each distinct
+ * problem found, or nothing, so repeats of the same problem show up once. `make` is called once
+ * per session, so it must build fresh plugin state.
  */
 export function checkPlugin(make: () => PluginFolder, options: HarnessOptions = {}): string[] {
   const [rejected] = createRegistry([make()]).rejected;
   if (rejected) return [`manifest: ${rejected.reason}`];
-  const { manifest, events, crash } = session(make, options);
+  const first = session(make, options);
+  const { manifest, events, crash } = first;
   const problems = [
     ...(crash === null ? [] : [crash]),
-    ...kindProblems(manifest, events),
+    ...kindProblems(first, options),
     ...budgetProblems(manifest.id, events),
     ...determinismProblems(events, session(make, options).events),
   ];

@@ -24,12 +24,15 @@ const ticking = (ms: number) => {
 };
 
 const zero = () => 0;
+/** The skills the test brains' routines use. */
+const skills = { peck: 1 };
 
 describe("checkPlugin on good plugins", () => {
   it("passes a plugin of each kind", () => {
     expect(checkPlugin(() => fakeSense("pose", () => []), { now: zero })).toEqual([]);
     expect(
       checkPlugin(() => fakeBrain("bandit", { every_s: 1 }, () => routine("bandit", 1, "peck")), {
+        skills,
         now: zero,
       }),
     ).toEqual([]);
@@ -51,7 +54,7 @@ describe("checkPlugin on good plugins", () => {
         return intent;
       });
     const inputs = (t: number) => (t === 1000 ? [{ type: "observation.held", data: {} }] : []);
-    expect(checkPlugin(matcher, { inputs, now: zero })).toEqual([]);
+    expect(checkPlugin(matcher, { inputs, skills, now: zero })).toEqual([]);
     expect(seen).toHaveLength(2);
 
     const args: Step["args"][] = [];
@@ -97,13 +100,13 @@ describe("checkPlugin on schema", () => {
     const spoof = routine("reflexes", 1, "peck");
     const bad = { brain: "bandit", priority: 1, kind: "routine", why: "" } as unknown as Intent;
     const brain = (intent: Intent) => () => fakeBrain("bandit", { every_s: 60 }, () => intent);
-    expect(checkPlugin(brain(loop), { now: zero })).toEqual([
+    expect(checkPlugin(brain(loop), { skills, now: zero })).toEqual([
       "schema: proposed a goal intent, which the manifest does not declare",
     ]);
-    expect(checkPlugin(brain(spoof), { now: zero })).toEqual([
+    expect(checkPlugin(brain(spoof), { skills, now: zero })).toEqual([
       "schema: proposed an intent as reflexes",
     ]);
-    expect(checkPlugin(brain(bad), { now: zero })).toEqual([
+    expect(checkPlugin(brain(bad), { skills, now: zero })).toEqual([
       expect.stringMatching(/^schema: proposed an intent that breaks the intent contract/),
     ]);
   });
@@ -140,13 +143,49 @@ describe("checkPlugin on budgets", () => {
   });
 });
 
+describe("checkPlugin on the guardian", () => {
+  const brain = (decide: () => Intent) => () => fakeBrain("bandit", { every_s: 1 }, decide);
+
+  it("passes a brain whose intents use the skills it expects and pass the content rules", () => {
+    const peck = brain(() => routine("bandit", 1, "peck"));
+    expect(checkPlugin(peck, { skills, now: zero })).toEqual([]);
+  });
+
+  it("reports intents with skills the brain doesn't expect", () => {
+    const dance = brain(() => routine("bandit", 1, "dance"));
+    expect(checkPlugin(dance, { skills, now: zero })).toEqual([
+      "guardian: rejected 10 of 10 intents (unknown_skill), first: no skill dance",
+    ]);
+  });
+
+  it("reports intents the content rules reject, counted against all the brain proposed", () => {
+    const long = () => {
+      let calls = 0;
+      return brain(() =>
+        ++calls % 2 === 0 ? routine("bandit", 1, "nap", "nap") : routine("bandit", 1, "peck"),
+      )();
+    };
+    expect(checkPlugin(long, { skills: { peck: 1, nap: 15 }, now: zero })).toEqual([
+      "guardian: rejected 5 of 10 intents (routine_duration), first: routine lasts 30 s",
+    ]);
+  });
+});
+
+describe("checkPlugin on cadence", () => {
+  it("reports a brain whose cadence never fires", () => {
+    const matcher = () =>
+      fakeBrain("matcher", { on: "observation.held" }, () => routine("matcher", 1, "peck"));
+    expect(checkPlugin(matcher, { now: zero })).toEqual(["cadence: never decided in 10 s"]);
+  });
+});
+
 describe("checkPlugin on determinism", () => {
   it("reports a plugin that ignores the kernel's seeded random", () => {
     const brain = () =>
       fakeBrain("bandit", "tick", () =>
         Math.random() < 0.5 ? routine("bandit", 1, "peck") : null,
       );
-    expect(checkPlugin(brain, { now: zero })).toEqual([
+    expect(checkPlugin(brain, { skills, now: zero })).toEqual([
       expect.stringMatching(/^determinism: the same seed and inputs gave a different event at t=/),
     ]);
   });
@@ -165,6 +204,6 @@ describe("checkPlugin on determinism", () => {
       fakeBrain("bandit", "tick", ({ random }) =>
         random() < 0.1 ? routine("bandit", 1, "peck") : null,
       );
-    expect(checkPlugin(brain, { now: zero })).toEqual([]);
+    expect(checkPlugin(brain, { skills, now: zero })).toEqual([]);
   });
 });
