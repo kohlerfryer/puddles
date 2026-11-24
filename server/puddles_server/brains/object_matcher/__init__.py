@@ -6,7 +6,8 @@ the brain's game half turns it into a routine.
 
 The reply carries the library answer (spec §7.1), constrained to the installed props plus `other`:
 the prop the object's name matches in the game's prop library, or else `other` with an archetype
-and the crop's dominant colour.
+and the crop's dominant colour. The library is the game's prop content plugin, read when this
+module loads, so the server needs that plugin in place.
 """
 
 import importlib
@@ -29,8 +30,15 @@ PROP_NAMES = {
     for prop_id, prop in LIBRARY["props"].items()
     for name in [prop_id, *prop.get("names", [])]
 }
-ARCHETYPE_WORDS = {
-    word: archetype for archetype, kind in LIBRARY["archetypes"].items() for word in kind["words"]
+# Each word the library knows, and the answer it gives: the prop it names, else `other` of the
+# archetype it names.
+ANSWERS: dict[str, dict[str, str]] = {
+    **{
+        word: {"id": "other", "archetype": archetype}
+        for archetype, kind in LIBRARY["archetypes"].items()
+        for word in kind["words"]
+    },
+    **{name: {"id": prop_id} for name, prop_id in PROP_NAMES.items()},
 }
 # The archetype for an unnamed object of each shape.
 SHAPE_ARCHETYPES = {"round": "ball", "long": "stick", "flat": "flat_thing"}
@@ -50,28 +58,26 @@ def words(name: str) -> list[str]:
     return re.findall(r"[a-z]+", name.lower())[::-1]
 
 
-def first_known(name: str, known: dict[str, str]) -> str | None:
-    """What `known` maps the name's last known word to, trying each word then its singular."""
+def named_answer(name: str) -> dict[str, str] | None:
+    """The answer the name's last known word gives, trying each word then its singular."""
     for word in words(name):
         for form in (word, word.removesuffix("s")):
-            if form in known:
-                return known[form]
+            if form in ANSWERS:
+                return dict(ANSWERS[form])
     return None
 
 
 def prop_named(name: str) -> str | None:
     """The id of the library prop the object's name names, if any."""
-    return first_known(name, PROP_NAMES)
+    answer = named_answer(name)
+    return None if answer is None or answer["id"] == "other" else answer["id"]
 
 
-def archetype_of(name: str, traits: dict[str, Any]) -> str:
-    """The archetype a name points to, or else the one its traits suggest."""
-    by_name = first_known(name, ARCHETYPE_WORDS)
-    if by_name:
-        return by_name
-    if traits.get("shape") in SHAPE_ARCHETYPES:
-        return SHAPE_ARCHETYPES[traits["shape"]]
-    return "fruit" if traits.get("edible") else "box"
+def archetype_by_traits(traits: dict[str, Any]) -> str:
+    """The archetype an unnamed object's traits suggest; food stays food whatever its shape."""
+    if traits.get("edible"):
+        return "fruit"
+    return SHAPE_ARCHETYPES.get(traits.get("shape", ""), "box")
 
 
 def bucket(pixel: Pixel) -> Pixel:
@@ -106,12 +112,13 @@ def crop_color(image: bytes) -> str:
 
 
 def library_answer(reaction: dict[str, Any], image: bytes) -> dict[str, str]:
-    name = reaction["object"]
-    prop = prop_named(name)
-    if prop:
-        return {"id": prop}
-    archetype = archetype_of(name, reaction.get("traits", {}))
-    return {"id": "other", "archetype": archetype, "color": crop_color(image)}
+    answer = named_answer(reaction["object"]) or {
+        "id": "other",
+        "archetype": archetype_by_traits(reaction.get("traits", {})),
+    }
+    if answer["id"] != "other":
+        return answer
+    return {**answer, "color": crop_color(image)}
 
 
 def match(model: ReactionModel, image: bytes) -> dict[str, Any]:

@@ -135,11 +135,15 @@ def object_line(results: list[Result], replies: list[Any], expected: dict[str, s
     if not known:
         return []
     right = sum(names_object(reply, wanted) for reply, wanted in known)
-    library = sum(matches_library(reply, wanted) for reply, wanted in known)
-    return [
-        f"object named right: {right}/{len(known)} ({right / len(known):.0%})",
-        f"library match: {library}/{len(known)} ({library / len(known):.0%})",
-    ]
+    lines = [f"object named right: {right}/{len(known)} ({right / len(known):.0%})"]
+    in_library = [(r, w) for r, w in known if object_matcher.prop_named(w) is not None]
+    if in_library:
+        library = sum(matches_library(reply, wanted) for reply, wanted in in_library)
+        lines.append(
+            f"library match (name lookup): {library}/{len(in_library)} library photos"
+            f" ({library / len(in_library):.0%})"
+        )
+    return lines
 
 
 def main(argv: list[str]) -> int:
