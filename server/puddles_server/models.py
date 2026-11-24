@@ -1,6 +1,6 @@
 from typing import Any, Protocol
 
-from puddles_server.smolvlm import SmolVLMModel
+from puddles_server.smolvlm import SmolVLMModel, SmolVLMNamerModel
 
 
 class ReactionModel(Protocol):
@@ -26,7 +26,11 @@ class FakeModel:
         }
 
 
-MODELS: dict[str, type[ReactionModel]] = {"fake": FakeModel, "smolvlm": SmolVLMModel}
+MODELS: dict[str, type[ReactionModel]] = {
+    "fake": FakeModel,
+    "smolvlm": SmolVLMNamerModel,
+    "smolvlm-json": SmolVLMModel,
+}
 
 
 def load_model(name: str | None) -> ReactionModel:

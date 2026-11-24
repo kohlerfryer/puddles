@@ -10,14 +10,19 @@ import io
 import json
 import logging
 import os
+import random
 import re
 from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from puddles_server.templates import reaction_for
+
 SHARED = Path(__file__).resolve().parents[2] / "shared"
 PROMPT_PATH = SHARED / "puddles_prompt.md"
+NAME_PROMPT = "What is the main object in this photo? Answer with one to three words only."
+NAME_TOKENS = 8
 SCHEMA_PATH = SHARED / "reaction.schema.json"
 DEFAULT_MODEL_ID = "HuggingFaceTB/SmolVLM-256M-Instruct"
 MAX_NEW_TOKENS = 384
@@ -100,8 +105,14 @@ def pick_device(torch: ModuleType) -> str:
     return "cpu"
 
 
-def load_generator(model_id: str, prompt: str) -> Generate:
-    """Load SmolVLM and return a function from JPEG bytes to the model's reply text."""
+def load_generator(
+    model_id: str, prompt: str, *, constrained: bool = True, max_new_tokens: int = MAX_NEW_TOKENS
+) -> Generate:
+    """Load SmolVLM and return a function from JPEG bytes to the model's reply text.
+
+    `constrained` decodes under the reaction schema; short answers like an object's name
+    are generated freely.
+    """
     torch = importlib.import_module("torch")
     transformers = importlib.import_module("transformers")
     pil_image = importlib.import_module("PIL.Image")
@@ -109,14 +120,14 @@ def load_generator(model_id: str, prompt: str) -> Generate:
     processor = transformers.AutoProcessor.from_pretrained(model_id)
     model = transformers.AutoModelForImageTextToText.from_pretrained(model_id).to(device)
     text = processor.apply_chat_template(build_messages(prompt), add_generation_prompt=True)
-    schema_processors = constrain(model, processor)
+    schema_processors = constrain(model, processor) if constrained else list
 
     def generate(image: bytes) -> str:
         photo = pil_image.open(io.BytesIO(image)).convert("RGB")
         inputs = processor(text=text, images=[photo], return_tensors="pt").to(device)
         output = model.generate(
             **inputs,
-            max_new_tokens=MAX_NEW_TOKENS,
+            max_new_tokens=max_new_tokens,
             do_sample=False,
             logits_processor=schema_processors(),
         )
@@ -154,9 +165,13 @@ def constrain(model: Any, processor: Any) -> Callable[[], list[Any]]:
 
 
 class SmolVLMModel:
-    """Base SmolVLM; the model id comes from PUDDLES_SMOLVLM_ID."""
+    """Base SmolVLM writing the whole reaction; the model id comes from PUDDLES_SMOLVLM_ID.
 
-    name = "smolvlm"
+    The base 256M model copies the prompt's examples instead of describing the photo, so this
+    is the eval baseline for fine-tuning, not the default (#104).
+    """
+
+    name = "smolvlm-json"
 
     def __init__(self) -> None:
         self.model_id = os.environ.get("PUDDLES_SMOLVLM_ID") or DEFAULT_MODEL_ID
@@ -168,3 +183,26 @@ class SmolVLMModel:
 
     def react(self, image: bytes) -> dict[str, Any]:
         return parse_reaction(self.raw(image))
+
+
+class SmolVLMNamerModel:
+    """Base SmolVLM only names the object; templates turn the name into a reaction (#104).
+
+    Short direct questions are what the untrained model answers well.
+    """
+
+    name = "smolvlm"
+
+    def __init__(self) -> None:
+        self.model_id = os.environ.get("PUDDLES_SMOLVLM_ID") or DEFAULT_MODEL_ID
+        self.generate = load_generator(
+            self.model_id, NAME_PROMPT, constrained=False, max_new_tokens=NAME_TOKENS
+        )
+        self.rng = random.Random()
+
+    def raw(self, image: bytes) -> str:
+        """The model's name answer, so the bench measures the model rather than the template."""
+        return self.generate(image).strip()
+
+    def react(self, image: bytes) -> dict[str, Any]:
+        return reaction_for(self.raw(image), self.rng)
