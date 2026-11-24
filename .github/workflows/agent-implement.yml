@@ -2,7 +2,8 @@ name: agent implement
 
 # Agents implement ready issues in parallel and open PRs (docs/workflow.md).
 # Dispatch runs when the owner labels an issue agent:ready, when the owner or the
-# manager routine pushes to main, every 15 minutes, or by hand. Auto-merges made by
+# manager routine pushes to main, every 15 minutes, or by hand. claude-code-action
+# refuses push events, so a push only re-dispatches this workflow. Auto-merges made by
 # github-actions[bot] don't trigger workflows, so those are picked up by the 15-minute run.
 # Set the repo variable AGENTS_PAUSED=true to stop agents.
 
@@ -26,10 +27,22 @@ env:
   OWNER: kohlerfryer
 
 jobs:
+  redispatch:
+    name: re-dispatch after push
+    if: vars.AGENTS_PAUSED != 'true' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run agent-implement.yml -R "$GITHUB_REPOSITORY" --ref main
+
   dispatch:
     name: pick issue
     if: >-
-      vars.AGENTS_PAUSED != 'true' &&
+      vars.AGENTS_PAUSED != 'true' && github.event_name != 'push' &&
       (github.event_name != 'issues' ||
        (github.event.label.name == 'agent:ready' && github.event.sender.login == 'kohlerfryer'))
     runs-on: ubuntu-latest
