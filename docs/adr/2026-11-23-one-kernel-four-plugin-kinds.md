@@ -7,7 +7,8 @@
 - Every brain output passes the guardian (kid safety, vetted requests, content, privacy, budgets, wellbeing) before anything plays.
 - Objects held up to the window become in-world props: library match, then archetype + color, then photo sticker as a fallback.
 - Learning is a feature-based bandit over behaviors, rewarded by smile change after each bit; never by session length.
-- Plugins live in `game/src/plugins/<kind>/<id>/`, inside the existing gates. This amends `2026-11-22-game-logic-in-core-drawing-in-render.md`: plugin logic follows the core rules (pure, tested, no PixiJS or DOM).
+- Plugins live in `game/src/plugins/<kind>/<id>/`, inside the existing gates. This amends `2026-11-22-game-logic-in-core-drawing-in-render.md`: plugin logic follows the core rules (pure, tested, no PixiJS or DOM). Python brains live in `server/puddles_server/brains/<id>/` with tests in `server/tests/brains/`, inside the existing pytest and coverage settings.
+- This also amends that ADR's rejection of screenshot testing: CI takes Playwright screenshots of the game on recorded input streams and posts them to PRs for human review only. They never assert pass/fail, so they can't be flaky gates; behaviour is still checked by the headless tests. They are worth it now because recorded streams make runs repeatable and real art makes changes visible.
 - We migrate in place (strangler pattern) and keep the game playable after every PR. Full spec: `docs/spec/m3-kernel.md`.
 
 ## Why
