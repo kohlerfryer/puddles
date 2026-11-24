@@ -141,6 +141,36 @@ def test_report_adds_object_accuracy_when_known() -> None:
     assert "object named right: 1/2 (50%)" in lines
 
 
+@pytest.mark.parametrize(
+    ("said", "expected", "right"),
+    [
+        ({"object": "coffee mug"}, "cup", True),
+        ("A water bottle.", "water bottle", True),
+        ({"object": "red car"}, "toy car", True),
+        ("cat", "toy dinosaur", False),
+        ("a toaster", "toaster", False),
+        (None, "banana", False),
+    ],
+)
+def test_checks_the_library_prop_the_name_lands_on(said: Any, expected: str, right: bool) -> None:
+    assert bench_reactions.matches_library(said, expected) is right
+
+
+def test_report_adds_library_match_accuracy_when_known() -> None:
+    validator = Draft202012Validator(json.loads(bench_reactions.SCHEMA_PATH.read_text()))
+    results = [
+        Result("a.jpg", '{"object": "mug"}', 0.1),
+        Result("b.jpg", "A sneaker", 0.1),
+        Result("c.jpg", "kitten", 0.1),
+    ]
+
+    lines = bench_reactions.report(
+        results, validator, {"a.jpg": "coffee cup", "b.jpg": "shoe", "c.jpg": "dog"}
+    )
+
+    assert "library match: 2/3 (67%)" in lines
+
+
 def test_scores_a_plain_name_answer_by_its_text() -> None:
     validator = Draft202012Validator(json.loads(bench_reactions.SCHEMA_PATH.read_text()))
     results = [Result("a.jpg", "A banana.", 0.1), Result("b.jpg", "Cat", 0.1)]

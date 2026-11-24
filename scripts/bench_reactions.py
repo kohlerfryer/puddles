@@ -1,7 +1,8 @@
 """Run the configured reaction model over a folder of photos and report how it does.
 
-Prints the valid-JSON rate, the schema-valid rate, how often the object is named right (when the
-folder's SOURCES.md lists what each photo shows), latency p50/p95 and a few replies.
+Prints the valid-JSON rate, the schema-valid rate, how often the object is named right and lands
+on the right library prop (when the folder's SOURCES.md lists what each photo shows), latency
+p50/p95 and a few replies.
 Run with `just bench-vlm <folder>`; the model comes from PUDDLES_MODEL like the server's.
 """
 
@@ -17,6 +18,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from puddles_server.brains import object_matcher
 from puddles_server.models import ReactionModel, load_model
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "shared" / "reaction.schema.json"
@@ -72,15 +74,23 @@ def words(text: str) -> set[str]:
     return {word.removesuffix("s") for word in re.findall(r"[a-z]+", text.lower())}
 
 
-def names_object(reply: Any, expected: str) -> bool:
-    """Whether the reply names what the photo shows: a shared word or a synonym.
+def said_name(reply: Any) -> str:
+    """A JSON reply's `object`; any other reply is taken as the model's name answer."""
+    return str(reply.get("object", "")) if isinstance(reply, dict) else str(reply)
 
-    A JSON reply is judged by its `object`; any other reply is taken as the model's name answer.
-    """
-    said = words(str(reply.get("object", "")) if isinstance(reply, dict) else str(reply))
+
+def names_object(reply: Any, expected: str) -> bool:
+    """Whether the reply names what the photo shows: a shared word or a synonym."""
+    said = words(said_name(reply))
     wanted = words(expected) - GENERIC or words(expected)
     accepted = wanted.union(*(SYNONYMS.get(word, set()) for word in wanted))
     return bool(said & accepted)
+
+
+def matches_library(reply: Any, expected: str) -> bool:
+    """Whether the object matcher spawns the library prop the photo shows for the reply's name."""
+    wanted = object_matcher.prop_named(expected)
+    return wanted is not None and object_matcher.prop_named(said_name(reply)) == wanted
 
 
 def parsed(reply: str) -> Any:
@@ -125,7 +135,11 @@ def object_line(results: list[Result], replies: list[Any], expected: dict[str, s
     if not known:
         return []
     right = sum(names_object(reply, wanted) for reply, wanted in known)
-    return [f"object named right: {right}/{len(known)} ({right / len(known):.0%})"]
+    library = sum(matches_library(reply, wanted) for reply, wanted in known)
+    return [
+        f"object named right: {right}/{len(known)} ({right / len(known):.0%})",
+        f"library match: {library}/{len(known)} ({library / len(known):.0%})",
+    ]
 
 
 def main(argv: list[str]) -> int:
