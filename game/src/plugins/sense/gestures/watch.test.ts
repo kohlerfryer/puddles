@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { GESTURE_REACTIONS } from "../../../core/copyMe";
+import { played } from "../../../core/bridge";
+import { MIRRORS } from "../../brains/reflexes";
 import {
   isPoseFixture,
   LANDMARK_COUNT,
@@ -68,26 +69,20 @@ describe("gesture watch", () => {
 });
 
 describe("gesture reactions", () => {
-  it("makes Puddles jump when the player jumps", () => {
-    expect(GESTURE_REACTIONS.jump.do).toBe("jump");
-  });
-
-  it("makes Puddles flap when the player flaps", () => {
-    expect(GESTURE_REACTIONS.flap.do).toBe("flap");
-  });
-
   it.each(fixtures.filter(([, f]) => f.gesture !== "idle"))(
-    "%s drives Puddles' reaction through the runner",
+    "%s drives Puddles' mirror through the runner",
     (_path, fixture) => {
       const runner = createRunner();
       const watch = createGestureWatch();
       const gesture = fixture.gesture as BodyGesture;
       const reported = fixture.frames.find((frame) => watch.push(frame).includes(gesture));
       if (!reported) throw new Error(`${gesture} was never reported`);
-      runner.react(GESTURE_REACTIONS[gesture], reported.t);
+      const move = played(MIRRORS[gesture]);
+      if (move?.kind !== "step") throw new Error(`${gesture} has no move`);
+      runner.react(move.step, reported.t);
       expect(runner.update(reported.t)).toMatchObject({
         state: "playing",
-        step: GESTURE_REACTIONS[gesture],
+        step: { do: MIRRORS[gesture].skill },
       });
     },
   );

@@ -1,7 +1,8 @@
 /** Puddles' thought bubble: a picture of what he's thinking, for kids who can't read yet. */
 
 import { ASK_TIMEOUT_MS } from "./ask";
-import { ASK_MS, type CopyCue } from "./copyMe";
+import { ASK_MS } from "../plugins/brains/copyMe";
+import type { Step } from "./contracts";
 import type { BodyGesture } from "../plugins/sense/gestures/gestures";
 import { SCENE_WIDTH } from "./pond";
 import { fadeAlpha, SPEECH_WIDTH } from "./speech";
@@ -78,26 +79,29 @@ export function senseThought(now: number): Thought {
   return { icon: "sense", startedAt: now, seconds: ASK_TIMEOUT_MS / 1000 };
 }
 
+const isIcon = (icon: unknown): icon is ThoughtIcon =>
+  typeof icon === "string" && Object.hasOwn(THOUGHT_ICONS, icon);
+
+const endsAt = ({ startedAt, seconds }: Thought) => startedAt + seconds * 1000;
+
 /**
- * The thought after `cue` at `now` ms: the asked-for gesture held for the whole wait, a mirrored
- * gesture briefly, popped once the request ends, or unchanged through a wrong guess.
+ * The thought once the kernel starts `step` at `now` ms: the gesture Puddles waits for the kid to
+ * copy, held for the whole wait; the gesture a step thinks of, briefly, unless he already holds it
+ * in mind for longer; or none, which pops the bubble when a request ends.
  */
 export function thoughtAfter(
   current: Thought | undefined,
-  cue: CopyCue,
+  { skill, args, think }: Step,
   now: number,
 ): Thought | undefined {
-  switch (cue.kind) {
-    case "ask":
-      return { icon: GESTURE_ICONS[cue.gesture], startedAt: now, seconds: ASK_MS / 1000 };
-    case "mirror":
-      return gestureThought(cue.gesture, now);
-    case "no":
-      return current;
-    case "yes":
-    case "timeout":
-      return undefined;
+  if (skill === "copy_gesture") {
+    return isIcon(args.gesture)
+      ? { icon: args.gesture, startedAt: now, seconds: ASK_MS / 1000 }
+      : undefined;
   }
+  if (!isIcon(think)) return undefined;
+  const brief = { icon: think, startedAt: now, seconds: THOUGHT_SECONDS };
+  return current?.icon === think && endsAt(current) > endsAt(brief) ? current : brief;
 }
 
 /** The thought bubble at `now` ms: its icon and how opaque it is. */

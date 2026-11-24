@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { ASK_TIMEOUT_MS } from "./ask";
-import { ASK_MS, COPY_STEPS } from "./copyMe";
+import { ASK_MS, COPY_STEPS } from "../plugins/brains/copyMe";
+import { MIRRORS } from "../plugins/brains/reflexes";
 import { BODY_GESTURES } from "../plugins/sense/gestures/gestures";
 import { SCENE_WIDTH } from "./pond";
 import { FADE_SECONDS, SPEECH_WIDTH } from "./speech";
@@ -75,29 +76,32 @@ describe("thoughtAt", () => {
 });
 
 describe("thoughtAfter", () => {
-  const ask = { kind: "ask", gesture: "wave", step: COPY_STEPS.ask.wave } as const;
+  const wait = { skill: "copy_gesture", args: { gesture: "wave", until: 9000 } };
+  const asking = thoughtAfter(thoughtAfter(undefined, COPY_STEPS.ask.wave, 500), wait, 1000);
 
-  it("holds the asked-for gesture for the whole wait", () => {
-    const asking = thoughtAfter(undefined, ask, 1000);
+  it("pictures the asked-for gesture while asking and holds it for the whole wait", () => {
+    expect(thoughtAfter(undefined, COPY_STEPS.ask.wave, 500)).toEqual(gestureThought("wave", 500));
     expect(thoughtAt(asking, 1000 + ASK_MS - 1)).toEqual({ icon: "wave", alpha: 1 });
   });
 
   it("keeps the request in mind through a wrong guess", () => {
-    const asking = thoughtAfter(undefined, ask, 1000);
-    expect(thoughtAfter(asking, { kind: "no", step: COPY_STEPS.no }, 2000)).toBe(asking);
+    expect(thoughtAfter(asking, { ...COPY_STEPS.no, think: "wave" }, 2000)).toBe(asking);
   });
 
   it("pops the bubble when the kid copies or the wait runs out", () => {
-    const asking = thoughtAfter(undefined, ask, 1000);
-    expect(thoughtAfter(asking, { kind: "yes", step: COPY_STEPS.yes }, 2000)).toBeUndefined();
-    expect(
-      thoughtAfter(asking, { kind: "timeout", step: COPY_STEPS.timeout }, 2000),
-    ).toBeUndefined();
+    expect(thoughtAfter(asking, COPY_STEPS.yes, 2000)).toBeUndefined();
+    expect(thoughtAfter(asking, COPY_STEPS.timeout, 2000)).toBeUndefined();
   });
 
-  it("pictures a mirrored gesture briefly", () => {
-    const mirror = { kind: "mirror", gesture: "flap", step: COPY_STEPS.yes } as const;
-    expect(thoughtAfter(undefined, mirror, 500)).toEqual(gestureThought("flap", 500));
+  it("pictures a mirrored gesture briefly, replacing an older thought", () => {
+    expect(thoughtAfter(undefined, MIRRORS.flap, 500)).toEqual(gestureThought("flap", 500));
+    const again = thoughtAfter(gestureThought("flap", 0), MIRRORS.flap, 500);
+    expect(again).toEqual(gestureThought("flap", 500));
+  });
+
+  it("thinks nothing of a wait for a gesture it has no picture for", () => {
+    const odd = { skill: "copy_gesture", args: { gesture: "cartwheel" } };
+    expect(thoughtAfter(asking, odd, 2000)).toBeUndefined();
   });
 });
 

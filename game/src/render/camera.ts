@@ -1,12 +1,16 @@
 import { FilesetResolver, HandLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
 
 import type { CameraSample, Point } from "../core/cameraSample";
+import type { KernelEvent } from "../core/contracts";
 import { type PoseFrame, toFrame } from "../core/poseFixture";
 import { TICK_HZ } from "../kernel/clock";
 import { createKernel } from "../kernel/kernel";
-import { gestureOf, gesturesSense } from "../plugins/sense/gestures";
-import type { BodyGesture } from "../plugins/sense/gestures/gestures";
+import type { PluginFolder } from "../kernel/plugins";
+import { copyMe, copyMeBrain } from "../plugins/brains/copyMe";
+import { reflexesBrain } from "../plugins/brains/reflexes";
+import { gesturesSense } from "../plugins/sense/gestures";
 import { heldHand, heldObjectSense } from "../plugins/sense/held_object";
+import { SKILLS } from "../plugins/skill";
 import { type Box, cropBox } from "../plugins/sense/held_object/hold";
 import { poseSense } from "../plugins/sense/pose";
 
@@ -20,6 +24,8 @@ const HAND_MODEL =
 const PHOTO_PX = 512;
 /** Same rate the gesture fixtures were recorded at, so live input matches what the detector is tested on. */
 export const SAMPLE_MS = 66;
+/** How many kernel seeds a session picks from, so copy-me asks in a new order each time. */
+const SEEDS = 2 ** 31;
 
 /** Starts the webcam playing into `video`. */
 export async function openCamera(video: HTMLVideoElement): Promise<void> {
@@ -62,14 +68,23 @@ async function photograph(video: HTMLVideoElement, box: Box): Promise<Blob> {
   });
 }
 
+/** The live game's kernel: the camera's `senses`, the reflexes and copy-me brains, and the skills. */
+function liveKernel(senses: readonly PluginFolder[]) {
+  return createKernel({
+    plugins: [...senses, reflexesBrain(), copyMeBrain(), ...SKILLS],
+    behaviors: new Map([["copy_me", copyMe]]),
+    seed: Math.floor(Math.random() * SEEDS),
+  });
+}
+
 /**
- * Runs MediaPipe Pose on the webcam and feeds the landmarks to the sense plugins in a kernel;
- * calls `onGesture` for each gesture the player makes, with `now` as `performance.now()` when it
- * was seen. With `onPhoto`, it also runs Hand Landmarker and passes a photo of anything held up
+ * Runs MediaPipe Pose on the webcam and feeds the landmarks to the sense plugins in a kernel that
+ * also runs the reflexes and copy-me brains and the skills; calls `onEvent` with each event the
+ * kernel logs. With `onPhoto`, it also runs Hand Landmarker and passes a photo of anything held up
  * still; `onPhoto` resolves when the reaction finishes. Only render ever touches the image.
  */
 export async function watchCamera(
-  onGesture: (gesture: BodyGesture, now: number) => void,
+  onEvent: (event: KernelEvent) => void,
   onFrame?: (frame: PoseFrame | undefined) => void,
   onPhoto?: (photo: Blob) => Promise<void>,
 ): Promise<void> {
@@ -82,9 +97,11 @@ export async function watchCamera(
   let latest: CameraSample | undefined;
   const read = () => latest;
   const held = heldObjectSense(read);
-  const kernel = createKernel({
-    plugins: [poseSense(read), gesturesSense(read), ...(hands ? [held.folder] : [])],
-  });
+  const kernel = liveKernel([
+    poseSense(read),
+    gesturesSense(read),
+    ...(hands ? [held.folder] : []),
+  ]);
   let sampledAt = -Infinity;
 
   const sample = (now: number): void => {
@@ -108,8 +125,7 @@ export async function watchCamera(
   setInterval(() => {
     kernel.tick();
     for (const event of kernel.log.since(seen)) {
-      const gesture = gestureOf(event);
-      if (gesture) onGesture(gesture, performance.now());
+      onEvent(event);
       const hand = heldHand(event);
       if (hand) photo(hand);
     }

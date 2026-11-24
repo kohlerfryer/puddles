@@ -57,6 +57,11 @@ export function startIdle(x: number, random: Random): IdleState {
   return { action: pickIdle(x, random), elapsed: 0 };
 }
 
+/** Puddles at `x` napping for `seconds`, as when the kernel plays the `nap` skill. */
+export function napIdle(x: number, seconds: number): IdleState {
+  return { action: { kind: "nap", from: x, to: x, seconds }, elapsed: 0 };
+}
+
 /** Moves the idle loop on by `dt` seconds, picking a new action once the current one ends. */
 export function advanceIdle(state: IdleState, dt: number, random: Random): IdleState {
   const elapsed = state.elapsed + dt;

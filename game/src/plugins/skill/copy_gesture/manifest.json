@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "copy_gesture",
+  "contract": "1",
+  "name": "Copy gesture",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["copies_kid"],
+  "params": { "gesture": "gesture", "until": "time" },
+  "needs": [],
+  "duration_s": 8,
+  "energy": 0,
+  "outcomes": ["done"]
+}

@@ -1,6 +1,7 @@
 import { ask, type Post, reactUrl, scriptMs, toBase64 } from "./core/ask";
 import { gameTitle } from "./core/title";
 import { loadSave, type SaveServer, saveUrl } from "./kernel/saves";
+import { gestureOf } from "./plugins/sense/gestures";
 import { watchCamera } from "./render/camera";
 import { createDevPanel } from "./render/devPanel";
 import { createHud, type Hud } from "./render/hud";
@@ -66,8 +67,10 @@ void Promise.all([createStage(document.body), loadSave(saves)]).then(([app, save
     return;
   }
   watchCamera(
-    (gesture) => {
-      hud.gesture(gesture, puddles.see(gesture).step.say);
+    (event) => {
+      const gesture = gestureOf(event);
+      if (gesture) hud.gesture(gesture);
+      puddles.follow(event);
     },
     (frame) => {
       hud.status("watching");
