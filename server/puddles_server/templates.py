@@ -5,6 +5,7 @@ name into a kind of object and fills a reaction template for that kind. The fine
 replaces this with reactions it writes itself; this is also the baseline it must beat.
 """
 
+import itertools
 import random
 import re
 from typing import Any
@@ -29,6 +30,7 @@ KIND_WORDS: dict[str, tuple[str, ...]] = {
         "strawberry",
         "pea",
         "corn",
+        "hot dog",
     ),
     "animal": (
         "cat",
@@ -69,10 +71,29 @@ KIND_WORDS: dict[str, tuple[str, ...]] = {
     "vehicle": ("car", "truck", "train", "plane", "boat", "bus", "rocket", "tractor"),
     "container": ("cup", "mug", "bowl", "bottle", "box", "jar", "pot", "basket"),
 }
-# Words a model puts before the name ("It is a banana."), dropped before taking the name.
+# Words a model puts before the name ("I see a banana."), dropped before taking the name.
 LEADING_FILLER = frozenset(
-    {"a", "an", "the", "it", "it's", "its", "this", "that", "is", "looks", "like"}
+    {
+        "a",
+        "an",
+        "the",
+        "it",
+        "it's",
+        "its",
+        "this",
+        "that",
+        "is",
+        "looks",
+        "like",
+        "i",
+        "see",
+        "there",
+    }
 )
+# Words that end the name ("a banana on a table"): what follows is the scene, not the object.
+NAME_ENDS = frozenset({"on", "in", "with", "of", "next"})
+# Answers made only of these words mean the hand holds nothing.
+EMPTY_WORDS = frozenset({"nothing", "hand", "hands", "empty"})
 # Vowel-led words that take "a" ("a unicorn", "a one-eyed toy").
 CONSONANT_SOUNDS = ("uni", "use", "one", "eu")
 KIND_ORDER = ("food", "animal", "vehicle", "wearable", "round", "flat", "container")
@@ -86,6 +107,7 @@ TRAITS: dict[str, dict[str, Any]] = {
     "vehicle": {"size": "small", "weight": "medium", "shape": "other", "edible": False},
     "container": {"size": "small", "weight": "medium", "shape": "other", "edible": False},
     "other": {"size": "small", "weight": "medium", "shape": "other", "edible": False},
+    "empty": {"size": "tiny", "weight": "light", "shape": "other", "edible": False},
 }
 
 
@@ -165,15 +187,26 @@ SCRIPTS: dict[str, list[list[dict[str, str]]]] = {
         ],
         [step("circle", "curious"), step("fall_over", "silly", say="{A_name}! Too exciting!")],
     ],
+    "empty": [
+        [
+            step("look_at", "curious", "camera", "Your hands are empty!"),
+            step("flap", "silly", "none", "Show me something!"),
+        ],
+        [
+            step("sniff", "curious", "none"),
+            step("look_at", "silly", "camera", "Invisible snacks? My favourite."),
+        ],
+    ],
 }
 
 
 def clean_name(raw: str) -> str:
-    """Up to three words of the model's answer, after a leading article or filler."""
+    """Up to three words of the model's answer, after leading filler and before a preposition."""
     words = re.findall(r"[a-zA-Z][a-zA-Z'-]*", raw.lower())
     while words and words[0] in LEADING_FILLER:
         words.pop(0)
-    return " ".join(words[:3]) or "thing"
+    name = list(itertools.takewhile(lambda word: word not in NAME_ENDS, words))
+    return " ".join(name[:3]) or "thing"
 
 
 def with_article(name: str) -> str:
@@ -182,11 +215,16 @@ def with_article(name: str) -> str:
 
 
 def kind_of(name: str) -> str:
-    words = set(name.split())
-    words |= {w.removesuffix("s") for w in words}
-    for kind in KIND_ORDER:
-        if words & set(KIND_WORDS[kind]):
-            return kind
+    """The kind of a cleaned name; two-word names ("hot dog") are matched before single words."""
+    words = name.split()
+    if set(words) <= EMPTY_WORDS:
+        return "empty"
+    stems = [w.removesuffix("s") for w in words]
+    pairs = {f"{a} {b}" for seq in (words, stems) for a, b in itertools.pairwise(seq)}
+    for terms in (pairs, {*words, *stems}):
+        for kind in KIND_ORDER:
+            if terms & set(KIND_WORDS[kind]):
+                return kind
     return "other"
 
 
@@ -198,4 +236,9 @@ def reaction_for(raw_name: str, rng: random.Random) -> dict[str, Any]:
     a_name = with_article(name)
     words = {"name": name, "a_name": a_name, "A_name": a_name.capitalize()}
     filled = [{k: v.format(**words) for k, v in s.items()} for s in script]
-    return {"holding": True, "object": name, "traits": dict(TRAITS[kind]), "script": filled}
+    return {
+        "holding": kind != "empty",
+        "object": name,
+        "traits": dict(TRAITS[kind]),
+        "script": filled,
+    }
