@@ -20,7 +20,7 @@ Agents do most of the work. Humans approve plans, approve tickets, review high-r
 5. **Gates.** CI runs `just check` (see `docs/coding-standards.md`). A red check blocks the merge.
 6. **Agent review.** A separate review run with fresh context reads the PR against the issue and the standards. It can request up to 2 rounds of fixes.
 7. **Risk gate.** A script labels the PR `risk:low` or `risk:high`. Low-risk PRs auto-merge when gates and review pass. High-risk PRs wait for the owner.
-8. **Playtest.** At each product milestone (P0–P3 in the PRD), the owner plays with real kids and records notes in `docs/playtests/`.
+8. **Playtest.** At each product milestone (P0–P3 in the PRD), the owner plays with real kids and records notes in a "Playtest notes" issue (label `playtest`; no names, photos or transcripts). The lead turns each one into small `agent:draft` tickets, lists them in the Owner inbox (#137) for approval, links them on the playtest issue and closes it.
 
 ## When a human is involved
 
@@ -92,7 +92,7 @@ Agents set the board status with `gh project item-edit` as they work (see the `/
 
 `main` is protected by the ruleset in `.github/rulesets/main.json`: PRs only, linear history, no force pushes or deletion, the `just check` status check, resolved review threads, and code-owner review for the high-risk paths in `.github/CODEOWNERS`. Only rebase merges are allowed, and branches are deleted on merge. The owner applies changes to these with `just github-settings`. Admins can bypass the review rule on their own PRs, since GitHub doesn't let authors approve their own work.
 
-New issues use the Task form in `.github/ISSUE_TEMPLATE/task.yml`, which requires the Definition of Ready fields. PRs start from `.github/pull_request_template.md`.
+New issues use the Task form in `.github/ISSUE_TEMPLATE/task.yml`, which requires the Definition of Ready fields; playtests use `.github/ISSUE_TEMPLATE/playtest.yml`. PRs start from `.github/pull_request_template.md`.
 
 ## Running agents
 
