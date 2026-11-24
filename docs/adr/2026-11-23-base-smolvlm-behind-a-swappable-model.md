@@ -6,7 +6,7 @@
 - The prompt lives in `shared/puddles_prompt.md`, next to the schema it asks for, so the server, evals and fine-tuning data share one copy.
 - Output is decoded under the reaction schema with xgrammar logits processors, with string lengths capped so a reply always fits the token budget. If xgrammar can't compile the schema for a model's tokenizer, the backend generates freely, then extracts and repairs the first JSON object, and falls back to the game's confused reaction.
 - torch, transformers, xgrammar and pillow live in an optional `vlm` dependency group and are imported only when the model loads. CI, agents and the default server never install them.
-- The device is picked at load: MPS, then CUDA, then CPU. PyTorch on MPS for play: on the Mac (#104), the 256M names objects at p50 657 ms / p95 1009 ms, and writes a full JSON reaction at p50 2023 ms / p95 2247 ms. MLX is deferred to fine-tuning.
+- The device is picked at load: MPS, then CUDA, then CPU. PyTorch on MPS for play: on the Mac, the 256M writes a full JSON reaction at p50 2023 ms / p95 2247 ms, well under the game's 8 s ask timeout, and names an object with the short name-only prompt (#143) at p50 657 ms / p95 1009 ms. These come from #110's 20-photo run, before the committed bench set (#104). MLX is deferred to fine-tuning.
 
 ## Why
 
