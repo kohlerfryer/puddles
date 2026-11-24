@@ -45,9 +45,10 @@ Repo skills: `/plan-milestone`, `/create-tickets`, `/work-issue <n>`, `/review-p
 
 ## Commits and PRs
 
-- Branch: `agent/<issue>-<slug>` for agent work, `mk/<slug>` for the owner's.
+- Branch: `agent/<issue>-<slug>` for agent work, `mk/<issue>-<slug>` for the owner's and the lead's.
 - Commits: one short line per distinct batch of changes; each commit must pass `just check` on its own. Agent commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (this repo overrides the global no-attribution rule).
 - PRs: say what changed, why, how it was tested, agent notes and what was not done. Label `agent-authored`, plus `risk:high` when the PR touches gates, agent config, ADRs, the shared schema or dependencies. PRs are rebase-merged.
+- Owner and lead work follows the same flow: start from an issue and run `/review-pr` on your own diff before opening the PR.
 
 ## Escalation
 
