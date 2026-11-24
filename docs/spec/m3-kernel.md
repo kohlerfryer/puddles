@@ -199,6 +199,17 @@ Checks every intent and outward signal. Rejections are logged with a reason and 
 - **CLI:** `pnpm puddles new <kind> <id>`, `pnpm puddles try <id>`, `pnpm puddles replay <log>`.
 - **Replay viewer** (dev overlay): timeline of observation → intent (with `why`) → guardian verdict → outcome → reward.
 
+### 14.1 Developing and testing without a camera
+
+Nobody needs a webcam, a microphone or a kid to build or test Puddles.
+
+- **Recorded input streams.** Senses can read from recordings instead of devices: pose landmarks (the existing gesture fixtures), held-object events, smile and laugh levels, voice-activity and command events. `pnpm -C game dev --input <recording>` runs the real browser game on a recording; the dev panel can switch streams live.
+- **Simulation gate in CI.** Every PR runs a few hundred simulated-kid sessions in the headless kernel and fails on crashes or hangs, any unsafe output the guardian should have stopped, regret worse than `main` beyond a tolerance, or latency/budget overruns. Results (regret curves, smiles per bit) are posted to the PR.
+- **Scenario tests.** Each showcase scenario (§16) is an automated end-to-end test on the headless kernel with scripted inputs and expected outcomes.
+- **Recorded model replies.** Model brains are tested in PRs against recorded replies (cassettes), so CI is fast and deterministic. A nightly job runs the real models on CPU against `ml/bench/photos` and reports drift.
+- **Visual checks.** CI runs the browser game on recorded streams with Playwright and attaches screenshots or a short GIF of key moments to each PR that touches `game/`.
+- **Real-world calibration stays occasional and human:** the smile spike (K10), playtests, and recording new input streams to add to the library.
+
 ## 15. Art direction
 
 Reference: `docs/art/puddles-concept.svg`. Duckling proportions (head ≈ body), big low-set sparkly eyes (three highlights), tiny bill, blush, scalloped fluffy outline, warm brown outline `#7a5230`, pastel yellows `#fffbe0 → #ffdb5c`, orange bill and feet `#ffb46b → #ff8a3d`. Characters are layered vector parts animated by code (squash and stretch, blink, head tilt, wing flap, bill open); poses come from `core/`. A style guide (`docs/art/style-guide.md`) covers palette, outline width, proportions and prop design. Rive may replace the renderer later behind the same poses.
@@ -233,7 +244,7 @@ Kernel, guardian, contracts and the event/replay format stay core.
 ## 18. Milestones
 
 ### M3: Kernel and learning (this spec)
-Exit: the game runs on the kernel with today's features as plugins; replay works; the bandit improves smiles in the simulator (regret curve) and runs live with the smile sense.
+Exit: the game runs on the kernel with today's features as plugins; replay works; the bandit improves smiles in the simulator (regret curve) and runs live with the smile sense; and every PR is checked by simulation, scenario tests and screenshots without a camera.
 
 | # | Ticket | Who | Blocked by |
 | --- | --- | --- | --- |
