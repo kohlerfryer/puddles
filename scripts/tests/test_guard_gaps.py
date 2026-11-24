@@ -117,3 +117,37 @@ def test_mentioning_a_mirror_push_is_allowed() -> None:
     command = 'gh issue create --body "git push --mirror pushes main"'
 
     assert bash_denial(command, branch="agent/3-x", ci_agent=False) is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        'bash <<EOF\nit\'s\nEOF\necho "$(gh pr merge 1)"',
+        "echo 'unbalanced; gh pr merge 1",
+        "echo 'unbalanced; gh -R o/r pr merge 1",
+    ],
+)
+def test_a_merge_is_denied_when_the_command_cannot_be_split(command: str) -> None:
+    assert bash_denial(command, branch="agent/3-x", ci_agent=True)
+
+
+def test_quotes_in_a_shell_read_heredoc_do_not_stop_the_split_after_it() -> None:
+    after = 'bash <<EOF\nit\'s\nEOF\necho "gh pr merge 1 is for the owner"'
+    pushed = "sh <<EOF\nit's\nEOF\ngit push -f"
+
+    assert bash_denial(after, branch="agent/3-x", ci_agent=True) is None
+    assert bash_denial(pushed, branch="agent/3-x", ci_agent=False)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "env -CSdir git push -f",
+        "env -iC dir git push -f",
+        "env -a x git push -f",
+        "env --argv0 x git push -f",
+        "env -a x -S 'git push -f'",
+    ],
+)
+def test_env_chdir_clusters_and_argv0_do_not_hide_a_push(command: str) -> None:
+    assert bash_denial(command, branch="agent/3-x", ci_agent=False)
