@@ -2,24 +2,29 @@
 
 import json
 import re
-import shlex
 import subprocess
 from pathlib import PurePosixPath
 from typing import Any
 
 from scripts.agent_hooks.hook_io import is_ci_agent, read_event
+from scripts.agent_hooks.shell_words import (
+    nested_commands,
+    segments,
+    skip_options,
+    strip_heredocs,
+    strip_wrappers,
+    substitutions,
+)
 
 # Fallback patterns, used only when a command can't be tokenized (unbalanced quotes).
 FORCE_PUSH = re.compile(r"\bgit\s+push\b.*\s(--force(-with-lease)?|-f)\b")
 PUSH_TO_MAIN = re.compile(r"\bgit\s+push\b.*(\smain\b|:main\b)")
 NO_VERIFY = re.compile(r"\bgit\s+(commit|push)\b.*\s(--no-verify|-n)\b")
 
-# Any token made only of these is a control operator (`&&`, `|&`, `);`), never a word.
-SEPARATOR_CHARS = frozenset(";&|()")
-# Reserved words that can start a command line without being the command itself.
-KEYWORDS = frozenset({"!", "{", "}", "if", "then", "else", "elif", "do", "while", "until", "time"})
-ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 MAIN_REFS = frozenset({"main", "refs/heads/main"})
+GIT_OPTIONS_WITH_VALUE = frozenset({"-C", "-c", "--git-dir", "--work-tree", "--namespace"})
+# Short `git commit` flags whose value may follow in the same word (`-mmsg`).
+COMMIT_VALUE_FLAGS = frozenset("mFCctSu")
 
 GATE_PATHS = (
     ".github/",
@@ -46,49 +51,18 @@ GATE_FILES = frozenset(
 )
 
 
-def next_quote(quote: str, ch: str) -> str:
-    """The open quote character after reading `ch` (empty outside quotes)."""
-    if quote:
-        return "" if ch == quote else quote
-    return ch if ch in "'\"" else ""
-
-
-def unquoted_newlines_to_semicolons(command: str) -> str:
-    """Treat line breaks outside quotes as command separators, like the shell does.
-
-    Outside single quotes a backslash escapes the next character, and a backslash-newline is a
-    line continuation that joins the lines, as in POSIX shells.
-    """
-    out: list[str] = []
-    quote, escaped = "", False
-    for ch in command:
-        if escaped:
-            escaped = False
-            out[-1:] = [] if ch == "\n" else [out[-1], ch]
-        elif ch == "\\" and quote != "'":
-            escaped = True
-            out.append(ch)
-        else:
-            quote = next_quote(quote, ch)
-            out.append(" ; " if ch == "\n" and not quote else ch)
-    return "".join(out)
-
-
-def segments(command: str) -> list[list[str]]:
-    """Split a shell command into simple commands, without env prefixes or leading keywords."""
-    lexer = shlex.shlex(
-        unquoted_newlines_to_semicolons(command), posix=True, punctuation_chars=True
-    )
-    lexer.whitespace_split = True
-    # No comment handling: a `#` would otherwise hide the rest of the command (safe side).
-    lexer.commenters = ""
-    result: list[list[str]] = [[]]
-    for token in lexer:
-        if set(token) <= SEPARATOR_CHARS:
-            result.append([])
-        elif result[-1] or not (ASSIGNMENT.match(token) or token in KEYWORDS):
-            result[-1].append(token)
-    return [words for words in result if words]
+def commit_skips_hooks(args: list[str]) -> bool:
+    """True for `--no-verify` or an `n` among combined short flags (`-anm`)."""
+    for arg in args:
+        if arg == "--":
+            return False
+        if arg == "--no-verify":
+            return True
+        if arg.startswith("-") and not arg.startswith("--"):
+            flags = re.split(f"[{''.join(COMMIT_VALUE_FLAGS)}]", arg[1:], maxsplit=1)[0]
+            if "n" in flags:
+                return True
+    return False
 
 
 def is_force_flag(word: str) -> bool:
@@ -113,12 +87,25 @@ def push_denial(args: list[str], branch: str) -> str | None:
     return None
 
 
+def git_denial(args: list[str], branch: str) -> str | None:
+    args = skip_options(args, GIT_OPTIONS_WITH_VALUE)
+    if args[:1] == ["push"]:
+        return push_denial(args[1:], branch)
+    if args[:1] == ["commit"] and commit_skips_hooks(args[1:]):
+        return "Skipping git hooks with --no-verify is not allowed."
+    return None
+
+
 def segment_denial(words: list[str], branch: str, ci_agent: bool) -> str | None:
-    if words[0] == "git" and len(words) > 1:
-        if words[1] == "push":
-            return push_denial(words[2:], branch)
-        if words[1] == "commit" and ("--no-verify" in words or "-n" in words):
-            return "Skipping git hooks with --no-verify is not allowed."
+    words = strip_wrappers(words)
+    if not words:
+        return None
+    for nested in nested_commands(words):
+        reason = bash_denial(nested, branch, ci_agent)
+        if reason:
+            return reason
+    if words[0] == "git":
+        return git_denial(words[1:], branch)
     if ci_agent and words[:3] == ["gh", "pr", "merge"]:
         return "Agents never merge PRs; the risk gate and the owner do."
     return None
@@ -139,8 +126,15 @@ def bash_denial(command: str, branch: str, ci_agent: bool) -> str | None:
     """Return why a shell command is denied, or None when it may run.
 
     Only simple commands that start with `git push`, `git commit` or `gh pr merge` are checked,
-    so text that merely mentions them (an issue body, a commit message) is allowed.
+    so text that merely mentions them (an issue body, a commit message) is allowed. Wrapper
+    prefixes are skipped, and strings run by `bash -c`, `eval` or command substitution are
+    checked as commands too. Here-document bodies are text, not commands.
     """
+    command = strip_heredocs(command)
+    for body in substitutions(command):
+        reason = bash_denial(body, branch, ci_agent)
+        if reason:
+            return reason
     try:
         parts = segments(command)
     except ValueError:
