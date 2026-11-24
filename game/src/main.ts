@@ -7,6 +7,7 @@ import { createHud, type Hud } from "./render/hud";
 import { createParentPanel } from "./render/parentPanel";
 import { drawPond } from "./render/pond";
 import { type Actor, playDemo } from "./render/play";
+import { replayRecording } from "./render/recorded";
 import { createVoice } from "./render/sound";
 import { createStage } from "./render/stage";
 
@@ -57,6 +58,11 @@ void Promise.all([createStage(document.body), loadSave(saves)]).then(([app, save
   );
   createDevPanel(document.body, puddles);
   createParentPanel(document.body, saves, save);
+  const input = import.meta.env.VITE_PUDDLES_INPUT;
+  if (input !== undefined) {
+    replayRecording(input, puddles, hud);
+    return;
+  }
   if (!save) {
     hud.status("camera off until the save loads (reload once the server is up)");
     return;

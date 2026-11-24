@@ -3,7 +3,8 @@ import { FilesetResolver, HandLandmarker, PoseLandmarker } from "@mediapipe/task
 import type { CameraSample, Point } from "../core/cameraSample";
 import { type PoseFrame, toFrame } from "../core/poseFixture";
 import { TICK_HZ } from "../kernel/clock";
-import { createKernel } from "../kernel/kernel";
+import type { KernelEvent } from "../core/contracts";
+import { createKernel, type Kernel } from "../kernel/kernel";
 import { gestureOf, gesturesSense } from "../plugins/sense/gestures";
 import type { BodyGesture } from "../plugins/sense/gestures/gestures";
 import { heldHand, heldObjectSense } from "../plugins/sense/held_object";
@@ -104,16 +105,30 @@ export async function watchCamera(
         held.finished(performance.now());
       });
   };
-  let seen = 0;
-  setInterval(() => {
-    kernel.tick();
-    for (const event of kernel.log.since(seen)) {
+  driveKernel(kernel, (events) => {
+    for (const event of events) {
       const gesture = gestureOf(event);
       if (gesture) onGesture(gesture, performance.now());
       const hand = heldHand(event);
       if (hand) photo(hand);
     }
-    seen = kernel.log.count;
-  }, 1000 / TICK_HZ);
+  });
   requestAnimationFrame(sample);
+}
+
+/** Ticks `kernel` at its own rate and hands `onTick` each tick's new events; returns how to stop. */
+export function driveKernel(
+  kernel: Kernel,
+  onTick: (events: readonly KernelEvent[]) => void,
+): () => void {
+  let seen = 0;
+  const timer = setInterval(() => {
+    kernel.tick();
+    const events = kernel.log.since(seen);
+    seen = kernel.log.count;
+    onTick(events);
+  }, 1000 / TICK_HZ);
+  return () => {
+    clearInterval(timer);
+  };
 }
