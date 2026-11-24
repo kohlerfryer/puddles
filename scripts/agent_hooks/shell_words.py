@@ -13,8 +13,9 @@ HEREDOC = re.compile(
     r"(?<!<)(<<-?\s*(['\"]?)([\w.-]+)\2[^\n]*\n)(.*?)^\s*\3[ \t]*$", re.DOTALL | re.MULTILINE
 )
 # Commands that run the rest of the line as a command, with their options that take a value.
+# `env` lists only long ones (abbreviations count); its short ones are in ENV_SHORT_WITH_VALUE.
 WRAPPERS: dict[str, frozenset[str]] = {
-    "env": frozenset({"-u", "--unset", "-C", "--chdir", "-a", "--argv0"}),
+    "env": frozenset({"--unset", "--chdir", "--argv0"}),
     "timeout": frozenset({"-s", "--signal", "-k", "--kill-after"}),
     "nohup": frozenset(),
     "exec": frozenset({"-a"}),
@@ -130,7 +131,7 @@ def env_short_value(word: str) -> tuple[str, str]:
 def env_takes_next_word(word: str) -> bool:
     """True for an `env` option whose value is the next word (`-u`, `-iC`, `--chdir`)."""
     if word.startswith("--"):
-        return word in WRAPPERS["env"]
+        return "=" not in word and any(abbreviates(word, option) for option in WRAPPERS["env"])
     flag, value = env_short_value(word)
     return bool(flag) and not value
 

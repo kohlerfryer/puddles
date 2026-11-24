@@ -151,3 +151,23 @@ def test_quotes_in_a_shell_read_heredoc_do_not_stop_the_split_after_it() -> None
 )
 def test_env_chdir_clusters_and_argv0_do_not_hide_a_push(command: str) -> None:
     assert bash_denial(command, branch="agent/3-x", ci_agent=False)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "env --ch dir git push -f",
+        "env --arg x git push -f",
+        "env --uns X git push -f",
+        "env --chdir=dir git push -f",
+    ],
+)
+def test_abbreviated_env_long_options_do_not_hide_a_push(command: str) -> None:
+    assert bash_denial(command, branch="agent/3-x", ci_agent=False)
+
+
+@pytest.mark.parametrize(
+    "command", ["env --ignore-environment just check", "env --ch dir just check"]
+)
+def test_env_long_options_still_allow_safe_commands(command: str) -> None:
+    assert bash_denial(command, branch="agent/3-x", ci_agent=False) is None
