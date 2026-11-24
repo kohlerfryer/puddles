@@ -33,8 +33,11 @@ export interface ModelCallVerdict {
 }
 
 export interface Guardian {
-  /** Checks a brain's output at kernel time `t` in ms. */
-  check(intent: unknown, t: number): Verdict;
+  /**
+   * Checks the output `brain` sent at kernel time `t` in ms. A due break replaces the output
+   * whatever it was; its event carries the rule the output broke, if any.
+   */
+  check(brain: string, output: unknown, t: number): Verdict;
   /** Whether `brain` may call its model at kernel time `t` in ms. */
   modelCall(brain: string, t: number): ModelCallVerdict;
 }
@@ -73,11 +76,8 @@ const rest = (priority: number): Intent => ({
   why: "session soft limit: suggest a break",
 });
 
-/** The brain an output claims to come from, even when the output is malformed. */
-function brainOf(output: unknown): string {
-  const brain = (output as { brain?: unknown } | null)?.brain;
-  return typeof brain === "string" && brain !== "" ? brain : "unknown";
-}
+/** Skills the guardian's own fallback and break intents use. */
+const OWN_SKILLS = ["look_at", "nap"];
 
 /** Allows at most `limit` events per key in any `spanMs` window. */
 function budget(limit: number, spanMs: number): (key: string, t: number) => boolean {
@@ -90,37 +90,42 @@ function budget(limit: number, spanMs: number): (key: string, t: number) => bool
   };
 }
 
-/** Checks a schema-valid intent against the content rules. */
-function judge(intent: Intent, t: number, limits: Limits): Verdict {
-  const broken = violation(intent, limits);
-  if (broken === null) return { intent, event: event(t, "passed", { brain: intent.brain }) };
-  return {
-    intent: fallback(intent.priority, broken.reason),
-    event: rejected(t, intent.brain, broken),
-  };
+/** Checks a schema-valid intent from `brain` against its claimed brain and the content rules. */
+function judge(brain: string, intent: Intent, t: number, limits: Limits): Verdict {
+  const broken: Violation | null =
+    intent.brain === brain
+      ? violation(intent, limits)
+      : { rule: "brain", reason: `${brain} claims to be ${intent.brain}` };
+  if (broken === null) return { intent, event: event(t, "passed", { brain }) };
+  return { intent: fallback(intent.priority, broken.reason), event: rejected(t, brain, broken) };
 }
 
+/** Checks any output from `brain`: schema first, then `judge`. */
+function review(brain: string, output: unknown, t: number, limits: Limits): Verdict {
+  if (contractValidators.intent(output)) return judge(brain, output, t, limits);
+  const broken: Violation = { rule: "schema", reason: "not a valid intent" };
+  return { intent: fallback(0, broken.reason), event: rejected(t, brain, broken) };
+}
+
+/** Throws unless `settings` install the skills the guardian's own intents need. */
 export function createGuardian(settings: GuardianSettings): Guardian {
+  const missing = OWN_SKILLS.filter((skill) => !settings.skillSeconds.has(skill));
+  if (missing.length > 0) throw new Error(`guardian needs skills: ${missing.join(", ")}`);
   const intentBudget = budget(settings.intentsPerSecond, SECOND_MS);
   const modelBudget = budget(settings.modelCallsPerMinute, MINUTE_MS);
   let nextBreakAt = settings.sessionSoftLimitMs;
 
   return {
-    check(output, t) {
-      const brain = brainOf(output);
+    check(brain, output, t) {
       if (!intentBudget(brain, t)) {
         const reason = `over ${String(settings.intentsPerSecond)} intents per second`;
         return { intent: null, event: rejected(t, brain, { rule: "rate", reason }) };
       }
-      const valid = contractValidators.intent(output);
-      const priority = valid ? output.priority : 0;
-      if (t >= nextBreakAt) {
-        nextBreakAt = t + BREAK_REPEAT_MS;
-        return { intent: rest(priority), event: event(t, "break", { brain }) };
-      }
-      if (valid) return judge(output, t, settings);
-      const broken: Violation = { rule: "schema", reason: "not a valid intent" };
-      return { intent: fallback(0, broken.reason), event: rejected(t, brain, broken) };
+      const verdict = review(brain, output, t, settings);
+      if (t < nextBreakAt) return verdict;
+      nextBreakAt = t + BREAK_REPEAT_MS;
+      const priority = verdict.intent?.priority ?? 0;
+      return { intent: rest(priority), event: event(t, "break", verdict.event.data) };
     },
     modelCall(brain, t) {
       if (modelBudget(brain, t)) {

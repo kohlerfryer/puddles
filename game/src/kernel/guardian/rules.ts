@@ -13,6 +13,7 @@ const MAX_ROUTINE_SECONDS = 20;
 export type Rule =
   | "schema"
   | "rate"
+  | "brain"
   | "line_length"
   | "blocklist"
   | "request"
@@ -65,7 +66,7 @@ const texts = (intent: Intent): string[] => [
 type Check = (intent: Intent, limits: Limits) => Violation | null;
 
 const lineLength: Check = (intent) => {
-  const line = intent.steps?.find((step) => wordCount(step.say ?? "") > MAX_LINE_WORDS)?.say;
+  const line = texts(intent).find((text) => wordCount(text) > MAX_LINE_WORDS);
   return line === undefined
     ? null
     : { rule: "line_length", reason: `line over ${String(MAX_LINE_WORDS)} words: "${line}"` };
