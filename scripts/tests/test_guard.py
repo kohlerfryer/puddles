@@ -109,6 +109,7 @@ def test_main_stays_silent_when_allowed(
         "git commit -m 'Explain why git push --force is banned'",
         "git push origin agent/59-x; gh api -X PATCH repos/o/r -f state=closed",
         "cat <<'EOF'\nnotes\nEOF",
+        "git push origin agent/x &&\ngh pr create --base main",
     ],
 )
 def test_allows_commands_that_only_mention_dangerous_ones(command: str) -> None:
@@ -126,6 +127,20 @@ def test_allows_commands_that_only_mention_dangerous_ones(command: str) -> None:
         "git push origin refs/heads/main",
         "# push the branch\ngit push --force origin agent/x",
         "git push origin feat#1; git push origin main",
+        "git add . &&\ngit push --force origin agent/x",
+        "(cd game && pnpm build)\ngit push origin main",
+        "git status ||\ngit push origin main",
+        "ls |\ngit push --force origin x",
+        "git status |& git push --force origin x",
+        "if true; then git push origin main; fi",
+        "for b in a c; do git push --force origin $b; done",
+        "{ git push --force origin x; }",
+        "! git push origin main",
+        "while true; do git push origin main; done",
+        "until false; do git push origin main; done",
+        "if false; then :; elif true; then git push origin main; fi",
+        "if false; then :; else git push origin main; fi",
+        "time git push --force origin x",
     ],
 )
 def test_denies_dangerous_commands_inside_compound_ones(command: str) -> None:

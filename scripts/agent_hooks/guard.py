@@ -14,7 +14,10 @@ FORCE_PUSH = re.compile(r"\bgit\s+push\b.*\s(--force(-with-lease)?|-f)\b")
 PUSH_TO_MAIN = re.compile(r"\bgit\s+push\b.*(\smain\b|:main\b)")
 NO_VERIFY = re.compile(r"\bgit\s+(commit|push)\b.*\s(--no-verify|-n)\b")
 
-SEPARATORS = frozenset({"&&", "||", ";", "|", "&", "(", ")"})
+# Any token made only of these is a control operator (`&&`, `|&`, `);`), never a word.
+SEPARATOR_CHARS = frozenset(";&|()")
+# Reserved words that can start a command line without being the command itself.
+KEYWORDS = frozenset({"!", "{", "}", "if", "then", "else", "elif", "do", "while", "until", "time"})
 ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 MAIN_REFS = frozenset({"main", "refs/heads/main"})
 
@@ -51,12 +54,12 @@ def unquoted_newlines_to_semicolons(command: str) -> str:
             quote = "" if ch == quote else quote
         elif ch in "'\"":
             quote = ch
-        out.append(";" if ch == "\n" and not quote else ch)
+        out.append(" ; " if ch == "\n" and not quote else ch)
     return "".join(out)
 
 
 def segments(command: str) -> list[list[str]]:
-    """Split a shell command into simple commands, each a list of words without env prefixes."""
+    """Split a shell command into simple commands, without env prefixes or leading keywords."""
     lexer = shlex.shlex(
         unquoted_newlines_to_semicolons(command), posix=True, punctuation_chars=True
     )
@@ -65,9 +68,9 @@ def segments(command: str) -> list[list[str]]:
     lexer.commenters = ""
     result: list[list[str]] = [[]]
     for token in lexer:
-        if token in SEPARATORS:
+        if set(token) <= SEPARATOR_CHARS:
             result.append([])
-        elif result[-1] or not ASSIGNMENT.match(token):
+        elif result[-1] or not (ASSIGNMENT.match(token) or token in KEYWORDS):
             result[-1].append(token)
     return [words for words in result if words]
 
