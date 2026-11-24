@@ -13,7 +13,7 @@ Puddles becomes a small, closed **kernel** plus four kinds of **plugins** that t
 3. **Data over code.** Places, props, scenes, personalities, bits and art are data packs. A new tree needs no code.
 4. **Every output passes the guardian.** Brains can be swapped freely because safety is checked in one place.
 5. **Deterministic and replayable.** Fixed tick, seeded randomness, append-only event log. Any session can be replayed, tested and explained.
-6. **Local and private.** Camera, microphone and photos never leave the machine. Brains see summaries, never raw media.
+6. **Local and private.** Camera, microphone and photos never leave the machine. Only the object matcher sees the held-object crop, once, on the local server; every other brain sees summaries. Raw media never enters intents, memory, logs or saves.
 7. **Delight, not engagement.** We reward smiles per bit, never session length. Puddles gets sleepy and suggests breaks.
 8. **The magic window.** The kid stays in their room; Puddles lives behind the glass. No avatar. Interactions reach *through* the window.
 9. **Graceful degradation.** Planner → small model → templates → reflexes. Puddles never freezes.
@@ -73,14 +73,14 @@ Today's `reaction.schema.json` becomes the **reaction intent** used by object br
 Every plugin is a folder:
 
 ```
-plugins/<kind>/<id>/
+game/src/plugins/<kind>/<id>/
   manifest.json      # required
   index.ts           # sense, brain (in-game) and skill plugins
   <id>.test.ts       # plugin's own tests
   assets/            # art, sounds (content)
 ```
 
-Python brains live in `server/brains/<id>/` with the same manifest and talk to the game through the brain API (§8).
+Plugins live under `game/src/plugins/` so the existing gates (types, lint, tests, coverage) cover them; plugin logic follows the core rules (pure, tested, no PixiJS or DOM) and drawing stays in `render/`. Python brains live in `server/brains/<id>/` with the same manifest and talk to the game through the brain API (§8).
 
 Common manifest fields:
 
@@ -248,6 +248,7 @@ Exit: the game runs on the kernel with today's features as plugins; replay works
 
 | # | Ticket | Who | Blocked by |
 | --- | --- | --- | --- |
+| K0 | Install M3 dependencies (miniplex, LDtk loader, Playwright, a plotting library) with a reason each | owner | – |
 | K1 | Contracts in `shared/`: events, observation, intent, step, outcome, reward, manifest (+ generated TS/Python types) | owner | – |
 | K2 | Kernel core: clock, event log, registry, executor (headless, tested) | agent | K1 |
 | K3 | Guardian v1: budgets, content checks, vetted request list, fallback | agent | K1 |
@@ -256,17 +257,20 @@ Exit: the game runs on the kernel with today's features as plugins; replay works
 | K6 | Port verbs to skill plugins (manifests with tags and needs) | agent | K5 |
 | K7 | Port senses to sense plugins (pose, gestures, hands/held object) | agent | K5 |
 | K8 | Port brains: reflexes, copy-me behavior, object matcher (server `/react`) | agent | K5 |
-| K9 | World ECS (miniplex) and pond as a content plugin; render reads world state | agent | K6 |
+| K9 | World ECS (miniplex) and pond as a content plugin; render reads world state | agent | K6, K0 |
 | K10 | Smile sense spike: face crop + blendshapes at play distance (needs the owner for a test) | owner + agent | K7 |
-| K11 | Simulator + simulated kids + regret plot script | agent | K4 |
+| K11 | Simulator + simulated kids + regret plot script | agent | K4, K0 |
 | K12 | Bandit brain: Thompson over features, attribution window, logging propensities | agent | K11 |
 | K13 | Bandit live: smile reward wired in; dev overlay timeline | agent | K10, K12 |
 | K14 | Prop library v1 (~30 props) + constrained matcher + archetype/color fallback | agent | K8, K9 |
 | K15 | Puppet art: Puddles as layered parts from the concept; style guide | agent | K9 |
 | K16 | Saves + parent controls panel (forget everything) | agent | K2 |
-| K17 | CI simulation gate: simulated-kid sessions per PR with regret, safety and budget thresholds | agent | K11, K3 |
-| K18 | Recorded input streams for senses (`--input`), plus Playwright screenshots in PRs | agent | K7 |
-| K19 | Showcase scenarios as end-to-end tests; recorded model replies; nightly real-model bench | agent | K17, K8 |
+| K17 | Simulation runner and threshold script (regret, safety, budgets) | agent | K11, K3 |
+| K17w | CI workflow and thresholds for the simulation gate | owner | K17 |
+| K18 | Recorded input streams for senses (`--input`) and a Playwright screenshot script | agent | K7, K0 |
+| K18w | CI workflow posting screenshots to game PRs | owner | K18 |
+| K19 | Showcase scenarios as end-to-end tests; recorded model replies (cassettes) | agent | K17, K8 |
+| K19w | Nightly workflow running the real-model bench | owner | K19 |
 
 ### M4: Mind
 Local planner brain (spike: Qwen2.5-VL 3B/7B, SmolVLM2 2.2B on the Mac), voice commands and wake word, needs/boredom/personality, laugh sense, planner-proposed routines.
@@ -279,7 +283,7 @@ Fine-tune SmolVLM on logged preferences and planner output; eval table (library 
 
 ## 19. Migration (keep the game playable after every PR)
 
-Strangler pattern: the kernel runs next to today's `main.ts` loop; each port ticket moves one piece behind the kernel and deletes the old wiring in the same PR. `core/` verb plans, runner, validator, gestures and copy-me move nearly unchanged into plugins. The core/render ADR still holds: plugins' logic is pure and tested; rendering only reads state.
+Strangler pattern: the kernel runs next to today's `main.ts` loop; plugins live in `game/src/plugins/`; each port ticket moves one piece behind the kernel and deletes the old wiring in the same PR. `core/` verb plans, runner, validator, gestures and copy-me move nearly unchanged into plugins. The core/render ADR still holds and is amended: plugin logic under `game/src/plugins/` follows the same rules as `core/` (pure, tested); rendering only reads state. Tickets marked owner change CI workflows, thresholds or dependency manifests, which agents can't edit.
 
 ## 20. Open questions
 

@@ -7,6 +7,7 @@
 - Every brain output passes the guardian (kid safety, vetted requests, content, privacy, budgets, wellbeing) before anything plays.
 - Objects held up to the window become in-world props: library match, then archetype + color, then photo sticker as a fallback.
 - Learning is a feature-based bandit over behaviors, rewarded by smile change after each bit; never by session length.
+- Plugins live in `game/src/plugins/<kind>/<id>/`, inside the existing gates. This amends `2026-11-22-game-logic-in-core-drawing-in-render.md`: plugin logic follows the core rules (pure, tested, no PixiJS or DOM).
 - We migrate in place (strangler pattern) and keep the game playable after every PR. Full spec: `docs/spec/m3-kernel.md`.
 
 ## Why
