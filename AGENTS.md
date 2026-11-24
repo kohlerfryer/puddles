@@ -61,5 +61,5 @@ Stop, label the issue `needs-human` and comment why when: acceptance criteria ar
 - Agent commits carry a Claude co-author trailer: `docs/adr/2026-11-22-agent-commits-carry-a-co-author-trailer.md`
 - TypeScript stays on 6.x until typescript-eslint supports 7: `docs/adr/2026-11-22-typescript-stays-on-6.md`
 - Game logic in core, drawing in render: `docs/adr/2026-11-22-game-logic-in-core-drawing-in-render.md`
-- One small kernel, four plugin kinds, events only (spec: `docs/spec/m3-kernel.md`): `docs/adr/2026-11-23-one-kernel-four-plugin-kinds.md`
 - Base SmolVLM runs now, behind a swappable model: `docs/adr/2026-11-23-base-smolvlm-behind-a-swappable-model.md`
+- One small kernel, four plugin kinds, events only (spec: `docs/spec/m3-kernel.md`): `docs/adr/2026-11-23-one-kernel-four-plugin-kinds.md`

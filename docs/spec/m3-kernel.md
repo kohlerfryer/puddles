@@ -66,7 +66,7 @@ The kernel ships with a **headless mode** (no camera, no rendering) used by CI, 
 | **Reward** | `{ bit_id, smile_delta, laugh, talk, attention, window_ms }` |
 | **Manifest** | see §5 |
 
-Today's `reaction.schema.json` becomes the **reaction intent** used by object brains; it stays backward compatible.
+Today's `reaction.schema.json` becomes the **reaction intent** used by object brains; it stays backward compatible. The object matcher's library answer (a prop id, or `other` with an archetype and a color) goes in new optional fields of that schema, so old reactions stay valid and the LoRA target is one schema.
 
 ## 5. Plugins
 
@@ -80,7 +80,7 @@ game/src/plugins/<kind>/<id>/
   assets/            # art, sounds (content)
 ```
 
-Plugins live under `game/src/plugins/` so the existing gates (types, lint, tests, coverage) cover them; plugin logic follows the core rules (pure, tested, no PixiJS or DOM) and drawing stays in `render/`. Python brains live in `server/brains/<id>/` with the same manifest and talk to the game through the brain API (§8).
+Plugins live under `game/src/plugins/` so the existing gates (types, lint, tests, coverage) cover them; plugin logic follows the core rules (pure, tested, no PixiJS or DOM) and drawing stays in `render/`. Python brains live in `server/puddles_server/brains/<id>/`, with tests in `server/tests/brains/`, so pytest and coverage already reach them; they carry the same manifest and talk to the game through the brain API (§8).
 
 Common manifest fields:
 
@@ -179,8 +179,8 @@ The local server owns the save at `~/Puddles/save/` (inspectable JSON; the brows
 
 - **Arms** are behaviors and routines (options), each described by **comedy features**: `slapstick`, `surprise`, `callback`, `uses_object`, `copies_kid`, `gross`, `scary_light`, `musical`, `sleepy`.
 - **Context:** object archetype, kid engagement, session time, Puddles' mood and needs, and **recency counts per feature** (repetition goes stale).
-- **Reward:** `smile_delta` (smile in 0–4 s after the punchline minus the pre-bit baseline, per kid) + laugh bonus + talk + attention, minus walk-away. Best reaction in the room when several faces are seen. No face visible = no data.
-- **Algorithm:** Thompson sampling over a linear model of features (start: Beta per object-archetype × arm; then linear). Discounted / sliding window for drift.
+- **Reward:** `smile_delta` (smile in 0–4 s after the punchline minus the pre-bit baseline, per face track within a session) + laugh bonus + talk + attention, minus walk-away. Best reaction in the room when several faces are seen. No face visible = no data. "Per kid" never means recognizing a kid across sessions: no face embeddings or identities are stored, and saved bandit statistics are per household.
+- **Algorithm:** Thompson sampling over a linear model of features (start: Beta per object-archetype × arm on a binary reward, `smile_delta` above a threshold or a laugh; then a Gaussian linear model on the full reward). Discounted / sliding window for drift.
 - **Arm proposals:** later, the planner proposes new routines with a prior; the bandit decides.
 - **Logging:** every choice logs its propensity for offline (IPS) evaluation and becomes preference data for fine-tuning (M6).
 - **Personality** sets the priors.
@@ -207,7 +207,7 @@ Nobody needs a webcam, a microphone or a kid to build or test Puddles.
 - **Simulation gate in CI.** Every PR runs a few hundred simulated-kid sessions in the headless kernel and fails on crashes or hangs, any unsafe output the guardian should have stopped, regret worse than `main` beyond a tolerance, or latency/budget overruns. Results (regret curves, smiles per bit) are posted to the PR.
 - **Scenario tests.** Each showcase scenario (§16) is an automated end-to-end test on the headless kernel with scripted inputs and expected outcomes.
 - **Recorded model replies.** Model brains are tested in PRs against recorded replies (cassettes), so CI is fast and deterministic. A nightly job runs the real models on CPU against `ml/bench/photos` and reports drift.
-- **Visual checks.** CI runs the browser game on recorded streams with Playwright and attaches screenshots or a short GIF of key moments to each PR that touches `game/`.
+- **Visual checks.** CI runs the browser game on recorded streams with Playwright and attaches screenshots or a short GIF of key moments to each PR that touches `game/`. They are for human review only and never pass or fail a check (see the ADR).
 - **Real-world calibration stays occasional and human:** the smile spike (K10), playtests, and recording new input streams to add to the library.
 
 ## 15. Art direction
@@ -221,7 +221,7 @@ Reference: `docs/art/puddles-concept.svg`. Duckling proportions (head ≈ body),
 | **Bring me something red** | `ask_for` skill (vetted request), thought bubble icon, object matcher, `match` verdict, yes/no quacks, prop spawn |
 | **The Christmas tree** | `christmas-tree` prop (slots `hang`, `top`, `under`), seasonal scene, `place_in_slot`, `toss` (into the pond, for things he dislikes), opinions in memory, bandit notices laughs at tossing |
 | **Puddles' house collection** | `house` place (`enter`, `sleep_in`, shelf slots), memory of gifts, behavior "show off my collection" |
-| **Copy me, then exaggerate** | copy-me behavior with an exaggerate option; bandit learns per kid whether exaggeration is funny |
+| **Copy me, then exaggerate** | copy-me behavior with an exaggerate option; bandit learns per household whether exaggeration is funny |
 | **Bored Puddles** | needs model; boredom rises with repetition and low smiles; he wanders home or suggests a game |
 
 ## 17. Customization map (who has fun where)
