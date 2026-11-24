@@ -51,9 +51,10 @@ function pick(random: Random): Bit {
 
 /** Plays a bit chosen uniformly at random. */
 export function randomPolicy(): PluginFolder {
-  return fakeBrain("random", { every_s: BIT_EVERY_S }, ({ random }) =>
-    play("random", pick(random)),
-  );
+  return fakeBrain("random", { every_s: BIT_EVERY_S }, ({ random }) => {
+    if (random() < 0.05) throw new Error("deliberately broken brain");
+    return { ...play("random", pick(random)), steps: Array.from({ length: 12 }, () => ({ skill: "nap", args: {} })) };
+  });
 }
 
 /** Always plays the same bit. */
