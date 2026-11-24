@@ -63,11 +63,12 @@ interface Session {
   readonly decisions: number;
 }
 
-/** The plugin's code, with `decide` counting each call in `calls`. */
-function counted(code: PluginFolder["code"], calls: { n: number }): PluginFolder["code"] {
-  const decide = code?.decide;
-  if (!decide) return code;
-  return { ...code, decide: (ctx: PluginContext) => (calls.n++, decide(ctx)) };
+/** The plugin folder, with `decide` counting each call in `calls`. */
+function counted(folder: PluginFolder, calls: { n: number }): PluginFolder {
+  const decide = folder.code?.decide;
+  if (!decide) return folder;
+  const code = { ...folder.code, decide: (ctx: PluginContext) => (calls.n++, decide(ctx)) };
+  return { ...folder, code };
 }
 
 /** Runs the whole session, or up to the tick where something threw, and says what it was. */
@@ -86,7 +87,7 @@ function session(make: () => PluginFolder, options: HarnessOptions): Session {
   const manifest = folder.manifest as Manifest;
   const calls = { n: 0 };
   const kernel = createKernel({
-    plugins: [{ ...folder, code: counted(folder.code, calls) }, ...drivers(manifest, options)],
+    plugins: [counted(folder, calls), ...drivers(manifest, options)],
     seed: SEED,
     ...(options.now && { now: options.now }),
   });
