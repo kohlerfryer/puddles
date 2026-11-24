@@ -92,6 +92,10 @@ fix:
     pnpm -C game exec prettier --write .
     pnpm -C game exec eslint . --fix
 
+# Scaffold a plugin that passes the harness: just new <kind> <id>
+new +args:
+    uv run python -m scripts.new_plugin {{args}}
+
 # Run every gate and write .quality/report.json with each violation's file, line and rule
 report:
     uv run python -m scripts.quality_report

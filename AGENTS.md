@@ -31,6 +31,7 @@ just check-files <paths>     # fast lint/types/complexity on specific files
 just fix                     # auto-format and auto-fix lint
 just report                  # every gate; violations as file:line:rule in .quality/report.json
 just bench-vlm <folder>      # bench SmolVLM on a folder of photos (installs the vlm group)
+just new <kind> <id>         # scaffold a plugin that passes the harness (spec §14)
 ```
 
 The ML libraries live in the optional `vlm` dependency group; `just check` never needs them. To run the server on base SmolVLM (downloads the weights from Hugging Face on first run):
