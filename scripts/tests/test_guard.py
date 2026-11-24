@@ -145,6 +145,11 @@ def test_allows_commands_that_only_mention_dangerous_ones(command: str) -> None:
         "git commit -m 'it'\\''s'\ngit push --force origin y",
         'git commit -m "fix \\"x"\ngit push --force origin y',
         'echo \\"\ngit push origin main',
+        "git add . && \\\n  git push --force origin x",
+        "git status && \\\ngit push --force origin x",
+        "git push origin \\\nmain",
+        "git push \\\n--force origin x",
+        "git commit -m x \\\n--no-verify",
     ],
 )
 def test_denies_dangerous_commands_inside_compound_ones(command: str) -> None:
