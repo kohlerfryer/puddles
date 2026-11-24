@@ -212,7 +212,10 @@ def test_global_git_options_are_skipped(command: str) -> None:
     assert bash_denial(command, branch="agent/3-x", ci_agent=False)
 
 
-@pytest.mark.parametrize("command", ["git commit -anm 'msg'", "git commit -nm x"])
+@pytest.mark.parametrize(
+    "command",
+    ["git commit -anm 'msg'", "git commit -nm x", "git commit -a -n", "git commit -v -m x -n"],
+)
 def test_n_inside_combined_commit_flags_counts_as_no_verify(command: str) -> None:
     assert bash_denial(command, branch="agent/3-x", ci_agent=False)
 
@@ -232,6 +235,10 @@ def test_n_inside_combined_commit_flags_counts_as_no_verify(command: str) -> Non
         "git commit -am 'fix and note'",
         "git commit -mnote",
         "git commit -m x -- -n.txt",
+        'git commit -m "- Add new test"',
+        'git commit -m x -m "- Rename y"',
+        'git commit -am "- note"',
+        'git commit --message "- Add new test"',
         "env X=1",
         "bash script.sh",
         "echo $(git status",
