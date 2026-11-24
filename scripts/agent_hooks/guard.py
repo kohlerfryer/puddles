@@ -47,10 +47,19 @@ GATE_FILES = frozenset(
 
 
 def unquoted_newlines_to_semicolons(command: str) -> str:
-    """Treat line breaks outside quotes as command separators, like the shell does."""
-    out, quote = [], ""
+    """Treat line breaks outside quotes as command separators, like the shell does.
+
+    Outside single quotes a backslash escapes the next character, as in POSIX shells.
+    """
+    out, quote, escaped = [], "", False
     for ch in command:
-        if quote:
+        if escaped:
+            escaped = False
+            out.append(ch)
+            continue
+        if ch == "\\" and quote != "'":
+            escaped = True
+        elif quote:
             quote = "" if ch == quote else quote
         elif ch in "'\"":
             quote = ch

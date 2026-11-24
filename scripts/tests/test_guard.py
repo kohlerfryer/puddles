@@ -110,6 +110,7 @@ def test_main_stays_silent_when_allowed(
         "git push origin agent/59-x; gh api -X PATCH repos/o/r -f state=closed",
         "cat <<'EOF'\nnotes\nEOF",
         "git push origin agent/x &&\ngh pr create --base main",
+        'gh issue create --body "never use git commit --no-verify"',
     ],
 )
 def test_allows_commands_that_only_mention_dangerous_ones(command: str) -> None:
@@ -141,6 +142,9 @@ def test_allows_commands_that_only_mention_dangerous_ones(command: str) -> None:
         "if false; then :; elif true; then git push origin main; fi",
         "if false; then :; else git push origin main; fi",
         "time git push --force origin x",
+        "git commit -m 'it'\\''s'\ngit push --force origin y",
+        'git commit -m "fix \\"x"\ngit push --force origin y',
+        'echo \\"\ngit push origin main',
     ],
 )
 def test_denies_dangerous_commands_inside_compound_ones(command: str) -> None:
