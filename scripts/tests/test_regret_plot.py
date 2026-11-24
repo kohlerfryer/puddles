@@ -70,6 +70,18 @@ def test_simulate_builds_the_simulator_and_runs_it_in_node(
     assert json.loads(node[-1]) == {"sessions": 4, "horizon": 3, "seed": 2}
 
 
+def test_simulate_says_why_the_build_failed(monkeypatch: pytest.MonkeyPatch) -> None:
+    def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        stderr = "Build broke" if kwargs.get("capture_output") else None
+        raise subprocess.CalledProcessError(1, command, stderr=stderr)
+
+    monkeypatch.setattr(subprocess, "run", run)
+
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        simulate(sessions=4, horizon=3, seed=2)
+    assert error.value.stderr == "Build broke"
+
+
 def test_main_plots_and_prints_the_summary(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

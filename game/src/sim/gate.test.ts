@@ -4,7 +4,8 @@ import { fakeBrain, routine } from "../kernel/testing";
 import { type GateCurve, type GateOptions, simulationGate } from "./gate";
 import { profiles } from "./profiles";
 
-const options: GateOptions = { sessions: 2, horizon: 4, seed: 1 };
+/** A clock that never moves, so no plugin goes over its budget and the results repeat. */
+const options: GateOptions = { seed: 1, sessions: 2, horizon: 4, now: () => 0 };
 
 function only(curves: GateCurve[]): GateCurve {
   const [first] = curves;
@@ -56,6 +57,16 @@ describe("simulationGate", () => {
     let ms = 0;
     const curves = simulationGate({ ...options, now: () => (ms += 10) });
     expect(curves.every((curve) => curve.over_budget_share > 0)).toBe(true);
+  });
+
+  it("times plugins on the real clock by default", () => {
+    const policies = brain(() => {
+      const start = performance.now();
+      while (performance.now() - start < 10);
+      return routine("broken", 1, "walk_to", "fall_over");
+    });
+    const curve = only(simulationGate({ seed: 1, sessions: 1, horizon: 1, policies }));
+    expect(curve.over_budget_share).toBeGreaterThan(0);
   });
 
   it("is the same for the same seed", () => {

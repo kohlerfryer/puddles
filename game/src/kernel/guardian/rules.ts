@@ -8,6 +8,8 @@ import type { Intent, Step } from "../../core/contracts";
 const MAX_LINE_WORDS = 12;
 /** Longest a routine may last, in seconds. */
 const MAX_ROUTINE_SECONDS = 20;
+/** The scared-step cap intents are checked against until settings set one per personality. */
+export const MAX_SCARED_STEPS = 1;
 
 /** What the guardian checks; a broken rule names the rule and says why. */
 export type Rule =

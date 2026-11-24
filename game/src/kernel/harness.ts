@@ -8,7 +8,7 @@
 import type { Event, Manifest, Step } from "../core/contracts";
 import { contractValidators } from "../core/contractsSchema";
 import { TICK_HZ } from "./clock";
-import { violation } from "./guardian/rules";
+import { MAX_SCARED_STEPS, violation } from "./guardian/rules";
 import { type Kernel, createKernel } from "./kernel";
 import type { Emitted, PluginContext, PluginFolder } from "./plugins";
 import { createRegistry } from "./registry";
@@ -21,8 +21,6 @@ const SEED = 1;
 const SLOW_SHARE = 0.05;
 const INPUT = "harness-input";
 const PLAYER = "harness-player";
-/** The scared-step cap brains are checked against until settings set one per personality. */
-const MAX_SCARED_STEPS = 1;
 
 export interface HarnessOptions {
   /** Events fed to the kernel each tick, e.g. the ones a brain's cadence waits for. */

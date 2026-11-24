@@ -58,6 +58,8 @@ def run_simulator(
     subprocess.run(
         ["pnpm", "-C", str(GAME), "exec", *build, "--emptyOutDir", "--logLevel", "warn"],
         check=True,
+        capture_output=True,
+        text=True,
     )
     path = (BUILD / f"{module}.js").as_uri()
     result = subprocess.run(
