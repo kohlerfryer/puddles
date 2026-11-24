@@ -12,6 +12,7 @@ export interface Punchline {
   readonly features: readonly string[];
   readonly worth: number;
   readonly best: number;
+  readonly smiled: boolean;
   readonly walkedAway: boolean;
 }
 
@@ -29,8 +30,8 @@ const SMILE = 0.6;
 const CLAP = 0.9;
 const EMITS = ["observation.smile", "observation.gesture", "observation.walk_away"];
 
-function smileAt(chance: number, random: Random): Emitted[] {
-  const level = random() < chance ? SMILE + (1 - SMILE) * random() : CALM * random();
+function smileAt(smiled: boolean, random: Random): Emitted[] {
+  const level = smiled ? SMILE + (1 - SMILE) * random() : CALM * random();
   const smile = { type: "observation.smile", data: { level, delta: level - CALM } };
   return level > CLAP
     ? [smile, { type: "observation.gesture", data: { gesture: "clap" } }]
@@ -54,8 +55,9 @@ export function simulatedKid(profile: KidProfile, log: () => EventLog): Simulate
     const best = Math.max(...bits.map((bit) => worth(appeal(profile, bit.features, seen))));
     seen = watched(seen, playing);
     const walkedAway = random() < now.walkAway;
-    punchlines.push({ t, features: playing, worth: worth(now), best, walkedAway });
-    if (!walkedAway) return smileAt(now.smile, random);
+    const smiled = !walkedAway && random() < now.smile;
+    punchlines.push({ t, features: playing, worth: worth(now), best, smiled, walkedAway });
+    if (!walkedAway) return smileAt(smiled, random);
     present = false;
     return [{ type: "observation.walk_away", data: { reason: "scared" } }];
   };
