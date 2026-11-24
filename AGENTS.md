@@ -13,7 +13,7 @@
 
 ## Repo Shape
 
-- `server/puddles_server/`: FastAPI app. `/react` runs the `ReactionModel` named by `PUDDLES_MODEL` (`fake` by default, `smolvlm` for base SmolVLM). Tests in `server/tests/`.
+- `server/puddles_server/`: FastAPI app. `/react` runs the `ReactionModel` named by `PUDDLES_MODEL` (`fake` by default; `smolvlm` names the object with base SmolVLM and fills a template; `smolvlm-json` has base SmolVLM write the whole reaction, the eval baseline). Tests in `server/tests/`.
 - `game/`: Vite + TypeScript game. Logic in `src/core/` (pure, tested, no PixiJS or DOM); drawing and input in `src/render/` (PixiJS, MediaPipe; no tests, excluded from coverage). Tests sit next to code as `*.test.ts`.
 - `shared/`: contracts used across game, server and evals. `reaction.schema.json` is the reaction format and `puddles_prompt.md` the VLM prompt; game types are generated from it (`pnpm -C game gen:types`, checked by `just generated`).
 - `scripts/`: repo tooling in Python, with tests in `scripts/tests/`.
