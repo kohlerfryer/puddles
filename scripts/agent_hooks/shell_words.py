@@ -128,6 +128,7 @@ def env_short_value(word: str) -> tuple[str, str]:
 
 
 def env_takes_next_word(word: str) -> bool:
+    """True for an `env` option whose value is the next word (`-u`, `-iC`, `--chdir`)."""
     if word.startswith("--"):
         return word in WRAPPERS["env"]
     flag, value = env_short_value(word)
@@ -135,6 +136,7 @@ def env_takes_next_word(word: str) -> bool:
 
 
 def skip_env_options(words: list[str]) -> list[str]:
+    """Drop leading `env` options and their values, reading short clusters like `-iCdir`."""
     i = 0
     while i < len(words) and words[i].startswith("-"):
         i += 2 if env_takes_next_word(words[i]) else 1
@@ -229,14 +231,13 @@ def strip_heredocs(command: str) -> str:
 
 def shell_heredoc_bodies(command: str) -> list[str]:
     """Bodies of here-documents a shell reads (`bash <<EOF`, `cat <<EOF | sh`): commands."""
-    return [
-        match[4]
-        for match in HEREDOC.finditer(command)
-        if any(
-            command_name(word) in SHELLS
-            for word in command[command.rfind("\n", 0, match.start()) + 1 : match.end(1)].split()
-        )
-    ]
+    return [match[4] for match in HEREDOC.finditer(command) if read_by_shell(command, match)]
+
+
+def read_by_shell(command: str, match: re.Match[str]) -> bool:
+    """True when a shell appears on the here-document's marker line."""
+    line = command[command.rfind("\n", 0, match.start()) + 1 : match.end(1)]
+    return any(command_name(word) in SHELLS for word in line.split())
 
 
 def heredoc_substitutions(command: str) -> list[str]:
