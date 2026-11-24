@@ -128,15 +128,14 @@ def bash_denial(command: str, branch: str, ci_agent: bool) -> str | None:
     Only simple commands that start with `git push`, `git commit` or `gh pr merge` are checked,
     so text that merely mentions them (an issue body, a commit message) is allowed. Wrapper
     prefixes are skipped, and strings run by `bash -c`, `eval` or command substitution are
-    checked as commands too. Here-document bodies are text, not commands.
+    checked as commands too. Here-document bodies are text, apart from their substitutions.
     """
-    command = strip_heredocs(command)
-    for body in substitutions(command):
+    for body in substitutions(strip_heredocs(command, quoted_only=True)):
         reason = bash_denial(body, branch, ci_agent)
         if reason:
             return reason
     try:
-        parts = segments(command)
+        parts = segments(strip_heredocs(command))
     except ValueError:
         return regex_denial(command)
     for words in parts:

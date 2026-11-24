@@ -248,3 +248,24 @@ def test_heredoc_bodies_are_text_not_commands() -> None:
     assert bash_denial(message, branch="agent/3-x", ci_agent=False) is None
     assert bash_denial(substituted, branch="agent/3-x", ci_agent=False) is None
     assert bash_denial("cat <<EOF\nx\nEOF\ngit push -f", branch="agent/3-x", ci_agent=False)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cat <<EOF\n$(git push -f)\nEOF",
+        "cat <<EOF\n`git push -f`\nEOF",
+        "/usr/bin/git push -f",
+        "/bin/bash -c 'git push -f'",
+        "exec git push -f",
+    ],
+)
+def test_unquoted_heredoc_substitutions_paths_and_exec_are_checked(command: str) -> None:
+    assert bash_denial(command, branch="agent/3-x", ci_agent=False)
+
+
+def test_heredoc_delimiters_may_contain_dashes() -> None:
+    message = "git commit -F- <<'END-MSG'\nit's about git push -f\nEND-MSG\n"
+
+    assert bash_denial(message, branch="agent/3-x", ci_agent=False) is None
+    assert bash_denial("cat <<'EOF'\n$(git push -f)\nEOF", branch="x", ci_agent=False) is None
