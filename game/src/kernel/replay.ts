@@ -6,8 +6,8 @@ import type { PluginFolder } from "./plugins";
 export interface ReplayOptions {
   /** The brain, skill and content versions to re-run; sense plugins are replaced by the recording. */
   readonly plugins: readonly PluginFolder[];
-  /** The seed the session was recorded with, so random choices match. */
-  readonly seed?: number;
+  /** The seed the session was recorded with, so random choices match; the log doesn't store it. */
+  readonly seed: number;
 }
 
 /** A tick where a brain decided differently, or only on one side; null means it didn't decide. */
@@ -109,9 +109,10 @@ function diffDecisions(recorded: readonly Event[], replayed: readonly Event[]): 
 
 /**
  * Re-runs a recorded session in the headless kernel against other plugin versions: the recorded
- * `observation.*` events are played back at their ticks, and brain decisions are diffed.
+ * `observation.*` events are played back at their ticks, and brain decisions are diffed. The
+ * replay stops at the last recorded event, so decisions a new brain would make later don't show.
  */
-export function replay(recorded: readonly Event[], { plugins, seed = 0 }: ReplayOptions): Replay {
+export function replay(recorded: readonly Event[], { plugins, seed }: ReplayOptions): Replay {
   const lines: string[] = [];
   const observations = recorded.filter((event) => event.type.startsWith("observation."));
   const kernel: Kernel = createKernel({
