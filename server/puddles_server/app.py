@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
+from puddles_server.brains import object_matcher
 from puddles_server.models import ReactionModel, load_model
 from puddles_server.saves import MAX_SAVE_BYTES, read_save, write_save
 
@@ -71,7 +72,7 @@ def react(body: ReactRequest, model: Annotated[ReactionModel, Depends(get_model)
     image = decode_image(body.image)
     start = time.perf_counter()
     try:
-        status, content = 200, model.react(image)
+        status, content = 200, object_matcher.match(model, image)
     except Exception:
         status, content = 502, {"detail": "model failed"}
     latency_ms = round((time.perf_counter() - start) * 1000)

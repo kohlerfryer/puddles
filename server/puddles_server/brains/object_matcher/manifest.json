@@ -1,0 +1,13 @@
+{
+  "kind": "brain",
+  "id": "object_matcher",
+  "contract": "1",
+  "name": "Object matcher",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["uses_object"],
+  "cadence": { "on": "observation.held" },
+  "autonomy": 0,
+  "latency_budget_ms": 8000,
+  "intents": ["routine"]
+}
