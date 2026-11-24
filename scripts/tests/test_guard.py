@@ -269,3 +269,21 @@ def test_heredoc_delimiters_may_contain_dashes() -> None:
 
     assert bash_denial(message, branch="agent/3-x", ci_agent=False) is None
     assert bash_denial("cat <<'EOF'\n$(git push -f)\nEOF", branch="x", ci_agent=False) is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "bash <<'EOF'\ngit push -f\nEOF",
+        "sh <<EOF\ngit push origin main\nEOF",
+        "cat <<'EOF' | bash -s\ngit push -f\nEOF",
+    ],
+)
+def test_heredocs_read_by_a_shell_are_commands(command: str) -> None:
+    assert bash_denial(command, branch="agent/3-x", ci_agent=False)
+
+
+def test_here_strings_are_not_heredocs() -> None:
+    command = "grep x <<< EOF\ngit push -f\nEOF"
+
+    assert bash_denial(command, branch="agent/3-x", ci_agent=False)

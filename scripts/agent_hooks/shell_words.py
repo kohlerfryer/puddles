@@ -8,9 +8,9 @@ SEPARATOR_CHARS = frozenset(";&|()")
 # Reserved words that can start a command line without being the command itself.
 KEYWORDS = frozenset({"!", "{", "}", "if", "then", "else", "elif", "do", "while", "until", "time"})
 ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
-# A here-document: its marker line, then the body up to the delimiter line.
+# A here-document (not a `<<<` here-string): its marker line, then the body up to the delimiter.
 HEREDOC = re.compile(
-    r"(<<-?\s*(['\"]?)([\w.-]+)\2[^\n]*\n).*?^\s*\3[ \t]*$", re.DOTALL | re.MULTILINE
+    r"(?<!<)(<<-?\s*(['\"]?)([\w.-]+)\2[^\n]*\n).*?^\s*\3[ \t]*$", re.DOTALL | re.MULTILINE
 )
 # Commands that run the rest of the line as a command, with their options that take a value.
 WRAPPERS: dict[str, frozenset[str]] = {
@@ -147,7 +147,15 @@ def substitutions(command: str) -> list[str]:
 def strip_heredocs(command: str, quoted_only: bool = False) -> str:
     """Drop here-document bodies, which are text rather than commands.
 
-    With `quoted_only`, keep bodies under an unquoted delimiter, since the shell still runs the
-    command substitutions in those.
+    A body is kept when a shell appears on its marker line (`bash <<EOF`, `cat <<EOF | sh`),
+    since the shell runs it. With `quoted_only`, bodies under an unquoted delimiter are kept
+    too, since the shell still runs the command substitutions in those.
     """
-    return HEREDOC.sub(lambda m: m[1] if m[2] or not quoted_only else m[0], command)
+
+    def replace(match: re.Match[str]) -> str:
+        line = command[command.rfind("\n", 0, match.start()) + 1 : match.end(1)]
+        read_by_shell = any(command_name(word) in SHELLS for word in line.split())
+        keep = read_by_shell or (quoted_only and not match[2])
+        return match[0] if keep else match[1]
+
+    return HEREDOC.sub(replace, command)
