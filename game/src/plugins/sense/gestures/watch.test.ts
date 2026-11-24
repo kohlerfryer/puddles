@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
 
+import { GESTURE_REACTIONS } from "../../../core/copyMe";
+import {
+  isPoseFixture,
+  LANDMARK_COUNT,
+  type PoseFixture,
+  type PoseFrame,
+} from "../../../core/poseFixture";
+import { createRunner } from "../../../core/runner";
 import { type BodyGesture } from "./gestures";
-import { createGestureWatch, GESTURE_REACTIONS, WATCH_COOLDOWN_MS } from "./gestureWatch";
-import { isPoseFixture, LANDMARK_COUNT, type PoseFixture, type PoseFrame } from "./poseFixture";
-import { createRunner } from "./runner";
+import { createGestureWatch, WATCH_COOLDOWN_MS } from "./watch";
 
-const files = import.meta.glob<unknown>("./fixtures/*.json", { eager: true, import: "default" });
+const files = import.meta.glob<unknown>("../../../core/fixtures/*.json", {
+  eager: true,
+  import: "default",
+});
 const fixtures = Object.entries(files).map(([path, data]): [string, PoseFixture] => {
   if (!isPoseFixture(data)) throw new Error(`${path} is not a pose fixture`);
   return [path, data];

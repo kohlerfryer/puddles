@@ -12,7 +12,7 @@ import type { Step, Traits } from "../core/reaction";
 import { createRunner } from "../core/runner";
 import { sensingRing } from "../core/sensing";
 import { createStickers } from "../core/stickers";
-import type { BodyGesture } from "../core/gestures";
+import type { BodyGesture } from "../plugins/sense/gestures/gestures";
 import type { PoseFrame } from "../core/poseFixture";
 import { type Sound, soundFor } from "../core/sounds";
 import { bubbleAt, type Line } from "../core/speech";

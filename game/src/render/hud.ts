@@ -1,5 +1,5 @@
-import { feetInView } from "../core/gestures";
 import type { PoseFrame } from "../core/poseFixture";
+import { feetInView } from "../plugins/sense/gestures/gestures";
 
 /** Corner readout of what the camera sees, so a missed gesture can be told from a slow duck, and the sound. */
 export interface Hud {

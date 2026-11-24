@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ASK_TIMEOUT_MS } from "./ask";
 import { ASK_MS, COPY_STEPS } from "./copyMe";
-import { BODY_GESTURES } from "./gestures";
+import { BODY_GESTURES } from "../plugins/sense/gestures/gestures";
 import { SCENE_WIDTH } from "./pond";
 import { FADE_SECONDS, SPEECH_WIDTH } from "./speech";
 import {

@@ -2,7 +2,7 @@
 
 import { ASK_TIMEOUT_MS } from "./ask";
 import { ASK_MS, type CopyCue } from "./copyMe";
-import type { BodyGesture } from "./gestures";
+import type { BodyGesture } from "../plugins/sense/gestures/gestures";
 import { SCENE_WIDTH } from "./pond";
 import { fadeAlpha, SPEECH_WIDTH } from "./speech";
 

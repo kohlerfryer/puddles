@@ -1,12 +1,7 @@
 /** Spots a hand held up still, so the game can take a photo of what it holds, and frames that photo. */
 
-import type { PoseFrame } from "./poseFixture";
-
-/** Normalized image coordinates, as MediaPipe returns them; y grows downward. */
-export interface Point {
-  x: number;
-  y: number;
-}
+import type { Point } from "../../../core/cameraSample";
+import type { PoseFrame } from "../../../core/poseFixture";
 
 /** One camera sample: whether an arm is raised, and the hand landmarks most likely holding something up. */
 export interface HandSample {
