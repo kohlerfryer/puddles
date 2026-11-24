@@ -148,6 +148,15 @@ def test_a_crop_that_is_not_an_image_gets_the_neutral_colour() -> None:
     assert object_matcher.crop_color(JPEG) == object_matcher.NEUTRAL
 
 
+def test_without_pillow_the_crop_gets_the_neutral_colour(monkeypatch: pytest.MonkeyPatch) -> None:
+    def missing(name: str) -> None:
+        raise ImportError(name)
+
+    monkeypatch.setattr("importlib.import_module", missing)
+
+    assert object_matcher.crop_color(jpeg((200, 30, 30))) == object_matcher.NEUTRAL
+
+
 def test_the_answer_is_other_with_an_archetype_and_the_crops_colour() -> None:
     traits = {"size": "medium", "weight": "light", "shape": "round", "edible": False}
     reaction = object_matcher.match(NamingModel("mystery", traits), jpeg((200, 30, 30)))
