@@ -23,14 +23,30 @@ export function skillStep({ do: skill, target, mood, say }: ReactionStep): Step 
   };
 }
 
-/** The script of the reaction an `observation.object` event carries, if it has a playable one. */
-function scriptOf({ type, data }: KernelEvent): ReactionStep[] | undefined {
+interface Seen {
+  readonly script: ReactionStep[];
+  /** The bandit's features: the spawned prop and its archetype, when there is one. */
+  readonly features: string[];
+}
+
+/** `prop:<id>` and `archetype:<archetype>` for the prop the reaction spawned, if any. */
+function propFeatures(prop: unknown): string[] {
+  if (typeof prop !== "object" || prop === null) return [];
+  const id: unknown = Reflect.get(prop, "id");
+  const archetype: unknown = Reflect.get(prop, "archetype");
+  if (typeof id !== "string" || typeof archetype !== "string") return [];
+  return [`prop:${id}`, `archetype:${archetype}`];
+}
+
+/** The reaction an `observation.object` event carries, if it has a playable script. */
+function seenIn({ type, data }: KernelEvent): Seen | undefined {
   const { reaction } = data;
   if (type !== manifest.cadence.on || typeof reaction !== "object" || reaction === null) {
     return undefined;
   }
   const script: unknown = Reflect.get(reaction, "script");
-  return isScript(script) ? script : undefined;
+  if (!isScript(script)) return undefined;
+  return { script, features: ["uses_object", ...propFeatures(Reflect.get(reaction, "prop"))] };
 }
 
 export function matcherBrain(): PluginFolder {
@@ -38,19 +54,19 @@ export function matcherBrain(): PluginFolder {
     manifest,
     code: {
       decide: ({ events }): Intent | null => {
-        const [first, ...rest] =
-          events
-            .map(scriptOf)
-            .filter((script) => script !== undefined)
-            .at(-1) ?? [];
-        if (!first) return null;
+        const seen = events
+          .map(seenIn)
+          .filter((reaction) => reaction !== undefined)
+          .at(-1);
+        const [first, ...rest] = seen?.script ?? [];
+        if (!seen || !first) return null;
         return {
           brain: manifest.id,
           priority: PRIORITY,
           kind: "routine",
           steps: [skillStep(first), ...rest.map(skillStep)],
           why: "react to the object the kid held up",
-          features: ["uses_object"],
+          features: seen.features,
         };
       },
     },

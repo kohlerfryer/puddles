@@ -40,8 +40,9 @@ const saves: SaveServer = {
 };
 
 /**
- * Sends `photo` to the server while Puddles senses it and drops it in as a sticker; resolves with
- * the reaction, which the object matcher brain plays.
+ * Sends `photo` to the server while Puddles senses it and drops it in as the prop the matcher
+ * named, or as a photo sticker when it named none; resolves with the reaction, which the object
+ * matcher brain plays.
  */
 async function reactTo(photo: Blob, puddles: Actor, hud: Hud): Promise<SafeReaction> {
   puddles.sense(true);
@@ -50,7 +51,7 @@ async function reactTo(photo: Blob, puddles: Actor, hud: Hud): Promise<SafeReact
   const { reaction, readout } = await ask(image, post, REACT_URL, () => performance.now());
   puddles.sense(false);
   hud.server(readout);
-  puddles.spawn(reaction.traits, await createImageBitmap(photo));
+  puddles.spawn(reaction.traits, reaction.prop?.color ?? (await createImageBitmap(photo)));
   return reaction;
 }
 

@@ -44,18 +44,21 @@ function photoArt(art: Container, frame: Frame, texture: Texture): void {
   art.addChild(glow, picture, mask, outline);
 }
 
-/** Draws a new sticker in `frame` into `scene`, showing `bitmap` if it came from the camera. */
-export function stickerLook(scene: Container, frame: Frame, bitmap?: ImageBitmap): Look {
+/** What a sticker shows: the held-up photo, or the colour of the prop it came through as. */
+export type Face = ImageBitmap | string;
+
+/** Draws a new sticker in `frame` into `scene`, showing its `face` if it has one. */
+export function stickerLook(scene: Container, frame: Frame, face?: Face): Look {
   const art = new Container();
   const poof = new Graphics();
   scene.addChild(art, poof);
-  if (!bitmap) {
-    art.addChild(rounded(new Graphics(), frame).fill(STICKER_COLOUR));
+  if (typeof face !== "object") {
+    art.addChild(rounded(new Graphics(), frame).fill(face ?? STICKER_COLOUR));
     return { art, poof };
   }
-  const texture = Texture.from(bitmap, true);
+  const texture = Texture.from(face, true);
   photoArt(art, frame, texture);
-  return { art, poof, photo: { texture, bitmap } };
+  return { art, poof, photo: { texture, bitmap: face } };
 }
 
 /** Destroys a sticker's drawing and frees its photo's texture. */

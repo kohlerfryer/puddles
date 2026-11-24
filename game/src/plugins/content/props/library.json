@@ -1,0 +1,73 @@
+{
+  "archetypes": {
+    "ball": {
+      "traits": { "size": "small", "weight": "light", "shape": "round", "edible": false },
+      "affords": ["push", "jump_over"],
+      "words": ["balloon", "globe", "marble", "bead", "bubble"]
+    },
+    "box": {
+      "traits": { "size": "medium", "weight": "medium", "shape": "other", "edible": false },
+      "affords": ["hide_behind", "push", "jump_over"],
+      "words": ["box", "package", "parcel", "case", "robot", "tin", "chest"]
+    },
+    "plush_animal": {
+      "traits": { "size": "small", "weight": "light", "shape": "other", "edible": false },
+      "affords": ["push", "circle"],
+      "words": ["plush", "stuffed", "doll", "animal", "lion", "frog", "bird", "fish", "pig"]
+    },
+    "stick": {
+      "traits": { "size": "medium", "weight": "light", "shape": "long", "edible": false },
+      "affords": ["push", "jump_over"],
+      "words": ["pole", "rod", "straw", "ruler", "sword", "tool", "key"]
+    },
+    "fruit": {
+      "traits": { "size": "small", "weight": "light", "shape": "round", "edible": true },
+      "affords": ["peck", "eat"],
+      "words": ["fruit", "pear", "grape", "berry", "peach", "lemon", "food", "snack", "cheese"]
+    },
+    "cup": {
+      "traits": { "size": "small", "weight": "light", "shape": "other", "edible": false },
+      "affords": ["sniff", "wear"],
+      "words": ["jar", "pot", "vase", "glass", "basket", "bucket"]
+    },
+    "flat_thing": {
+      "traits": { "size": "medium", "weight": "light", "shape": "flat", "edible": false },
+      "affords": ["sit_on"],
+      "words": ["plate", "card", "sheet", "mat", "napkin", "map", "photo", "paper"]
+    }
+  },
+  "props": {
+    "ball": { "archetype": "ball", "color": "#ff6b6b" },
+    "banana": { "archetype": "fruit", "color": "#ffd84d", "shape": "long" },
+    "apple": { "archetype": "fruit", "color": "#e8433a" },
+    "orange": { "archetype": "fruit", "color": "#ff9f1c", "names": ["tangerine"] },
+    "strawberry": { "archetype": "fruit", "color": "#e63946", "size": "tiny" },
+    "carrot": { "archetype": "fruit", "color": "#ff8c1a", "shape": "long" },
+    "cookie": { "archetype": "fruit", "color": "#c68642", "shape": "flat", "names": ["biscuit"] },
+    "bread": { "archetype": "fruit", "color": "#e9b872", "shape": "other", "names": ["toast"] },
+    "bowl": { "archetype": "cup", "color": "#8ecae6", "names": ["cereal"] },
+    "cup": { "archetype": "cup", "color": "#f4a261", "names": ["mug"] },
+    "bottle": { "archetype": "cup", "color": "#4ea8de", "shape": "long", "names": ["flask"] },
+    "teddy_bear": { "archetype": "plush_animal", "color": "#b5835a", "names": ["teddy", "bear"] },
+    "toy_cat": { "archetype": "plush_animal", "color": "#9e9e9e", "names": ["cat", "kitten"] },
+    "toy_dog": { "archetype": "plush_animal", "color": "#d4a373", "names": ["dog", "puppy"] },
+    "dinosaur": { "archetype": "plush_animal", "color": "#6ab04c", "names": ["dino", "dragon"] },
+    "rubber_duck": { "archetype": "plush_animal", "color": "#ffdb5c", "names": ["duck"] },
+    "bunny": { "archetype": "plush_animal", "color": "#f8c8dc", "names": ["rabbit"] },
+    "hat": { "archetype": "cup", "color": "#5e60ce", "names": ["cap", "beanie", "crown"] },
+    "sock": { "archetype": "cup", "color": "#ef476f", "names": ["mitten", "glove"] },
+    "shoe": { "archetype": "box", "color": "#264653", "size": "small", "names": ["sneaker"] },
+    "book": { "archetype": "flat_thing", "color": "#2a9d8f", "names": ["comic", "magazine"] },
+    "pillow": { "archetype": "flat_thing", "color": "#cdb4db", "names": ["cushion"] },
+    "blanket": { "archetype": "flat_thing", "color": "#90be6d", "size": "big", "names": ["towel"] },
+    "drawing": { "archetype": "flat_thing", "color": "#ffffff", "names": ["picture", "painting"] },
+    "toy_car": { "archetype": "box", "color": "#e76f51", "size": "small", "names": ["car"] },
+    "toy_train": { "archetype": "box", "color": "#d62828", "size": "small", "names": ["train"] },
+    "block": { "archetype": "box", "color": "#ffb703", "size": "small", "names": ["lego"] },
+    "crayon": { "archetype": "stick", "color": "#3a86ff", "size": "tiny", "names": ["pencil"] },
+    "toothbrush": { "archetype": "stick", "color": "#00b4d8", "size": "small" },
+    "spoon": { "archetype": "stick", "color": "#adb5bd", "size": "small", "names": ["fork"] },
+    "stick": { "archetype": "stick", "color": "#8d6e63", "names": ["twig", "branch", "wand"] },
+    "leaf": { "archetype": "flat_thing", "color": "#52b788", "names": ["flower"] }
+  }
+}

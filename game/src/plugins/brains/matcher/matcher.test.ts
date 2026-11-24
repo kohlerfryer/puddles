@@ -61,6 +61,29 @@ describe("the object matcher brain", () => {
     ]);
   });
 
+  it("tags the routine with the spawned prop and its archetype, so the bandit can tell them apart", () => {
+    const { script, prop } = safeReaction(
+      JSON.stringify({
+        holding: true,
+        object: "banana",
+        traits: { size: "small", weight: "light", shape: "long", edible: true },
+        script: SCRIPT,
+        prop: { id: "banana" },
+      }),
+    );
+    expect(decide([object({ reaction: { script, prop } })])?.features).toEqual([
+      "uses_object",
+      "prop:banana",
+      "archetype:fruit",
+    ]);
+  });
+
+  it("tags only uses_object when the reaction spawned no prop or a malformed one", () => {
+    const odd = object({ reaction: { script: SCRIPT, prop: { id: 7 } } });
+    expect(decide([seen(SCRIPT)])?.features).toEqual(["uses_object"]);
+    expect(decide([odd])?.features).toEqual(["uses_object"]);
+  });
+
   it("ignores other events and replies without a playable script", () => {
     expect(decide([])).toBeNull();
     expect(decide([{ ...seen(SCRIPT), type: "observation.held" }])).toBeNull();

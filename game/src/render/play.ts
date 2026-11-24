@@ -20,7 +20,7 @@ import { bubbleCentres, senseThought, thoughtAfter, thoughtAt } from "../core/th
 import type { Duck } from "../plugins/skill/verbs";
 import { drawBubble, drawSensing, drawThought } from "./bubble";
 import { type AtWindow, drawPuddles, holdPoint, type Shown } from "./puddles";
-import { type Look, placeLook, releaseLook, stickerLook } from "./sticker";
+import { type Face, type Look, placeLook, releaseLook, stickerLook } from "./sticker";
 
 /** Longest physics step, so a slow frame can't drop the sticker through the ground. */
 const MAX_STEP_MS = 1000 / 60;
@@ -33,7 +33,7 @@ function stickers(scene: Container, play: (sound: Sound | undefined) => void) {
   return {
     ...shelf,
     /** Drops a sticker from the sky near Puddles at `x` at `now` ms, showing `photo` if given. */
-    drop(traits: Traits, x: number, now: number, photo?: ImageBitmap) {
+    drop(traits: Traits, x: number, now: number, photo?: Face) {
       return shelf.drop(traits, demoDrop(x), now, (frame) => stickerLook(scene, frame, photo));
     },
     /** Moves and draws the stickers, splashing those that land in the water. */
@@ -148,8 +148,11 @@ function stepper(
 
 /** Lets other inputs (the camera, the dev panel) drive Puddles on the same clock as the demo. */
 export interface Actor {
-  /** Drops a new sticker for Puddles to react to, showing the held-up `photo` if there is one. */
-  spawn(traits: Traits, photo?: ImageBitmap): void;
+  /**
+   * Drops a new sticker for Puddles to react to, showing the held-up `photo` if there is one, or
+   * the colour of the prop it came through as.
+   */
+  spawn(traits: Traits, photo?: Face): void;
   /** Plays `script` now, replacing the running one. */
   play(script: readonly Step[]): void;
   /** Plays each step the kernel's executor starts, thinking of what the step thinks of. */
@@ -196,7 +199,7 @@ export function playDemo(
     sticker.step(ticker.deltaMS, clockMs, shown);
   });
   return {
-    spawn(traits: Traits, photo?: ImageBitmap): void {
+    spawn(traits: Traits, photo?: Face): void {
       target = sticker.drop(traits, duck.x, clockMs, photo).body;
     },
     play(script: readonly Step[]): void {
