@@ -1,8 +1,12 @@
 import { TICK_HZ } from "../kernel/clock";
 import { type Kernel, createKernel } from "../kernel/kernel";
 import type { PluginFolder } from "../kernel/plugins";
+import { betaModel } from "../plugins/brains/bandit/beta";
+import { bandit } from "../plugins/brains/bandit/index";
+import { linearModel } from "../plugins/brains/bandit/linear";
+import type { Model } from "../plugins/brains/bandit/model";
 import { type Punchline, simulatedKid } from "./kid";
-import { bitSkills, fixedPolicy, pratfall, randomPolicy } from "./policies";
+import { bits, bitSkills, fixedPolicy, pratfall, randomPolicy } from "./policies";
 import { type KidProfile, profiles } from "./profiles";
 
 /** Gives up on a session that runs this many seconds per bit, so a stuck policy can't hang. */
@@ -100,13 +104,24 @@ export interface RegretOptions {
   readonly seed: number;
 }
 
-/** A named policy, made fresh for each session. */
-export type Policy = readonly [string, () => PluginFolder];
+/**
+ * A named policy. It is called once per simulated kid and returns the maker of each of that
+ * kid's sessions, so a policy can keep what it learned across one household's sessions.
+ */
+export type Policy = readonly [string, () => () => PluginFolder];
 
-/** The policies the simulator compares; the bandit brain joins them later. */
+/** A bandit brain per session that keeps what earlier sessions with the same kid learned. */
+function banditHousehold(model: () => Model): () => PluginFolder {
+  const household = new Map<string, Model>();
+  return () => bandit({ arms: bits, model, household }).plugin;
+}
+
+/** The policies the simulator compares: baselines, then the bandit brain with each model. */
 export const policies: readonly Policy[] = [
-  ["random", randomPolicy],
-  [`fixed ${pratfall.id}`, () => fixedPolicy(pratfall)],
+  ["random", () => randomPolicy],
+  [`fixed ${pratfall.id}`, () => () => fixedPolicy(pratfall)],
+  ["bandit beta", () => banditHousehold(betaModel)],
+  ["bandit linear", () => banditHousehold(linearModel)],
 ];
 
 function meanCurve(make: () => PluginFolder, profile: KidProfile, options: RegretOptions) {
@@ -123,7 +138,7 @@ export function regretCurves(options: RegretOptions): Curve[] {
     profiles.map((profile) => ({
       policy,
       profile: profile.id,
-      regret: meanCurve(make, profile, options),
+      regret: meanCurve(make(), profile, options),
     })),
   );
 }
