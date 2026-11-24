@@ -1,5 +1,6 @@
 import {
   AUTONOMY_LEVELS,
+  defaultSave,
   forgetEverything,
   type Save,
   type SaveServer,
@@ -59,33 +60,44 @@ function panel(host: HTMLElement): HTMLDivElement {
   return box;
 }
 
+const UNREACHABLE = "Couldn't reach the save. Is the server running?";
+
 /**
  * The grown-ups panel: mic and camera, autonomy level, session limit, theme and "forget
- * everything". Every change is written to the save straight away; a camera change reloads.
+ * everything". Every change is written to the save straight away; a stored camera change reloads.
+ * When the save couldn't be loaded (`loaded` is null) the controls stay disabled, so nothing
+ * overwrites the real save.
  */
-export function createParentPanel(host: HTMLElement, saves: SaveServer, loaded: Save): void {
+export function createParentPanel(host: HTMLElement, saves: SaveServer, loaded: Save | null): void {
+  const box = panel(host);
+  if (!loaded) {
+    const { status, ...inputs } = controls(box, defaultSave().settings);
+    for (const input of Object.values(inputs)) input.disabled = true;
+    status.textContent = `${UNREACHABLE} Reload once it is up.`;
+    return;
+  }
   let save = loaded;
-  const { mic, camera, autonomy, limit, theme, forget, status } = controls(
-    panel(host),
-    save.settings,
-  );
+  const { mic, camera, autonomy, limit, theme, forget, status } = controls(box, save.settings);
 
-  const store = async (next: Save) => {
+  /** Writes `next` to the save; resolves to whether it was stored. */
+  const store = async (next: Save): Promise<boolean> => {
     save = next;
     limit.value = String(save.settings.session_limit_min);
     try {
       await saves.store(save);
       status.textContent = "Saved.";
+      return true;
     } catch {
-      status.textContent = "Couldn't reach the save. Is the server running?";
+      status.textContent = UNREACHABLE;
+      return false;
     }
   };
   const change = (changes: Partial<Settings>) => store(withSettings(save, changes));
 
   mic.addEventListener("change", () => void change({ mic: mic.checked }));
   camera.addEventListener("change", () => {
-    void change({ camera: camera.checked }).then(() => {
-      window.location.reload();
+    void change({ camera: camera.checked }).then((stored) => {
+      if (stored) window.location.reload();
     });
   });
   autonomy.addEventListener("change", () => {
