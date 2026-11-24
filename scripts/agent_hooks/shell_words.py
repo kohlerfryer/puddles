@@ -10,11 +10,11 @@ KEYWORDS = frozenset({"!", "{", "}", "if", "then", "else", "elif", "do", "while"
 ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 # A here-document (not a `<<<` here-string): its marker line, then the body up to the delimiter.
 HEREDOC = re.compile(
-    r"(?<!<)(<<-?\s*(['\"]?)([\w.-]+)\2[^\n]*\n).*?^\s*\3[ \t]*$", re.DOTALL | re.MULTILINE
+    r"(?<!<)(<<-?\s*(['\"]?)([\w.-]+)\2[^\n]*\n)(.*?)^\s*\3[ \t]*$", re.DOTALL | re.MULTILINE
 )
 # Commands that run the rest of the line as a command, with their options that take a value.
 WRAPPERS: dict[str, frozenset[str]] = {
-    "env": frozenset({"-u", "--unset", "-C", "--chdir"}),
+    "env": frozenset({"-u", "--unset", "-C", "--chdir", "-a", "--argv0"}),
     "timeout": frozenset({"-s", "--signal", "-k", "--kill-after"}),
     "nohup": frozenset(),
     "exec": frozenset({"-a"}),
@@ -35,6 +35,8 @@ WRAPPERS: dict[str, frozenset[str]] = {
     ),
 }
 SHELLS = frozenset({"bash", "sh", "zsh", "dash"})
+# Short `env` options that take a value: the rest of their word, or the next word.
+ENV_SHORT_WITH_VALUE = "uCaS"
 
 
 def next_quote(quote: str, ch: str) -> str:
@@ -113,8 +115,30 @@ def env_split_string(word: str) -> tuple[bool, str] | None:
     if word.startswith("--"):
         name, eq, value = word.partition("=")
         return (bool(eq), value) if abbreviates(name, "--split-string") else None
-    flags, s, value = word[1:].partition("S")
-    return (bool(value), value) if s and "u" not in flags else None
+    flag, value = env_short_value(word)
+    return (bool(value), value) if flag == "S" else None
+
+
+def env_short_value(word: str) -> tuple[str, str]:
+    """In a short `env` cluster (`-iCdir`), the first flag taking a value and its inline value."""
+    for i, flag in enumerate(word[1:], start=1):
+        if flag in ENV_SHORT_WITH_VALUE:
+            return flag, word[i + 1 :]
+    return "", ""
+
+
+def env_takes_next_word(word: str) -> bool:
+    if word.startswith("--"):
+        return word in WRAPPERS["env"]
+    flag, value = env_short_value(word)
+    return bool(flag) and not value
+
+
+def skip_env_options(words: list[str]) -> list[str]:
+    i = 0
+    while i < len(words) and words[i].startswith("-"):
+        i += 2 if env_takes_next_word(words[i]) else 1
+    return words[i:]
 
 
 def expand_env_split_string(words: list[str]) -> list[str]:
@@ -126,7 +150,7 @@ def expand_env_split_string(words: list[str]) -> list[str]:
             return [*words[:i], *split_words(found[1]), *words[i + 1 :]]
         if found:
             return [*words[:i], *split_words(" ".join(words[i + 1 : i + 2])), *words[i + 2 :]]
-        i += 2 if words[i] in WRAPPERS["env"] else 1
+        i += 2 if env_takes_next_word(words[i]) else 1
     return words
 
 
@@ -135,8 +159,8 @@ def strip_wrappers(words: list[str]) -> list[str]:
     while words and (command_name(words[0]) in WRAPPERS or ASSIGNMENT.match(words[0])):
         head, words = command_name(words[0]), words[1:]
         if head == "env":
-            words = expand_env_split_string(words)
-        if head in WRAPPERS:
+            words = skip_env_options(expand_env_split_string(words))
+        elif head in WRAPPERS:
             words = skip_options(words, WRAPPERS[head])
         if head == "timeout":
             words = words[1:]
@@ -199,18 +223,20 @@ def substitutions(command: str, quotes: bool = True) -> list[str]:
 
 
 def strip_heredocs(command: str) -> str:
-    """Drop here-document bodies, which are text rather than commands.
+    """Drop here-document bodies, so quotes in them don't hide the commands after them."""
+    return HEREDOC.sub(lambda match: match[1], command)
 
-    A body is kept when a shell appears on its marker line (`bash <<EOF`, `cat <<EOF | sh`),
-    since the shell runs it.
-    """
 
-    def replace(match: re.Match[str]) -> str:
-        line = command[command.rfind("\n", 0, match.start()) + 1 : match.end(1)]
-        read_by_shell = any(command_name(word) in SHELLS for word in line.split())
-        return match[0] if read_by_shell else match[1]
-
-    return HEREDOC.sub(replace, command)
+def shell_heredoc_bodies(command: str) -> list[str]:
+    """Bodies of here-documents a shell reads (`bash <<EOF`, `cat <<EOF | sh`): commands."""
+    return [
+        match[4]
+        for match in HEREDOC.finditer(command)
+        if any(
+            command_name(word) in SHELLS
+            for word in command[command.rfind("\n", 0, match.start()) + 1 : match.end(1)].split()
+        )
+    ]
 
 
 def heredoc_substitutions(command: str) -> list[str]:
@@ -222,5 +248,5 @@ def heredoc_substitutions(command: str) -> list[str]:
         body
         for match in HEREDOC.finditer(command)
         if not match[2]
-        for body in substitutions(match[0][len(match[1]) :], quotes=False)
+        for body in substitutions(match[4], quotes=False)
     ]

@@ -12,6 +12,7 @@ from scripts.agent_hooks.shell_words import (
     heredoc_substitutions,
     nested_commands,
     segments,
+    shell_heredoc_bodies,
     skip_options,
     strip_heredocs,
     strip_wrappers,
@@ -22,6 +23,7 @@ from scripts.agent_hooks.shell_words import (
 FORCE_PUSH = re.compile(r"\bgit\s+push\b.*\s(--force(-with-lease)?|-f)\b")
 PUSH_TO_MAIN = re.compile(r"\bgit\s+push\b.*(\smain\b|:main\b)")
 NO_VERIFY = re.compile(r"\bgit\s+(commit|push)\b.*\s(--no-verify|-n)\b")
+GH_MERGE = re.compile(r"\bgh\s.*\bpr\s.*\bmerge\b")
 
 MAIN_REFS = frozenset({"main", "refs/heads/main"})
 GIT_OPTIONS_WITH_VALUE = frozenset({"-C", "-c", "--git-dir", "--work-tree", "--namespace"})
@@ -31,6 +33,7 @@ COMMIT_FLAGS = re.compile(r"-([^mFCctSu]*)([mFCctSu]?)(.*)")
 COMMIT_SHORT_WITH_VALUE = frozenset("mFCct")
 COMMIT_LONG_WITH_VALUE = frozenset({"--message", "--file", "--template", "--author", "--trailer"})
 GH_OPTIONS_WITH_VALUE = frozenset({"-R", "--repo"})
+MERGE_DENIAL = "Agents never merge PRs; the risk gate and the owner do."
 
 GATE_PATHS = (
     ".github/",
@@ -119,7 +122,7 @@ def segment_denial(words: list[str], branch: str, ci_agent: bool) -> str | None:
     if words[0] == "git":
         return git_denial(words[1:], branch)
     if ci_agent and words[0] == "gh" and gh_merges(words[1:]):
-        return "Agents never merge PRs; the risk gate and the owner do."
+        return MERGE_DENIAL
     return None
 
 
@@ -129,8 +132,10 @@ def gh_merges(args: list[str]) -> bool:
     return args[:1] == ["pr"] and skip_options(args[1:], GH_OPTIONS_WITH_VALUE)[:1] == ["merge"]
 
 
-def regex_denial(command: str) -> str | None:
+def regex_denial(command: str, ci_agent: bool) -> str | None:
     """Conservative fallback when the command can't be split into words."""
+    if ci_agent and GH_MERGE.search(command):
+        return MERGE_DENIAL
     if FORCE_PUSH.search(command):
         return "Force-pushing is not allowed."
     if PUSH_TO_MAIN.search(command):
@@ -146,17 +151,19 @@ def bash_denial(command: str, branch: str, ci_agent: bool) -> str | None:
     Only simple commands that start with `git push`, `git commit` or `gh pr merge` are checked,
     so text that merely mentions them (an issue body, a commit message) is allowed. Wrapper
     prefixes are skipped, and strings run by `bash -c`, `eval` or command substitution are
-    checked as commands too. Here-document bodies are text, apart from their substitutions.
+    checked as commands too. Here-document bodies are text, apart from their substitutions and
+    bodies a shell reads.
     """
     stripped = strip_heredocs(command)
-    for body in substitutions(stripped) + heredoc_substitutions(command):
+    nested = substitutions(stripped) + heredoc_substitutions(command)
+    for body in nested + shell_heredoc_bodies(command):
         reason = bash_denial(body, branch, ci_agent)
         if reason:
             return reason
     try:
         parts = segments(stripped)
     except ValueError:
-        return regex_denial(command)
+        return regex_denial(command, ci_agent)
     for words in parts:
         reason = segment_denial(words, branch, ci_agent)
         if reason:
