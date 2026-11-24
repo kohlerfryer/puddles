@@ -6,15 +6,11 @@ import type { KernelEvent } from "../core/contracts";
 import { type PoseFrame, toFrame } from "../core/poseFixture";
 import type { SafeReaction } from "../core/validator";
 import { TICK_HZ } from "../kernel/clock";
-import { liveGuardian } from "../kernel/guardian/live";
 import { createKernel, type Kernel } from "../kernel/kernel";
 import type { PluginFolder } from "../kernel/plugins";
-import { copyMe, copyMeBrain } from "../plugins/brains/copyMe";
-import { matcherBrain } from "../plugins/brains/matcher";
-import { reflexesBrain } from "../plugins/brains/reflexes";
+import { gameOptions } from "../plugins/game";
 import { gesturesSense } from "../plugins/sense/gestures";
 import { type HeldObjectSense, heldHand, heldObjectSense } from "../plugins/sense/held_object";
-import { SKILLS } from "../plugins/skill";
 import { type Box, cropBox } from "../plugins/sense/held_object/hold";
 import { poseSense } from "../plugins/sense/pose";
 
@@ -77,12 +73,7 @@ async function photograph(video: HTMLVideoElement, box: Box): Promise<Blob> {
  * and the skills, behind a guardian that suggests a break after `sessionLimitMin` minutes.
  */
 export function liveKernel(senses: readonly PluginFolder[], sessionLimitMin: number) {
-  return createKernel({
-    plugins: [...senses, reflexesBrain(), copyMeBrain(), matcherBrain(), ...SKILLS],
-    behaviors: new Map([["copy_me", copyMe]]),
-    guardian: liveGuardian(SKILLS, sessionLimitMin),
-    seed: Math.floor(Math.random() * SEEDS),
-  });
+  return createKernel(gameOptions(senses, sessionLimitMin, Math.floor(Math.random() * SEEDS)));
 }
 
 /**
