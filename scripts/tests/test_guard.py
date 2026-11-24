@@ -164,3 +164,83 @@ def test_denies_pushing_head_while_on_main() -> None:
 def test_falls_back_to_patterns_for_unbalanced_quotes() -> None:
     assert bash_denial("git push --force 'oops", branch="agent/59-x", ci_agent=False)
     assert bash_denial("echo 'oops", branch="agent/59-x", ci_agent=False) is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "env X=1 git push -f",
+        "env -i PATH=/bin git push origin main",
+        "timeout 60 git push --force",
+        "timeout -s KILL 60 git push -f",
+        "nohup git push -f",
+        "command git push -f",
+    ],
+)
+def test_wrapper_prefixes_do_not_hide_a_push(command: str) -> None:
+    assert bash_denial(command, branch="agent/3-x", ci_agent=False)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "bash -c 'git push -f'",
+        'sh -c "git commit --no-verify -m x"',
+        "bash -lc 'git push origin main'",
+        "eval git push -f",
+        "eval 'git push -f'",
+        "echo `git push -f`",
+        'echo "$(git push -f)"',
+        "x=$(echo $(git push -f))",
+        'echo "`git commit -n -m x`"',
+    ],
+)
+def test_nested_command_strings_are_checked(command: str) -> None:
+    assert bash_denial(command, branch="agent/3-x", ci_agent=False)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git -C /repo push -f",
+        "git -c core.hooksPath=/dev/null push origin main",
+        "git --git-dir=.git --no-pager push -f",
+        "git -C /repo commit --no-verify -m x",
+    ],
+)
+def test_global_git_options_are_skipped(command: str) -> None:
+    assert bash_denial(command, branch="agent/3-x", ci_agent=False)
+
+
+@pytest.mark.parametrize("command", ["git commit -anm 'msg'", "git commit -nm x"])
+def test_n_inside_combined_commit_flags_counts_as_no_verify(command: str) -> None:
+    assert bash_denial(command, branch="agent/3-x", ci_agent=False)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "env X=1 echo git push -f",
+        "timeout 60 just check",
+        "nohup just test",
+        "bash -c 'echo git push -f'",
+        "eval echo git push -f",
+        "echo '`git push -f`'",
+        "echo '$(git push -f)'",
+        "echo $(git status)",
+        "git -C /repo push -u origin agent/3-x",
+        "git commit -am 'fix and note'",
+        "git commit -mnote",
+    ],
+)
+def test_allows_wrapped_and_nested_commands_that_only_mention_a_push(command: str) -> None:
+    assert bash_denial(command, branch="agent/3-x", ci_agent=False) is None
+
+
+def test_heredoc_bodies_are_text_not_commands() -> None:
+    message = "git commit -F- <<'EOF'\nFix docs\n\ngit push -f is denied now\nEOF\n"
+    substituted = "git commit -m \"$(cat <<'EOF'\nFix docs\ngit push -f is denied\nEOF\n)\""
+
+    assert bash_denial(message, branch="agent/3-x", ci_agent=False) is None
+    assert bash_denial(substituted, branch="agent/3-x", ci_agent=False) is None
+    assert bash_denial("cat <<EOF\nx\nEOF\ngit push -f", branch="agent/3-x", ci_agent=False)
