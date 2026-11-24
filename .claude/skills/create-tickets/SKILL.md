@@ -23,7 +23,11 @@ How the tests prove each criterion.
 What this issue must not touch.
 
 Blocked by: #<n> (omit when none)
+
+Touches: path/to/file.ts, folder/
 ```
+
+`Touches:` lists the files and folders (ending in `/`) the issue will change, comma-separated. Dispatch never runs two issues with overlapping paths at once, so be specific: name files when you can, and folders only when the issue adds files there.
 
 Then:
 
