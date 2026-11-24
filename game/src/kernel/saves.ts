@@ -132,12 +132,15 @@ export function forgetEverything(save: Save): Save {
   return { ...defaultSave(), settings: save.settings };
 }
 
-/** The save on `server`, or a fresh one when it can't be read. */
-export async function loadSave(server: SaveServer): Promise<Save> {
+/**
+ * The save on `server`, or null when it can't be read. Null is not a fresh save: storing a fresh
+ * save in its place would overwrite the real one.
+ */
+export async function loadSave(server: SaveServer): Promise<Save | null> {
   try {
     return parseSave(await server.load());
   } catch {
-    return defaultSave();
+    return null;
   }
 }
 

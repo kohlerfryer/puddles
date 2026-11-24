@@ -129,15 +129,19 @@ describe("loadSave", () => {
 
   it("stays forgotten after a reset is stored", async () => {
     const saves = server(JSON.stringify(PLAYED));
-    await saves.store(forgetEverything(await loadSave(saves)));
+    await saves.store(forgetEverything(PLAYED));
 
     const loaded = await loadSave(saves);
-    expect(loaded.bandit).toEqual({});
-    expect(loaded.memory.episodes).toEqual([]);
+    expect(loaded?.bandit).toEqual({});
+    expect(loaded?.memory.episodes).toEqual([]);
   });
 
-  it("starts fresh when the server is unreachable", async () => {
-    expect(await loadSave(server(null))).toEqual(defaultSave());
+  it("starts fresh when nothing has been saved yet", async () => {
+    expect(await loadSave(server("{}"))).toEqual(defaultSave());
+  });
+
+  it("reports an unreachable server as not loaded rather than fresh", async () => {
+    expect(await loadSave(server(null))).toBeNull();
   });
 });
 

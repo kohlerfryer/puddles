@@ -17,7 +17,11 @@ const post: Post = (url, body, signal) =>
   fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, signal });
 
 const saves: SaveServer = {
-  load: async (): Promise<unknown> => (await fetch(SAVE_URL)).json() as Promise<unknown>,
+  load: async (): Promise<unknown> => {
+    const reply = await fetch(SAVE_URL);
+    if (!reply.ok) throw new Error(`load failed: ${String(reply.status)}`);
+    return reply.json() as Promise<unknown>;
+  },
   store: async (save) => {
     const reply = await fetch(SAVE_URL, {
       method: "PUT",
@@ -53,6 +57,10 @@ void Promise.all([createStage(document.body), loadSave(saves)]).then(([app, save
   );
   createDevPanel(document.body, puddles);
   createParentPanel(document.body, saves, save);
+  if (!save) {
+    hud.status("camera off until the save loads (reload once the server is up)");
+    return;
+  }
   if (!save.settings.camera) {
     hud.status("camera off (grown-ups panel)");
     return;
