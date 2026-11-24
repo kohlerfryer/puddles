@@ -101,6 +101,9 @@ def test_the_library_is_the_game_halfs_prop_library() -> None:
         ("book cover", "book"),
         ("cat toy", "toy_cat"),
         ("toaster", None),
+        ("pencil case", None),
+        ("car key", None),
+        ("cat food", None),
         ("", None),
     ],
 )
@@ -109,23 +112,42 @@ def test_names_the_library_prop_by_its_last_known_word(name: str, prop: str | No
 
 
 @pytest.mark.parametrize(
-    ("name", "shape", "edible", "archetype"),
+    ("name", "archetype"),
     [
-        ("toy robot", "other", False, "box"),
-        ("glass jar", "other", False, "cup"),
-        ("pears", "other", False, "fruit"),
-        ("thing", "round", False, "ball"),
-        ("thing", "long", False, "stick"),
-        ("thing", "flat", False, "flat_thing"),
-        ("thing", "other", True, "fruit"),
-        ("thing", "other", False, "box"),
+        ("toy robot", "box"),
+        ("glass jar", "cup"),
+        ("pears", "fruit"),
+        ("pencil case", "box"),
+        ("car key", "stick"),
+        ("cat food", "fruit"),
     ],
 )
-def test_picks_an_archetype_by_name_then_by_traits(
-    name: str, shape: str, edible: bool, archetype: str
+def test_an_archetype_word_after_a_prop_word_names_the_archetype(name: str, archetype: str) -> None:
+    traits = {"size": "small", "weight": "light", "shape": "round", "edible": False}
+    reaction = {"holding": True, "object": name, "traits": traits}
+
+    answer = object_matcher.library_answer(reaction, JPEG)
+
+    assert answer == {"id": "other", "archetype": archetype, "color": object_matcher.NEUTRAL}
+
+
+@pytest.mark.parametrize(
+    ("shape", "edible", "archetype"),
+    [
+        ("round", True, "fruit"),
+        ("long", True, "fruit"),
+        ("other", True, "fruit"),
+        ("round", False, "ball"),
+        ("long", False, "stick"),
+        ("flat", False, "flat_thing"),
+        ("other", False, "box"),
+    ],
+)
+def test_an_unnamed_object_gets_its_archetype_from_its_traits(
+    shape: str, edible: bool, archetype: str
 ) -> None:
     traits = {"size": "small", "weight": "light", "shape": shape, "edible": edible}
-    assert object_matcher.archetype_of(name, traits) == archetype
+    assert object_matcher.archetype_by_traits(traits) == archetype
 
 
 def test_the_dominant_colour_is_the_most_common_colourful_one() -> None:

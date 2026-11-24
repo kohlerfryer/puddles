@@ -162,13 +162,23 @@ def test_report_adds_library_match_accuracy_when_known() -> None:
         Result("a.jpg", '{"object": "mug"}', 0.1),
         Result("b.jpg", "A sneaker", 0.1),
         Result("c.jpg", "kitten", 0.1),
+        Result("d.jpg", "a toaster", 0.1),
     ]
+    expected = {"a.jpg": "coffee cup", "b.jpg": "shoe", "c.jpg": "dog", "d.jpg": "toaster"}
 
-    lines = bench_reactions.report(
-        results, validator, {"a.jpg": "coffee cup", "b.jpg": "shoe", "c.jpg": "dog"}
-    )
+    lines = bench_reactions.report(results, validator, expected)
 
-    assert "library match: 2/3 (67%)" in lines
+    assert "library match (name lookup): 2/3 library photos (67%)" in lines
+
+
+def test_report_leaves_out_library_match_without_library_photos() -> None:
+    validator = Draft202012Validator(json.loads(bench_reactions.SCHEMA_PATH.read_text()))
+    results = [Result("a.jpg", "a toaster", 0.1)]
+
+    lines = bench_reactions.report(results, validator, {"a.jpg": "toaster"})
+
+    assert "object named right: 1/1 (100%)" in lines
+    assert not any(line.startswith("library match") for line in lines)
 
 
 def test_scores_a_plain_name_answer_by_its_text() -> None:
