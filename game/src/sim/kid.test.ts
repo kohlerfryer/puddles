@@ -44,6 +44,14 @@ describe("simulatedKid", () => {
     }
   });
 
+  it("declares every event type it emits in its manifest", () => {
+    const { kid, events } = play(scaredOfLoud, bit("spooky"), 60);
+    const { emits } = kid.plugin.manifest as { emits: string[] };
+    const delighted = play({ ...slapstickFan, baseline: 1 }, bit("pratfall"), 30).events;
+    const emitted = [...events, ...delighted].filter((e) => e.source === "kid");
+    expect(new Set(emitted.map((e) => e.type))).toEqual(new Set(emits));
+  });
+
   it("smiles right after the bit is done", () => {
     const { events } = play(slapstickFan, bit("pratfall"), 4);
     const done = ofType(events, "intent.done")[0];
