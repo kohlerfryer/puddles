@@ -34,6 +34,7 @@ describe("cumulativeRegret", () => {
     features: [],
     worth,
     best,
+    smiled: false,
     walkedAway,
   });
 

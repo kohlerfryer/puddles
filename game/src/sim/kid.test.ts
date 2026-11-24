@@ -77,6 +77,13 @@ describe("simulatedKid", () => {
     expect(mean(loved)).toBeGreaterThan(mean(meh));
   });
 
+  it("records whether the kid smiled at each bit", () => {
+    const { kid, events } = play(slapstickFan, bit("pratfall"), 16);
+    const levels = ofType(events, "observation.smile").map((e) => e.data.level as number);
+    expect(kid.punchlines.map((p) => p.smiled)).toEqual(levels.map((level) => level >= 0.6));
+    expect(kid.punchlines.some((p) => p.smiled)).toBe(true);
+  });
+
   it("claps now and then when delighted", () => {
     const delighted = { ...slapstickFan, baseline: 1 };
     const { events } = play(delighted, bit("pratfall"), 30);
