@@ -46,24 +46,31 @@ GATE_FILES = frozenset(
 )
 
 
+def next_quote(quote: str, ch: str) -> str:
+    """The open quote character after reading `ch` (empty outside quotes)."""
+    if quote:
+        return "" if ch == quote else quote
+    return ch if ch in "'\"" else ""
+
+
 def unquoted_newlines_to_semicolons(command: str) -> str:
     """Treat line breaks outside quotes as command separators, like the shell does.
 
-    Outside single quotes a backslash escapes the next character, as in POSIX shells.
+    Outside single quotes a backslash escapes the next character, and a backslash-newline is a
+    line continuation that joins the lines, as in POSIX shells.
     """
-    out, quote, escaped = [], "", False
+    out: list[str] = []
+    quote, escaped = "", False
     for ch in command:
         if escaped:
             escaped = False
-            out.append(ch)
-            continue
-        if ch == "\\" and quote != "'":
+            out[-1:] = [] if ch == "\n" else [out[-1], ch]
+        elif ch == "\\" and quote != "'":
             escaped = True
-        elif quote:
-            quote = "" if ch == quote else quote
-        elif ch in "'\"":
-            quote = ch
-        out.append(" ; " if ch == "\n" and not quote else ch)
+            out.append(ch)
+        else:
+            quote = next_quote(quote, ch)
+            out.append(" ; " if ch == "\n" and not quote else ch)
     return "".join(out)
 
 
