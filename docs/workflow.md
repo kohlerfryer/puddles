@@ -58,6 +58,7 @@ The `risk gate` workflow runs on every PR update and review. Low risk: it adds `
 | Diff coverage | PRs | under 90% of changed lines covered |
 | `tests touched` | PRs | source changed without a test changing |
 | `risk gate` | PRs and reviews | high risk without the owner's approval |
+| `simulation gate` | PRs | crashes, hangs, unsafe intents, regret worse than the baseline in `game/src/sim/thresholds.json` beyond its tolerance, or time-budget overruns in simulated-kid sessions; posts regret and smiles per bit to the PR |
 | `secrets scan` | every run | gitleaks finds a secret in history |
 | `dependency review` | PRs | a new dependency with a moderate or worse vulnerability |
 

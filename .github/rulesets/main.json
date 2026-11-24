@@ -62,6 +62,9 @@
           },
           {
             "context": "agent review"
+          },
+          {
+            "context": "simulation gate"
           }
         ]
       }
