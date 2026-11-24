@@ -12,6 +12,7 @@ dev = [
     "diff-cover",
     "httpx2",
     "jsonschema",
+    "matplotlib>=3.10",
     "mypy",
     "pytest",
     "pytest-cov",

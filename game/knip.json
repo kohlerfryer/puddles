@@ -1,7 +1,13 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "project": ["src/**/*.ts"],
-  "ignoreDependencies": ["jscpd", "@mediapipe/tasks-vision"],
+  "ignoreDependencies": [
+    "jscpd",
+    "@mediapipe/tasks-vision",
+    "miniplex",
+    "ldtk",
+    "@playwright/test"
+  ],
   "ignoreExportsUsedInFile": {
     "type": true,
     "interface": true
