@@ -10,13 +10,14 @@ KEYWORDS = frozenset({"!", "{", "}", "if", "then", "else", "elif", "do", "while"
 ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 # A here-document: its marker line, then the body up to the delimiter line.
 HEREDOC = re.compile(
-    r"(<<-?\s*['\"]?(\w+)['\"]?[^\n]*\n).*?^\s*\2[ \t]*$", re.DOTALL | re.MULTILINE
+    r"(<<-?\s*(['\"]?)([\w.-]+)\2[^\n]*\n).*?^\s*\3[ \t]*$", re.DOTALL | re.MULTILINE
 )
 # Commands that run the rest of the line as a command, with their options that take a value.
 WRAPPERS: dict[str, frozenset[str]] = {
     "env": frozenset({"-u", "--unset", "-C", "--chdir"}),
     "timeout": frozenset({"-s", "--signal", "-k", "--kill-after"}),
     "nohup": frozenset(),
+    "exec": frozenset({"-a"}),
     "command": frozenset(),
 }
 SHELLS = frozenset({"bash", "sh", "zsh", "dash"})
@@ -75,15 +76,20 @@ def skip_options(args: list[str], with_value: frozenset[str]) -> list[str]:
     return args[i:]
 
 
+def command_name(word: str) -> str:
+    """`git` for `/usr/bin/git`."""
+    return word.rsplit("/", 1)[-1]
+
+
 def strip_wrappers(words: list[str]) -> list[str]:
-    """Drop `env`, `timeout`, `nohup` and `command` prefixes and the assignments after them."""
-    while words and (words[0] in WRAPPERS or ASSIGNMENT.match(words[0])):
-        head, words = words[0], words[1:]
+    """Drop wrapper prefixes and the assignments after them; name commands without their path."""
+    while words and (command_name(words[0]) in WRAPPERS or ASSIGNMENT.match(words[0])):
+        head, words = command_name(words[0]), words[1:]
         if head in WRAPPERS:
             words = skip_options(words, WRAPPERS[head])
         if head == "timeout":
             words = words[1:]
-    return words
+    return [command_name(words[0]), *words[1:]] if words else words
 
 
 def nested_commands(words: list[str]) -> list[str]:
@@ -138,6 +144,10 @@ def substitutions(command: str) -> list[str]:
     return bodies
 
 
-def strip_heredocs(command: str) -> str:
-    """Drop here-document bodies, which are text rather than commands."""
-    return HEREDOC.sub(r"\1", command)
+def strip_heredocs(command: str, quoted_only: bool = False) -> str:
+    """Drop here-document bodies, which are text rather than commands.
+
+    With `quoted_only`, keep bodies under an unquoted delimiter, since the shell still runs the
+    command substitutions in those.
+    """
+    return HEREDOC.sub(lambda m: m[1] if m[2] or not quoted_only else m[0], command)
