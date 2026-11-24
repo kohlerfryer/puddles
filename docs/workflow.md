@@ -61,6 +61,7 @@ The `risk gate` workflow runs on every PR update and review. Low risk: it adds `
 | `simulation gate` | PRs | crashes, hangs, unsafe intents, regret worse than the baseline in `game/src/sim/thresholds.json` beyond its tolerance, or time-budget overruns in simulated-kid sessions; posts regret and smiles per bit to the PR |
 | `secrets scan` | every run | gitleaks finds a secret in history |
 | `dependency review` | PRs | a new dependency with a moderate or worse vulnerability |
+| `screenshots` | PRs touching `game/` | never: links Playwright screenshots of the game on recorded streams to the PR, for review only |
 
 When CI fails on `main`, the `main red` workflow opens one `needs-human` issue naming the commit. Fix forward or revert in a PR; agents don't start new work while it's open.
 
