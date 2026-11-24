@@ -1,17 +1,32 @@
 import { ask, type Post, reactUrl, scriptMs, toBase64 } from "./core/ask";
 import { gameTitle } from "./core/title";
+import { loadSave, type SaveServer, saveUrl } from "./kernel/saves";
 import { watchCamera } from "./render/camera";
 import { createDevPanel } from "./render/devPanel";
 import { createHud, type Hud } from "./render/hud";
+import { createParentPanel } from "./render/parentPanel";
 import { drawPond } from "./render/pond";
 import { type Actor, playDemo } from "./render/play";
 import { createVoice } from "./render/sound";
 import { createStage } from "./render/stage";
 
 const REACT_URL = reactUrl(import.meta.env.VITE_PUDDLES_SERVER);
+const SAVE_URL = saveUrl(import.meta.env.VITE_PUDDLES_SERVER);
 
 const post: Post = (url, body, signal) =>
   fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, signal });
+
+const saves: SaveServer = {
+  load: async (): Promise<unknown> => (await fetch(SAVE_URL)).json() as Promise<unknown>,
+  store: async (save) => {
+    const reply = await fetch(SAVE_URL, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(save),
+    });
+    if (!reply.ok) throw new Error(`save failed: ${String(reply.status)}`);
+  },
+};
 
 /** Sends `photo` to the server while Puddles senses it, then plays his reaction; resolves once it ends. */
 async function reactTo(photo: Blob, puddles: Actor, hud: Hud): Promise<void> {
@@ -27,7 +42,7 @@ async function reactTo(photo: Blob, puddles: Actor, hud: Hud): Promise<void> {
 }
 
 document.title = gameTitle();
-void createStage(document.body).then((app) => {
+void Promise.all([createStage(document.body), loadSave(saves)]).then(([app, save]) => {
   const hud = createHud(document.body);
   const puddles = playDemo(
     app,
@@ -37,6 +52,11 @@ void createStage(document.body).then((app) => {
     }),
   );
   createDevPanel(document.body, puddles);
+  createParentPanel(document.body, saves, save);
+  if (!save.settings.camera) {
+    hud.status("camera off (grown-ups panel)");
+    return;
+  }
   watchCamera(
     (gesture) => {
       hud.gesture(gesture, puddles.see(gesture).step.say);

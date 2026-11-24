@@ -4,7 +4,7 @@ import type { Actor } from "./play";
 /** The key that shows and hides the panel. */
 const TOGGLE_KEY = "`";
 
-function element<K extends keyof HTMLElementTagNameMap>(
+export function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   parent: HTMLElement,
   text = "",
