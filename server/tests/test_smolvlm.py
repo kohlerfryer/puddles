@@ -11,6 +11,7 @@ from puddles_server.smolvlm import (
     CONFUSED_REACTION,
     DEFAULT_MODEL_ID,
     SmolVLMModel,
+    SmolVLMNamerModel,
     build_messages,
     first_json_object,
     parse_reaction,
@@ -114,7 +115,7 @@ def test_decoding_schema_caps_strings_and_keeps_the_rest() -> None:
 def test_model_reads_its_id_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     loads: list[tuple[str, str]] = []
 
-    def load(model_id: str, prompt: str) -> smolvlm.Generate:
+    def load(model_id: str, prompt: str, **_: object) -> smolvlm.Generate:
         loads.append((model_id, prompt))
         return lambda image: json.dumps(REACTION) if image == b"jpeg" else ""
 
@@ -124,7 +125,7 @@ def test_model_reads_its_id_from_the_environment(monkeypatch: pytest.MonkeyPatch
     monkeypatch.delenv("PUDDLES_SMOLVLM_ID")
     default = SmolVLMModel()
 
-    assert model.name == "smolvlm"
+    assert model.name == "smolvlm-json"
     assert [model_id for model_id, _ in loads] == [
         "HuggingFaceTB/SmolVLM-500M-Instruct",
         DEFAULT_MODEL_ID,
@@ -145,10 +146,32 @@ def test_choosing_smolvlm_imports_no_heavy_library_until_it_loads() -> None:
     assert result.stdout.strip() == "[]"
 
 
-def test_puddles_model_smolvlm_selects_the_backend(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(smolvlm, "load_generator", lambda model_id, prompt: lambda image: "")
+def test_puddles_model_names_select_the_backends(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(smolvlm, "load_generator", lambda *_args, **_kw: lambda image: "")
 
-    model = load_model("smolvlm")
+    full = load_model("smolvlm-json")
 
-    assert isinstance(model, SmolVLMModel)
-    assert model.react(b"jpeg") == CONFUSED_REACTION
+    assert isinstance(full, SmolVLMModel)
+    assert full.react(b"jpeg") == CONFUSED_REACTION
+    assert isinstance(load_model("smolvlm"), SmolVLMNamerModel)
+
+
+def test_namer_asks_a_short_free_question_and_fills_a_template(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, dict[str, object]]] = []
+
+    def load(model_id: str, prompt: str, **options: object) -> smolvlm.Generate:
+        calls.append((prompt, options))
+        return lambda image: " Banana.\n"
+
+    monkeypatch.setattr(smolvlm, "load_generator", load)
+    model = SmolVLMNamerModel()
+    reaction = model.react(b"jpeg")
+
+    assert calls == [
+        (smolvlm.NAME_PROMPT, {"constrained": False, "max_new_tokens": smolvlm.NAME_TOKENS})
+    ]
+    assert model.name == "smolvlm"
+    assert reaction["object"] == "banana"
+    assert reaction["traits"]["edible"] is True
