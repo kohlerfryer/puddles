@@ -6,7 +6,25 @@
   "max_over_budget_share": 0.01,
   "timeout_s": 300,
   "baseline": {
-    "random": { "loves-slapstick": 8.45, "scared-of-loud": 10.58, "copycat": 8.67 },
-    "fixed pratfall": { "loves-slapstick": 5.1, "scared-of-loud": 10, "copycat": 12 }
+    "random": {
+      "loves-slapstick": 8.45,
+      "scared-of-loud": 10.58,
+      "copycat": 8.67
+    },
+    "fixed pratfall": {
+      "loves-slapstick": 5.1,
+      "scared-of-loud": 10,
+      "copycat": 12
+    },
+    "bandit beta": {
+      "loves-slapstick": 3.96,
+      "scared-of-loud": 8.76,
+      "copycat": 4.47
+    },
+    "bandit linear": {
+      "loves-slapstick": 2.91,
+      "scared-of-loud": 7.56,
+      "copycat": 3.66
+    }
   }
 }
