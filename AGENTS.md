@@ -17,6 +17,7 @@
 - `game/`: Vite + TypeScript game. Logic in `src/core/` (pure, tested, no PixiJS or DOM); drawing and input in `src/render/` (PixiJS, MediaPipe; no tests, excluded from coverage). Tests sit next to code as `*.test.ts`.
 - `shared/`: contracts used across game, server and evals. `reaction.schema.json` is the reaction format and `puddles_prompt.md` the VLM prompt; game types are generated from it (`pnpm -C game gen:types`, checked by `just generated`).
 - `scripts/`: repo tooling in Python, with tests in `scripts/tests/`.
+- `docs/spec/m3-kernel.md`: the kernel and plugin architecture M3 builds toward; read it before M3 work. `docs/art/`: reference art.
 - `docs/adr/`: decisions. `docs/workflow.md`, `docs/coding-standards.md`.
 - Python 3.12 via `uv`; Node via `pnpm` inside `game/`. TypeScript is pinned to 6.x.
 
@@ -60,4 +61,5 @@ Stop, label the issue `needs-human` and comment why when: acceptance criteria ar
 - Agent commits carry a Claude co-author trailer: `docs/adr/2026-11-22-agent-commits-carry-a-co-author-trailer.md`
 - TypeScript stays on 6.x until typescript-eslint supports 7: `docs/adr/2026-11-22-typescript-stays-on-6.md`
 - Game logic in core, drawing in render: `docs/adr/2026-11-22-game-logic-in-core-drawing-in-render.md`
+- One small kernel, four plugin kinds, events only (spec: `docs/spec/m3-kernel.md`): `docs/adr/2026-11-23-one-kernel-four-plugin-kinds.md`
 - Base SmolVLM runs now, behind a swappable model: `docs/adr/2026-11-23-base-smolvlm-behind-a-swappable-model.md`
