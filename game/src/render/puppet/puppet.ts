@@ -3,7 +3,7 @@ import { Container, Graphics } from "pixi.js";
 import type { PuppetPose } from "../../core/puppet";
 import type { Mood } from "../../core/reaction";
 import { drawFace } from "./face";
-import { billFill, fluff, fluffFill, OUTLINE, PALETTE, quads } from "./paths";
+import { BILL_FILL, fluff, fluffFill, OUTLINE, PALETTE, quads } from "./paths";
 
 /** How far the concept art's head centre sits above the feet, in concept units. */
 export const HEAD_HEIGHT = 138;
@@ -37,7 +37,7 @@ function drawFeet(): Graphics {
   for (const x of FEET_AT) {
     quads(g, x, -10, FOOT)
       .closePath()
-      .fill(billFill())
+      .fill(BILL_FILL)
       .stroke({ width: OUTLINE.small, color: PALETTE.outline, join: "round" });
   }
   return g;

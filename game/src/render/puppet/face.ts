@@ -2,7 +2,7 @@ import type { Graphics } from "pixi.js";
 
 import type { Eyes } from "../../core/puppet";
 import type { Mood } from "../../core/reaction";
-import { billFill, OUTLINE, PALETTE, quads } from "./paths";
+import { BILL_FILL, OUTLINE, PALETTE, quads } from "./paths";
 
 /** Eye centres in head space, as in the concept art. */
 const EYES = [
@@ -104,7 +104,7 @@ function bill(g: Graphics, open: number, mood: Mood): void {
   );
   quads(g, x, y, curves)
     .closePath()
-    .fill(billFill())
+    .fill(BILL_FILL)
     .stroke({ width: OUTLINE.small, color: PALETTE.outline, join: "round" });
   if (open < TONGUE_FROM) return;
   quads(g, -6, 26 + 8 * open, [[8, 8 * open, 16, 0]]).fill(
