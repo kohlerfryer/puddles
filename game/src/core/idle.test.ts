@@ -6,6 +6,7 @@ import {
   idleFacing,
   type IdleKind,
   idlePosition,
+  napIdle,
   pickIdle,
   startIdle,
   WALK_SPEED,
@@ -111,5 +112,14 @@ describe("idleFacing", () => {
 
   it("keeps facing the same way while staying put", () => {
     expect(idleFacing(wander(400, 400), -1)).toBe(-1);
+  });
+});
+
+describe("napIdle", () => {
+  it("naps where Puddles stands for the given time, then idles on as usual", () => {
+    const napping = napIdle(500, 4);
+    expect(napping.action).toMatchObject({ kind: "nap", from: 500, to: 500, seconds: 4 });
+    expect(idlePosition(advanceIdle(napping, 3.9, seededRandom(1)))).toBe(500);
+    expect(advanceIdle(napping, 4, seededRandom(1)).elapsed).toBe(0);
   });
 });

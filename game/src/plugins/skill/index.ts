@@ -1,6 +1,7 @@
 import type { Manifest, SkillManifest, Step } from "../../core/contracts";
 import { TICK_HZ } from "../../kernel/clock";
 import type { Activity, PluginContext } from "../../kernel/plugins";
+import { copyGesture } from "./copy_gesture";
 
 const TICK_MS = 1000 / TICK_HZ;
 
@@ -17,6 +18,9 @@ function timed(seconds: number) {
   };
 }
 
+/** Skills that end on what happens rather than after their duration. */
+const LISTENING: Readonly<Record<string, typeof copyGesture>> = { copy_gesture: copyGesture };
+
 /**
  * Today's verbs as skill plugins, one folder per verb holding its manifest.json. The kernel times
  * each step by the manifest's duration; rendering still moves Puddles by the verb's plan
@@ -24,5 +28,5 @@ function timed(seconds: number) {
  */
 export const SKILLS = Object.values(manifests).map((manifest) => ({
   manifest,
-  code: { start: timed(manifest.duration_s) },
+  code: { start: LISTENING[manifest.id] ?? timed(manifest.duration_s) },
 }));

@@ -1,10 +1,11 @@
 import type { Application, Container } from "pixi.js";
 
 import { createActing } from "../core/acting";
-import { type CopyCue, createCopyMe } from "../core/copyMe";
+import { played, startedStep } from "../core/bridge";
+import type { KernelEvent, Step as SkillStep } from "../core/contracts";
 import { DEMO_SCRIPT, DEMO_TRAITS, demoDrop } from "../core/demo";
 import { createGlass, freeToWatch, idleFacingKid } from "../core/glass";
-import { advanceIdle, type IdleState, idlePosition, startIdle } from "../core/idle";
+import { advanceIdle, type IdleState, idlePosition, napIdle, startIdle } from "../core/idle";
 import { createPhysics } from "../core/physics";
 import { heldScale } from "../plugins/skill/objectVerbs";
 import { GROUND, SCENE_WIDTH, STICKER_POND } from "../core/pond";
@@ -12,7 +13,6 @@ import type { Step, Traits } from "../core/reaction";
 import { createRunner } from "../core/runner";
 import { sensingRing } from "../core/sensing";
 import { createStickers } from "../core/stickers";
-import type { BodyGesture } from "../plugins/sense/gestures/gestures";
 import type { PoseFrame } from "../core/poseFixture";
 import { type Sound, soundFor } from "../core/sounds";
 import { bubbleAt, type Line } from "../core/speech";
@@ -66,9 +66,9 @@ function talk(scene: Container) {
   let thought: ReturnType<typeof thoughtAfter>;
   let sensingSince: number | undefined;
   return {
-    /** Changes what Puddles thinks of as a copy-me `cue` happens at `now` ms. */
-    follow(cue: CopyCue, now: number): void {
-      thought = thoughtAfter(thought, cue, now);
+    /** Changes what Puddles thinks of as the kernel starts `step` at `now` ms. */
+    follow(step: SkillStep, now: number): void {
+      thought = thoughtAfter(thought, step, now);
     },
     /** Starts or stops Puddles sensing a photo at `now` ms. */
     sense(on: boolean, now: number): void {
@@ -93,11 +93,17 @@ type Cue = ReturnType<ReturnType<typeof createActing>["update"]>;
 
 /**
  * Shows Puddles acting out a cue, or idling on the bank between cues, turned towards a kid
- * watching through the window, and curious while `sensing` a photo.
+ * watching through the window, and curious while `sensing` a photo; `nap` puts him to sleep in
+ * the idle loop.
  */
 function posing(sensing: () => boolean) {
   let idle: IdleState | undefined;
-  return (cue: Cue, duck: Duck, dt: number, glass: AtWindow): Shown => {
+  let x = 0;
+  const nap = (seconds: number): void => {
+    idle = napIdle(x, seconds);
+  };
+  const pose = (cue: Cue, duck: Duck, dt: number, glass: AtWindow): Shown => {
+    x = duck.x;
     if (cue) {
       idle = undefined;
       const { x, facing, height, wing, pose } = cue.frame;
@@ -117,27 +123,26 @@ function posing(sensing: () => boolean) {
       glass,
     };
   };
+  return { pose, nap };
 }
 
-/** The copy-me game, played through the runner and the thought bubble; core decides every move. */
-function copier(runner: ReturnType<typeof createRunner>, bubbles: ReturnType<typeof talk>) {
-  const copy = createCopyMe(Math.random);
-  let inView = false;
-  const follow = (cue: CopyCue, now: number): CopyCue => {
-    runner.react(cue.step, now);
-    bubbles.follow(cue, now);
-    return cue;
-  };
-  return {
-    /** Moves the game on to `now` ms, asking or giving up when core says; `busy` while Puddles acts. */
-    tick: (now: number, busy: boolean): void => {
-      const cue = copy.tick(now, { inView, busy });
-      if (cue) follow(cue, now);
-    },
-    see: (gesture: BodyGesture, now: number): CopyCue => follow(copy.see(gesture, now), now),
-    watching: (seen: boolean): void => {
-      inView = seen;
-    },
+/**
+ * Plays each step the kernel's executor starts: a verb through the runner (after the step playing
+ * now), a nap in the idle loop, and what the step thinks of in the thought bubble.
+ */
+function stepper(
+  runner: ReturnType<typeof createRunner>,
+  bubbles: ReturnType<typeof talk>,
+  nap: (seconds: number) => void,
+  clock: () => number,
+) {
+  return (event: KernelEvent): void => {
+    const step = startedStep(event);
+    if (!step) return;
+    bubbles.follow(step, clock());
+    const move = played(step);
+    if (move?.kind === "step") runner.react(move.step, clock());
+    if (move?.kind === "nap") nap(move.seconds);
   };
 }
 
@@ -147,8 +152,8 @@ export interface Actor {
   spawn(traits: Traits, photo?: ImageBitmap): void;
   /** Plays `script` now, replacing the running one. */
   play(script: readonly Step[]): void;
-  /** Reacts to the gesture the player just made, as an answer while Puddles is asking, and says how. */
-  see(gesture: BodyGesture): CopyCue;
+  /** Plays each step the kernel's executor starts, thinking of what the step thinks of. */
+  follow(event: KernelEvent): void;
   /** Shows Puddles the latest camera frame, or that nobody is in view. */
   watching(frame: PoseFrame | undefined): void;
   /** Starts or stops Puddles sensing a photo while the server works out his reaction. */
@@ -170,10 +175,9 @@ export function playDemo(
   const acting = createActing();
   const glass = createGlass();
   let duck: Duck = { x: SCENE_WIDTH / 2, facing: 1 };
-  const pose = posing(bubbles.sensing);
+  const { pose, nap } = posing(bubbles.sensing);
   let clockMs = 0;
   const sticker = stickers(scene, play);
-  const copying = copier(runner, bubbles);
   let target = sticker.drop(DEMO_TRAITS, duck.x, clockMs).body;
   runner.play(DEMO_SCRIPT, clockMs);
 
@@ -185,7 +189,6 @@ export function playDemo(
     const atWindow = glass.update(ticker.deltaMS / 1000, freeToWatch(cue?.frame.pose));
     if (cue?.nudge) sticker.physics.nudge(target, cue.nudge);
     if (cue?.take) sticker.take(target, cue.take.to, clockMs);
-    copying.tick(clockMs, cue !== undefined);
     const shown = pose(cue, duck, ticker.deltaMS / 1000, atWindow);
     duck = { x: shown.x, facing: shown.facing };
     show(shown, clockMs / 1000);
@@ -199,10 +202,9 @@ export function playDemo(
     play(script: readonly Step[]): void {
       runner.play(script, clockMs);
     },
-    see: (gesture: BodyGesture): CopyCue => copying.see(gesture, clockMs),
+    follow: stepper(runner, bubbles, nap, () => clockMs),
     watching(frame: PoseFrame | undefined): void {
       glass.see(frame);
-      copying.watching(frame !== undefined);
     },
     sense(on: boolean): void {
       bubbles.sense(on, clockMs);

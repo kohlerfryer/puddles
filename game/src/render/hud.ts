@@ -5,7 +5,7 @@ import { feetInView } from "../plugins/sense/gestures/gestures";
 export interface Hud {
   status(text: string): void;
   frame(frame: PoseFrame | undefined): void;
-  gesture(name: string, line: string | undefined): void;
+  gesture(name: string): void;
   sound(text: string): void;
   server(text: string): void;
 }
@@ -39,9 +39,8 @@ export function createHud(host: HTMLElement): Hud {
         body.textContent = "Body: seen, head to feet.";
       }
     },
-    gesture(name, line) {
-      const time = new Date().toLocaleTimeString();
-      last.textContent = `Last gesture: ${name} at ${time}${line ? ` ("${line}")` : ""}`;
+    gesture(name) {
+      last.textContent = `Last gesture: ${name} at ${new Date().toLocaleTimeString()}`;
     },
     sound(text) {
       sound.textContent = `Sound: ${text}`;

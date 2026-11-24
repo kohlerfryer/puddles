@@ -1,0 +1,13 @@
+{
+  "kind": "brain",
+  "id": "copy_me",
+  "contract": "1",
+  "name": "Copy me",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["copies_kid"],
+  "cadence": "tick",
+  "autonomy": 1,
+  "latency_budget_ms": 2,
+  "intents": ["behavior"]
+}

@@ -20,15 +20,15 @@ const COMEDY_FEATURES = new Set([
   "sleepy",
 ]);
 
-/** Expressive skills a reaction can't name: brains and the guardian call them in intents. */
-const EXPRESSIVE = ["nap"];
+/** Skills a reaction can't name: brains, behaviors and the guardian call them in intents. */
+const INTENT_ONLY = ["nap", "copy_gesture"];
 
 const ids = SKILLS.map(({ manifest }) => manifest.id);
-const verbs = SKILLS.filter(({ manifest }) => !EXPRESSIVE.includes(manifest.id));
+const verbs = SKILLS.filter(({ manifest }) => !INTENT_ONLY.includes(manifest.id));
 
 describe("skill plugins", () => {
-  it("has one skill for each verb a reaction can use, plus the expressive ones", () => {
-    expect([...ids].sort()).toEqual([...schema.$defs.Verb.enum, ...EXPRESSIVE].sort());
+  it("has one skill for each verb a reaction can use, plus the intent-only ones", () => {
+    expect([...ids].sort()).toEqual([...schema.$defs.Verb.enum, ...INTENT_ONLY].sort());
   });
 
   it("installs every skill the guardian's own intents use", () => {
