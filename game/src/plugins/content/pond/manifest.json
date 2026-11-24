@@ -1,0 +1,9 @@
+{
+  "kind": "content",
+  "type": "scene",
+  "id": "pond",
+  "contract": "1",
+  "name": "Pond",
+  "authors": ["Puddles"],
+  "license": "MIT"
+}
