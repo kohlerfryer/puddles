@@ -111,11 +111,21 @@ def crop_color(image: bytes) -> str:
     return dominant_color([(data[i], data[i + 1], data[i + 2]) for i in range(0, len(data), 3)])
 
 
+def answer_archetype(answer: dict[str, str]) -> str:
+    """The archetype of a library answer: the prop's own, or the one `other` names."""
+    if answer["id"] == "other":
+        return answer["archetype"]
+    return str(LIBRARY["props"][answer["id"]]["archetype"])
+
+
 def library_answer(reaction: dict[str, Any], image: bytes) -> dict[str, str]:
-    answer = named_answer(reaction["object"]) or {
-        "id": "other",
-        "archetype": archetype_by_traits(reaction.get("traits", {})),
-    }
+    """The prop the name gives, unless the model calls the object food and the name a non-food
+    ("gummy bear", "hot dog"): the game takes the prop's traits, so Puddles wouldn't eat it."""
+    traits = reaction.get("traits", {})
+    fallback = {"id": "other", "archetype": archetype_by_traits(traits)}
+    answer = named_answer(reaction["object"]) or fallback
+    if traits.get("edible") and answer_archetype(answer) != "fruit":
+        answer = fallback
     if answer["id"] != "other":
         return answer
     return {**answer, "color": crop_color(image)}

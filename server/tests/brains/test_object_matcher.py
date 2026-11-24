@@ -132,6 +132,31 @@ def test_an_archetype_word_after_a_prop_word_names_the_archetype(name: str, arch
 
 
 @pytest.mark.parametrize(
+    "name", ["gummy bear", "hot dog", "cheese stick", "animal cracker", "chocolate bunny"]
+)
+def test_food_named_after_a_non_food_word_stays_food(name: str) -> None:
+    traits = {"size": "small", "weight": "light", "shape": "long", "edible": True}
+    reaction = {"holding": True, "object": name, "traits": traits}
+
+    answer = object_matcher.library_answer(reaction, JPEG)
+
+    assert answer == {"id": "other", "archetype": "fruit", "color": object_matcher.NEUTRAL}
+
+
+@pytest.mark.parametrize(
+    ("name", "edible", "prop"),
+    [("teddy bear", False, "teddy_bear"), ("banana", True, "banana"), ("cookies", True, "cookie")],
+)
+def test_a_named_prop_still_matches_when_its_edibility_agrees(
+    name: str, edible: bool, prop: str
+) -> None:
+    traits = {"size": "small", "weight": "light", "shape": "other", "edible": edible}
+    reaction = {"holding": True, "object": name, "traits": traits}
+
+    assert object_matcher.library_answer(reaction, JPEG) == {"id": prop}
+
+
+@pytest.mark.parametrize(
     ("shape", "edible", "archetype"),
     [
         ("round", True, "fruit"),
