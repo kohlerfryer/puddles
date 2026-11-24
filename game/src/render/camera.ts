@@ -7,7 +7,7 @@ import { type PoseFrame, toFrame } from "../core/poseFixture";
 import type { SafeReaction } from "../core/validator";
 import { TICK_HZ } from "../kernel/clock";
 import { liveGuardian } from "../kernel/guardian/live";
-import { createKernel } from "../kernel/kernel";
+import { createKernel, type Kernel } from "../kernel/kernel";
 import type { PluginFolder } from "../kernel/plugins";
 import { copyMe, copyMeBrain } from "../plugins/brains/copyMe";
 import { matcherBrain } from "../plugins/brains/matcher";
@@ -73,10 +73,10 @@ async function photograph(video: HTMLVideoElement, box: Box): Promise<Blob> {
 }
 
 /**
- * The live game's kernel: the camera's `senses`, the reflexes, copy-me and object matcher brains,
+ * The game's kernel: the `senses` (the camera's or a recording's), the reflexes, copy-me and object matcher brains,
  * and the skills, behind a guardian that suggests a break after `sessionLimitMin` minutes.
  */
-function liveKernel(senses: readonly PluginFolder[], sessionLimitMin: number) {
+export function liveKernel(senses: readonly PluginFolder[], sessionLimitMin: number) {
   return createKernel({
     plugins: [...senses, reflexesBrain(), copyMeBrain(), matcherBrain(), ...SKILLS],
     behaviors: new Map([["copy_me", copyMe]]),
@@ -145,15 +145,29 @@ export async function watchCamera(
     latest = { t: now, pose: frame, hands: hands?.detectForVideo(video, now).landmarks ?? [] };
   };
   const photo = onPhoto ? photographer(video, held, onPhoto) : undefined;
-  let seen = 0;
-  setInterval(() => {
-    kernel.tick();
-    for (const event of kernel.log.since(seen)) {
+  driveKernel(kernel, (events) => {
+    for (const event of events) {
       onEvent(event);
       const hand = heldHand(event);
       if (hand) photo?.(hand);
     }
-    seen = kernel.log.count;
-  }, 1000 / TICK_HZ);
+  });
   requestAnimationFrame(sample);
+}
+
+/** Ticks `kernel` at its own rate and hands `onTick` each tick's new events; returns how to stop. */
+export function driveKernel(
+  kernel: Kernel,
+  onTick: (events: readonly KernelEvent[]) => void,
+): () => void {
+  let seen = 0;
+  const timer = setInterval(() => {
+    kernel.tick();
+    const events = kernel.log.since(seen);
+    seen = kernel.log.count;
+    onTick(events);
+  }, 1000 / TICK_HZ);
+  return () => {
+    clearInterval(timer);
+  };
 }

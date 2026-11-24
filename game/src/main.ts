@@ -1,19 +1,24 @@
 import { ask, type Post, reactUrl, toBase64 } from "./core/ask";
 import { gameTitle } from "./core/title";
 import type { SafeReaction } from "./core/validator";
-import { loadSave, type SaveServer, saveUrl } from "./kernel/saves";
+import type { KernelEvent } from "./core/contracts";
+import { loadSave, SESSION_LIMIT_MIN, type SaveServer, saveUrl } from "./kernel/saves";
 import { gestureOf } from "./plugins/sense/gestures";
+import { momentOf } from "./plugins/sense/recorded";
+import { parseRecording, type Recording } from "./plugins/sense/recorded/recording";
 import { watchCamera } from "./render/camera";
 import { createDevPanel } from "./render/devPanel";
 import { createHud, type Hud } from "./render/hud";
 import { createParentPanel } from "./render/parentPanel";
 import { drawPond } from "./render/pond";
 import { type Actor, playDemo } from "./render/play";
+import { replayRecording } from "./render/recorded";
 import { createVoice } from "./render/sound";
 import { createStage } from "./render/stage";
 
 const REACT_URL = reactUrl(import.meta.env.VITE_PUDDLES_SERVER);
 const SAVE_URL = saveUrl(import.meta.env.VITE_PUDDLES_SERVER);
+const INPUT = import.meta.env.VITE_PUDDLES_INPUT;
 
 const post: Post = (url, body, signal) =>
   fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, signal });
@@ -49,6 +54,45 @@ async function reactTo(photo: Blob, puddles: Actor, hud: Hud): Promise<SafeReact
   return reaction;
 }
 
+/** Shows each gesture on the HUD and hands every event to Puddles. */
+function follower(puddles: Actor, hud: Hud): (event: KernelEvent) => void {
+  return (event) => {
+    const gesture = gestureOf(event);
+    if (gesture) hud.gesture(gesture);
+    puddles.follow(event);
+  };
+}
+
+/**
+ * Plays the recording in `input` in place of the camera, naming its key moments on the HUD, or
+ * says on the HUD why it can't.
+ */
+function replay(input: string, sessionLimitMin: number, puddles: Actor, hud: Hud): void {
+  let recording: Recording;
+  try {
+    recording = parseRecording(input);
+  } catch (error) {
+    hud.status(`replay failed (${String(error)})`);
+    return;
+  }
+  hud.status("replaying a recording");
+  const see = follower(puddles, hud);
+  replayRecording(recording, sessionLimitMin, {
+    onEvent: (event) => {
+      see(event);
+      const moment = momentOf(event);
+      if (moment) hud.moment(moment);
+    },
+    onFrame: (frame) => {
+      hud.frame(frame);
+      puddles.watching(frame);
+    },
+    onEnd: () => {
+      hud.status("replay finished");
+    },
+  });
+}
+
 document.title = gameTitle();
 void Promise.all([createStage(document.body), loadSave(saves)]).then(([app, save]) => {
   const hud = createHud(document.body);
@@ -61,6 +105,10 @@ void Promise.all([createStage(document.body), loadSave(saves)]).then(([app, save
   );
   createDevPanel(document.body, puddles);
   createParentPanel(document.body, saves, save);
+  if (INPUT !== undefined) {
+    replay(INPUT, save?.settings.session_limit_min ?? SESSION_LIMIT_MIN.default, puddles, hud);
+    return;
+  }
   if (!save) {
     hud.status("camera off until the save loads (reload once the server is up)");
     return;
@@ -71,11 +119,7 @@ void Promise.all([createStage(document.body), loadSave(saves)]).then(([app, save
   }
   watchCamera(
     save.settings.session_limit_min,
-    (event) => {
-      const gesture = gestureOf(event);
-      if (gesture) hud.gesture(gesture);
-      puddles.follow(event);
-    },
+    follower(puddles, hud),
     (frame) => {
       hud.status("watching");
       hud.frame(frame);

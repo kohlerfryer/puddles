@@ -1,0 +1,11 @@
+{
+  "kind": "sense",
+  "id": "recorded",
+  "contract": "1",
+  "name": "Recorded smiles and voice",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "inputs": ["recorded smile levels", "recorded voice activity"],
+  "emits": ["observation.smile", "observation.speech"],
+  "budget_ms": 1
+}
