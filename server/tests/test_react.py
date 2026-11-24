@@ -43,11 +43,13 @@ def client() -> Iterator[TestClient]:
     app.dependency_overrides.clear()
 
 
-def test_react_returns_the_fake_reaction_by_default(client: TestClient) -> None:
+def test_react_returns_the_fake_reaction_and_its_library_prop_by_default(
+    client: TestClient,
+) -> None:
     response = client.post("/react", json={"image": encode(JPEG)})
 
     assert response.status_code == 200
-    assert response.json() == FakeModel().react(JPEG)
+    assert response.json() == {**FakeModel().react(JPEG), "prop": {"id": "rubber_duck"}}
 
 
 def test_react_passes_the_decoded_image_to_the_model(client: TestClient) -> None:

@@ -3,17 +3,121 @@
 `/react` is its endpoint. It hands the crop to the `ReactionModel` the server runs, which stays in
 `models.py`, `smolvlm.py` and `templates.py`; the game logs the reply as `observation.object`, and
 the brain's game half turns it into a routine.
+
+The reply carries the library answer (spec §7.1), constrained to the installed props plus `other`:
+the prop the object's name matches in the game's prop library, or else `other` with an archetype
+and the crop's dominant colour.
 """
 
+import importlib
+import io
 import json
+import re
+from collections import Counter
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
 from puddles_server.models import ReactionModel
 
 MANIFEST: dict[str, Any] = json.loads((Path(__file__).parent / "manifest.json").read_text())
+LIBRARY_PATH = Path(__file__).resolve().parents[4] / "game/src/plugins/content/props/library.json"
+LIBRARY: dict[str, Any] = json.loads(LIBRARY_PATH.read_text())
+# Each word that names a prop, and the prop's id: its id and the names it lists.
+PROP_NAMES = {
+    name: prop_id
+    for prop_id, prop in LIBRARY["props"].items()
+    for name in [prop_id, *prop.get("names", [])]
+}
+ARCHETYPE_WORDS = {
+    word: archetype for archetype, kind in LIBRARY["archetypes"].items() for word in kind["words"]
+}
+# The archetype for an unnamed object of each shape.
+SHAPE_ARCHETYPES = {"round": "ball", "long": "stick", "flat": "flat_thing"}
+NEUTRAL = "#c8b89a"
+# Pixels whose channels spread less than this are grey, white or black: background, not object.
+GREY_SPREAD = 40
+# Bits kept of each channel when grouping pixels into colours.
+CHANNEL_BITS = 2
+# The crop is shrunk to fit this many pixels a side before counting colours.
+THUMBNAIL = 32
+
+Pixel = tuple[int, int, int]
+
+
+def words(name: str) -> list[str]:
+    """The name's words, last first: in "toy car" the car is the thing, the toy is a detail."""
+    return re.findall(r"[a-z]+", name.lower())[::-1]
+
+
+def first_known(name: str, known: dict[str, str]) -> str | None:
+    """What `known` maps the name's last known word to, trying each word then its singular."""
+    for word in words(name):
+        for form in (word, word.removesuffix("s")):
+            if form in known:
+                return known[form]
+    return None
+
+
+def prop_named(name: str) -> str | None:
+    """The id of the library prop the object's name names, if any."""
+    return first_known(name, PROP_NAMES)
+
+
+def archetype_of(name: str, traits: dict[str, Any]) -> str:
+    """The archetype a name points to, or else the one its traits suggest."""
+    by_name = first_known(name, ARCHETYPE_WORDS)
+    if by_name:
+        return by_name
+    if traits.get("shape") in SHAPE_ARCHETYPES:
+        return SHAPE_ARCHETYPES[traits["shape"]]
+    return "fruit" if traits.get("edible") else "box"
+
+
+def bucket(pixel: Pixel) -> Pixel:
+    red, green, blue = (channel >> (8 - CHANNEL_BITS) for channel in pixel)
+    return red, green, blue
+
+
+def dominant_color(pixels: Sequence[Pixel]) -> str:
+    """The average of the most common colour group, ignoring greys while there is any colour."""
+    colourful = [p for p in pixels if max(p) - min(p) >= GREY_SPREAD] or list(pixels)
+    if not colourful:
+        return NEUTRAL
+    top = Counter(map(bucket, colourful)).most_common(1)[0][0]
+    members = [p for p in colourful if bucket(p) == top]
+    red, green, blue = (sum(channel) // len(members) for channel in zip(*members, strict=True))
+    return f"#{red:02x}{green:02x}{blue:02x}"
+
+
+def crop_color(image: bytes) -> str:
+    """The crop's dominant colour; neutral when Pillow is missing or the crop isn't an image.
+
+    Pillow comes with the `vlm` group the real models need, so it is imported only here.
+    """
+    try:
+        pil_image = importlib.import_module("PIL.Image")
+        photo = pil_image.open(io.BytesIO(image)).convert("RGB")
+    except Exception:
+        return NEUTRAL
+    photo.thumbnail((THUMBNAIL, THUMBNAIL))
+    data = photo.tobytes()
+    return dominant_color([(data[i], data[i + 1], data[i + 2]) for i in range(0, len(data), 3)])
+
+
+def library_answer(reaction: dict[str, Any], image: bytes) -> dict[str, str]:
+    name = reaction["object"]
+    prop = prop_named(name)
+    if prop:
+        return {"id": prop}
+    archetype = archetype_of(name, reaction.get("traits", {}))
+    return {"id": "other", "archetype": archetype, "color": crop_color(image)}
 
 
 def match(model: ReactionModel, image: bytes) -> dict[str, Any]:
-    """The reaction `model` gives to the crop `image`, which goes nowhere else."""
-    return model.react(image)
+    """The reaction `model` gives to the crop `image`, which goes nowhere else, with the library
+    answer for the object it names."""
+    reaction = model.react(image)
+    if not reaction.get("holding") or not isinstance(reaction.get("object"), str):
+        return reaction
+    return {**reaction, "prop": library_answer(reaction, image)}
