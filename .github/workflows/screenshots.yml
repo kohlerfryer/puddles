@@ -1,0 +1,76 @@
+name: screenshots
+
+# Visual checks (docs/spec/m3-kernel.md §14.1, K18w): runs the browser game on recorded streams with
+# Playwright and links screenshots of the start, each key moment and the end to the PR. They are
+# for people reviewing a change: nothing here compares pixels, and no step fails the check.
+
+on:
+  pull_request:
+    paths:
+      - "game/**"
+      - ".github/workflows/screenshots.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    name: screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Install Chromium for Playwright
+        run: pnpm -C game exec playwright install --with-deps --only-shell chromium
+      - name: Take screenshots on each recording
+        continue-on-error: true # a broken replay shows up in the summary, never as a red check
+        run: |
+          for recording in wave-adult jump-adult; do
+            echo "### $recording" >> shots.md
+            if pnpm -C game run --silent screenshots "game/src/core/fixtures/$recording.json" --out "shots/$recording" > "$recording.log" 2>&1; then
+              { grep '\.png$' "$recording.log" || true; } | sed 's/^/- /' >> shots.md
+            else
+              { echo "The replay failed:"; echo '```'; tail -n 5 "$recording.log"; echo '```'; } >> shots.md
+            fi
+          done
+      - name: Upload the screenshots
+        id: upload
+        if: always() && hashFiles('shots/**') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots
+          path: shots/
+      - name: Post the screenshot list
+        continue-on-error: true # a fork's read-only token can't comment; the job summary still has it
+        if: always() && hashFiles('shots.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          SHOTS: ${{ steps.upload.outputs.artifact-url }}
+        run: |
+          marker="<!-- screenshots -->"
+          {
+            echo "$marker"
+            echo "## Screenshots"
+            echo
+            echo "The game on recorded streams, for review only (nothing here passes or fails the PR)."
+            if [ -n "$SHOTS" ]; then echo; echo "Download: [screenshots.zip]($SHOTS)"; fi
+            echo
+            cat shots.md
+          } > comment.md
+          cat comment.md >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$PR" ] || exit 0
+          existing=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments?per_page=100" \
+            --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$existing" -F body=@comment.md >/dev/null
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@comment.md >/dev/null
+          fi
