@@ -26,8 +26,17 @@ const SETTINGS: GuardianSettings = {
 const pick = <T>(random: Random, items: readonly T[]): T =>
   items[Math.floor(random() * items.length)] as T;
 
-const WORDS = ["quack", "hi", "banana", "!", ...blocklist.unkind, ...blocklist.physical_risk];
+const WORDS = [
+  "quack",
+  "hi",
+  "banana",
+  "!",
+  ...blocklist.unkind,
+  ...blocklist.personal_information,
+  ...blocklist.physical_risk,
+];
 const REQUESTS = [...requests.color, ...requests.gesture, "rock", "phone", 7];
+const BRAINS = ["bandit", "planner", "reflexes"];
 const SKILLS = ["look_at", "nap", "dance", "ask_for", "fly"];
 const JUNK: readonly unknown[] = [null, 0, -1, "", "Dance", true, [], {}, "🦆"];
 
@@ -46,9 +55,9 @@ function step(random: Random): Record<string, unknown> {
   return value;
 }
 
-function intent(random: Random): unknown {
+function intent(random: Random, brain: string): unknown {
   const value: Record<string, unknown> = {
-    brain: pick(random, ["bandit", "planner", "reflexes"]),
+    brain: random() < 0.1 ? pick(random, BRAINS) : brain,
     priority: Math.floor(random() * 5),
     kind: pick(random, ["routine", "behavior", "goal"]),
     steps: Array.from({ length: 1 + Math.floor(random() * 9) }, () => step(random)),
@@ -66,7 +75,8 @@ describe("guardian fuzz", () => {
     let t = 0;
     for (let run = 0; run < RUNS; run += 1) {
       t += Math.floor(random() * 400);
-      const verdict = guardian.check(intent(random), t);
+      const brain = pick(random, BRAINS);
+      const verdict = guardian.check(brain, intent(random, brain), t);
       seen.add(verdict.event.type);
       expect(contractValidators.event(verdict.event)).toBe(true);
       if (verdict.intent === null) continue;

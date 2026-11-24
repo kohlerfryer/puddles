@@ -60,6 +60,22 @@ describe("violation", () => {
       ),
       "line_length",
     ],
+    [
+      "a 13-word behavior param",
+      {
+        brain: "b",
+        priority: 0,
+        kind: "behavior",
+        behavior: {
+          id: "x",
+          params: {
+            line: "one two three four five six seven eight nine ten eleven twelve thirteen",
+          },
+        },
+        why: "w",
+      },
+      "line_length",
+    ],
     ["an unkind word", routine(look({ say: "You are STUPID." })), "blocklist"],
     [
       "a request for personal information",
