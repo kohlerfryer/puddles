@@ -8,6 +8,7 @@ from typing import Any
 
 from scripts.agent_hooks.hook_io import is_ci_agent, read_event
 from scripts.agent_hooks.shell_words import (
+    abbreviates,
     heredoc_substitutions,
     nested_commands,
     segments,
@@ -54,12 +55,6 @@ GATE_FILES = frozenset(
         "game/knip.json",
     }
 )
-
-
-def abbreviates(word: str, option: str) -> bool:
-    """True for `option` or a prefix git expands to it (`--forc`), with or without `=value`."""
-    name = word.split("=", 1)[0]
-    return name not in ("-", "--") and option.startswith(name)
 
 
 def commit_skips_hooks(args: list[str]) -> bool:

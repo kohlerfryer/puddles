@@ -16,6 +16,12 @@ from scripts.agent_hooks.guard import bash_denial
         "env -S'git push origin main'",
         "env --split-string='X=1 git push -f'",
         "env -u HOME -S 'git push -f'",
+        "env -iS 'git push -f'",
+        "env --split-str='git push -f'",
+        "sudo -T 10 git push -f",
+        "sudo -R / git push origin main",
+        "sudo --chdir /repo git push -f",
+        "xargs --max-args 1 git push -f",
     ],
 )
 def test_sudo_nice_xargs_and_env_split_strings_do_not_hide_a_push(command: str) -> None:
@@ -82,7 +88,13 @@ def test_long_option_prefixes_count_like_the_full_option(command: str) -> None:
 
 @pytest.mark.parametrize(
     "command",
-    ["git push --follow-tags origin agent/3-x", "git commit --no-edit", "git push --tags origin"],
+    [
+        "git push --follow-tags origin agent/3-x",
+        "git commit --no-edit",
+        "git push --tags origin",
+        "git push origin =x",
+        "git commit -m x -- =notes",
+    ],
 )
 def test_other_long_options_are_allowed(command: str) -> None:
     assert bash_denial(command, branch="agent/3-x", ci_agent=False) is None
