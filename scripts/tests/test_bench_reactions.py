@@ -57,7 +57,7 @@ def test_report_counts_valid_json_and_schema_valid_replies() -> None:
         Result("broken.jpg", "{oops", 0.4),
     ]
 
-    lines = bench_reactions.report(results, validator)
+    lines = bench_reactions.report(results, validator, {})
 
     assert lines[:5] == [
         "photos: 4",
@@ -97,3 +97,55 @@ def test_main_needs_one_folder_with_photos(
     assert main([]) == 2
     assert main([str(tmp_path)]) == 1
     assert f"no photos in {tmp_path}" in capsys.readouterr().err
+
+
+def test_reads_expected_objects_from_sources(tmp_path: Path) -> None:
+    (tmp_path / "SOURCES.md").write_text(
+        "| File | Object | Source | License |\n| --- | --- | --- | --- |\n"
+        "| banana.jpg | banana | https://x | CC0 |\n| mug.jpg | coffee mug | https://y | CC0 |\n"
+    )
+
+    assert bench_reactions.expected_objects(tmp_path) == {
+        "banana.jpg": "banana",
+        "mug.jpg": "coffee mug",
+    }
+    assert bench_reactions.expected_objects(tmp_path / "missing") == {}
+
+
+@pytest.mark.parametrize(
+    ("said", "expected", "right"),
+    [
+        ("Banana", "banana", True),
+        ("cup", "coffee mug", True),
+        ("Shoes", "sneaker", True),
+        ("banana", "apple fruit", False),
+        ("toy cat", "toy dinosaur", False),
+        ("crayons", "crayons", True),
+        ("Crayon", "crayons", True),
+    ],
+)
+def test_checks_the_named_object(said: str, expected: str, right: bool) -> None:
+    assert bench_reactions.names_object({"object": said}, expected) is right
+    assert bench_reactions.names_object(None, expected) is False
+
+
+def test_report_adds_object_accuracy_when_known() -> None:
+    validator = Draft202012Validator(json.loads(bench_reactions.SCHEMA_PATH.read_text()))
+    results = [
+        Result("a.jpg", '{"object": "banana"}', 0.1),
+        Result("b.jpg", '{"object": "cat"}', 0.1),
+    ]
+
+    lines = bench_reactions.report(results, validator, {"a.jpg": "banana", "b.jpg": "dog"})
+
+    assert "object named right: 1/2 (50%)" in lines
+
+
+def test_scores_a_plain_name_answer_by_its_text() -> None:
+    validator = Draft202012Validator(json.loads(bench_reactions.SCHEMA_PATH.read_text()))
+    results = [Result("a.jpg", "A banana.", 0.1), Result("b.jpg", "Cat", 0.1)]
+
+    lines = bench_reactions.report(results, validator, {"a.jpg": "banana", "b.jpg": "dog"})
+
+    assert "valid JSON: 0/2 (0%)" in lines
+    assert "object named right: 1/2 (50%)" in lines
