@@ -55,7 +55,7 @@ export function heldObjectSense(read: ReadCamera): HeldObjectSense {
   };
 }
 
-const isPoint = (value: unknown): value is Point =>
+export const isPoint = (value: unknown): value is Point =>
   typeof value === "object" &&
   value !== null &&
   typeof Reflect.get(value, "x") === "number" &&

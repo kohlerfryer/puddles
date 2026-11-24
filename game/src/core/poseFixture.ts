@@ -58,7 +58,7 @@ function isLandmark(value: unknown): value is Landmark {
   return isNumber(l.x) && isNumber(l.y) && isNumber(l.z) && isNumber(l.visibility);
 }
 
-function isFrame(value: unknown): value is PoseFrame {
+export function isFrame(value: unknown): value is PoseFrame {
   if (typeof value !== "object" || value === null) return false;
   const f = value as Record<string, unknown>;
   return (

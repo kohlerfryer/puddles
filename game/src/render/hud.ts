@@ -8,6 +8,8 @@ export interface Hud {
   gesture(name: string): void;
   sound(text: string): void;
   server(text: string): void;
+  /** The last key moment in a recording being replayed. */
+  moment(text: string): void;
 }
 
 export function createHud(host: HTMLElement): Hud {
@@ -20,7 +22,8 @@ export function createHud(host: HTMLElement): Hud {
   const last = document.createElement("div");
   const sound = document.createElement("div");
   const server = document.createElement("div");
-  box.append(camera, body, last, sound, server);
+  const moment = document.createElement("div");
+  box.append(camera, body, last, sound, server, moment);
   host.appendChild(box);
   camera.textContent = "Camera: starting...";
   last.textContent = "Last gesture: none yet";
@@ -47,6 +50,9 @@ export function createHud(host: HTMLElement): Hud {
     },
     server(text) {
       server.textContent = `Server: ${text}`;
+    },
+    moment(text) {
+      moment.textContent = `Moment: ${text}`;
     },
   };
 }
