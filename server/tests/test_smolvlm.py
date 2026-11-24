@@ -100,16 +100,21 @@ def test_parse_reaction_falls_back_to_the_confused_reaction(reply: str) -> None:
     assert reaction is not CONFUSED_REACTION
 
 
-def test_decoding_schema_caps_strings_and_keeps_the_rest() -> None:
+def test_decoding_schema_caps_strings_leaves_the_prop_to_the_matcher_and_keeps_the_rest() -> None:
     shared = json.loads((SHARED / "reaction.schema.json").read_text())
 
     schema = smolvlm.decoding_schema()
 
     assert schema["properties"]["object"]["maxLength"] == smolvlm.MAX_OBJECT_CHARS
     assert schema["$defs"]["Step"]["properties"]["say"]["maxLength"] == smolvlm.MAX_SAY_CHARS
+    assert "prop" not in schema["properties"]
     del schema["properties"]["object"]["maxLength"]
     del schema["$defs"]["Step"]["properties"]["say"]["maxLength"]
+    del shared["properties"]["prop"]
+    for name in smolvlm.PROP_DEFS:
+        del shared["$defs"][name]
     assert schema == shared
+    assert "oneOf" not in json.dumps(schema)
 
 
 def test_model_reads_its_id_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:

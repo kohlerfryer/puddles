@@ -33,6 +33,20 @@ describe("reaction schema", () => {
     expect(isReaction({ ...toyCat, object: "" })).toBe(false);
   });
 
+  it("accepts the matcher's answer: a library prop, or other with an archetype and colour", () => {
+    expect(isReaction({ ...toyCat, prop: { id: "toy_cat" } })).toBe(true);
+    const other = { id: "other", archetype: "plush_animal", color: "#a0522d" };
+    expect(isReaction({ ...toyCat, prop: other })).toBe(true);
+  });
+
+  it("rejects other without its archetype or colour, and a malformed colour", () => {
+    expect(isReaction({ ...toyCat, prop: { id: "other" } })).toBe(false);
+    expect(isReaction({ ...toyCat, prop: { id: "other", archetype: "ball" } })).toBe(false);
+    const red = { id: "other", archetype: "ball", color: "red" };
+    expect(isReaction({ ...toyCat, prop: red })).toBe(false);
+    expect(isReaction({ ...toyCat, prop: { id: "Toy Cat" } })).toBe(false);
+  });
+
   it("rejects extra fields and missing traits", () => {
     expect(isReaction({ ...toyCat, x: 1 })).toBe(false);
     expect(isReaction({ ...toyCat, traits: { size: "small" } })).toBe(false);

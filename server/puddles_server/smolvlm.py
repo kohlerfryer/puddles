@@ -30,6 +30,8 @@ MAX_NEW_TOKENS = 384
 MAX_OBJECT_CHARS = 40
 MAX_SAY_CHARS = 80
 REQUIRED_KEYS = ("holding", "object", "traits", "script")
+# The schema's definitions only the library answer uses.
+PROP_DEFS = ("PropAnswer", "LibraryProp", "OtherProp", "Archetype")
 TRAILING_COMMA = re.compile(r",\s*([}\]])")
 STRING = re.compile(r'"(?:[^"\\]|\\.)*"')
 # A whole string (maybe cut off before its closing quote) or one bracket.
@@ -138,8 +140,14 @@ def load_generator(
 
 
 def decoding_schema() -> dict[str, Any]:
-    """The shared reaction schema with string lengths capped to fit the token budget."""
+    """The shared reaction schema with string lengths capped to fit the token budget.
+
+    The library answer is left out: the object matcher writes it from the object's name.
+    """
     schema: dict[str, Any] = json.loads(SCHEMA_PATH.read_text())
+    del schema["properties"]["prop"]
+    for name in PROP_DEFS:
+        del schema["$defs"][name]
     schema["properties"]["object"]["maxLength"] = MAX_OBJECT_CHARS
     schema["$defs"]["Step"]["properties"]["say"]["maxLength"] = MAX_SAY_CHARS
     return schema
