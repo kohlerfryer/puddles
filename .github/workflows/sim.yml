@@ -32,11 +32,13 @@ jobs:
           echo "status=$?" >> "$GITHUB_OUTPUT"
       - name: Plot regret curves
         if: always()
-        run: uv run python -m scripts.regret_plot --sessions 300 --out regret.png
+        run: |
+          read -r sessions horizon seed < <(jq -r '"\(.sessions) \(.horizon) \(.seed)"' game/src/sim/thresholds.json)
+          uv run python -m scripts.regret_plot --sessions "$sessions" --horizon "$horizon" --seed "$seed" --out regret.png
       - name: Upload the regret plot
         id: plot
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: regret-curves
           path: regret.png
@@ -56,8 +58,8 @@ jobs:
           } > comment.md
           cat comment.md >> "$GITHUB_STEP_SUMMARY"
           [ -n "$PR" ] || exit 0
-          existing=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments?per_page=100" \
-            --jq "[.[] | select(.body | startswith(\"$marker\"))][0].id // empty")
+          existing=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments?per_page=100" \
+            --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
           if [ -n "$existing" ]; then
             gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$existing" -F body=@comment.md >/dev/null
           else
