@@ -1,6 +1,7 @@
 import { type Application, Container, Graphics } from "pixi.js";
 
-import { fitScene, POND, SCENE_WIDTH } from "../core/pond";
+import { fitScene, POND_WORLD } from "../core/pond";
+import type { Thing } from "../kernel/world";
 
 const COLOURS = {
   sky: "#cfe8f3",
@@ -11,36 +12,37 @@ const COLOURS = {
   rock: "#8a8f94",
 };
 
-function drawBands(g: Graphics): void {
-  for (const name of ["sky", "water", "bank"] as const) {
-    const band = POND[name];
-    g.rect(0, band.top, SCENE_WIDTH, band.height).fill(COLOURS[name]);
-  }
-}
+type Draw = (g: Graphics, thing: Thing) => void;
 
-function drawReeds(g: Graphics): void {
-  const ground = POND.bank.top;
-  for (const reed of POND.reeds) {
-    const left = reed.x - reed.width / 2;
-    g.rect(left, ground - reed.height, reed.width, reed.height).fill(COLOURS.reed);
-    g.roundRect(left, ground - reed.height, reed.width, reed.height / 4, reed.width / 2).fill(
-      COLOURS.reedHead,
-    );
-  }
-}
+const band =
+  (colour: string): Draw =>
+  (g, { position, size }) => {
+    g.rect(position.x, position.y, size.width, size.height).fill(colour);
+  };
 
-function drawRock(g: Graphics): void {
-  const { x, width, height } = POND.rock;
-  g.ellipse(x, POND.bank.top, width / 2, height).fill(COLOURS.rock);
-}
+const drawReed: Draw = (g, { position: { x, y }, size: { width, height } }) => {
+  g.rect(x, y, width, height).fill(COLOURS.reed);
+  g.roundRect(x, y, width, height / 4, width / 2).fill(COLOURS.reedHead);
+};
 
-/** Draws the pond, keeps it fitted to the window and returns the scene to draw Puddles into. */
+/** The rock is half buried: an ellipse centred where it meets the bank. */
+const drawRock: Draw = (g, { position: { x, y }, size: { width, height } }) => {
+  g.ellipse(x + width / 2, y + height, width / 2, height).fill(COLOURS.rock);
+};
+
+const DRAW: Readonly<Record<string, Draw>> = {
+  sky: band(COLOURS.sky),
+  water: band(COLOURS.water),
+  bank: band(COLOURS.bank),
+  reed: drawReed,
+  rock: drawRock,
+};
+
+/** Draws the pond's world, keeps it fitted to the window and returns the scene to draw Puddles into. */
 export function drawPond(app: Application): Container {
   const scene = new Container();
   const g = new Graphics();
-  drawBands(g);
-  drawReeds(g);
-  drawRock(g);
+  for (const thing of POND_WORLD.entities) DRAW[thing.kind]?.(g, thing);
   scene.addChild(g);
   app.stage.addChild(scene);
 
