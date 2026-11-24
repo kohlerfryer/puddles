@@ -2,6 +2,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from jsonschema import Draft202012Validator
@@ -82,7 +83,7 @@ def test_main_scaffolds_and_says_where(tmp_path: Path, capsys: pytest.CaptureFix
 def test_a_new_plugin_passes_lint_and_the_harness_in_the_game(kind: str) -> None:
     plugins = ROOT / "game" / "src" / "plugins"
     created = not plugins.exists()
-    folder = scaffold(kind, "harness-check", plugins)
+    folder = scaffold(kind, f"harness-check-{uuid4().hex}", plugins)
     try:
         files = [str(path.relative_to(ROOT / "game")) for path in folder.iterdir()]
         game = ["pnpm", "-C", str(ROOT / "game"), "exec"]
