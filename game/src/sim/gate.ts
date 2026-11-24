@@ -4,7 +4,7 @@
  * the guardian's rules reject, and time-budget overruns, beside its regret and smiles per bit.
  */
 
-import type { Event, Manifest, SkillManifest } from "../core/contracts";
+import type { KernelEvent, Manifest, SkillManifest } from "../core/contracts";
 import { contractValidators } from "../core/contractsSchema";
 import type { PluginFolder } from "../kernel/plugins";
 import { type Limits, MAX_SCARED_STEPS, type Violation, violation } from "../kernel/guardian/rules";
@@ -71,7 +71,7 @@ function checked(
   const unsafe: string[] = [];
   let overBudget = 0;
   const sink = (line: string) => {
-    const { type, data } = JSON.parse(line) as Event;
+    const { type, data } = JSON.parse(line) as KernelEvent;
     if (type === "guardian.over_budget") overBudget += 1;
     const broken = type === "intent.proposed" ? unsafety(data) : null;
     if (broken) unsafe.push(`${broken.rule}: ${broken.reason}`);

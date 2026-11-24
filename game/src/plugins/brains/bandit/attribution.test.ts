@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import type { Event } from "../../../core/contracts";
+import type { KernelEvent } from "../../../core/contracts";
 import { WINDOW_MS, attribute, payoff } from "./attribution";
 
 const bit = { id: "pratfall", startedAt: 1000, doneAt: 2000 };
-const smile = (t: number, level: number): Event => ({
+const smile = (t: number, level: number): KernelEvent => ({
   t,
   type: "observation.smile",
   source: "smile",
   data: { level, delta: 0 },
 });
-const seen = (t: number, type: string): Event => ({ t, type, source: "kid", data: {} });
+const seen = (t: number, type: string): KernelEvent => ({ t, type, source: "kid", data: {} });
 
 describe("attribute", () => {
   it("is the best smile in the window after the punchline minus the smile before the bit", () => {

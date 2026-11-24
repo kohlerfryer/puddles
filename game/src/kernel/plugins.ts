@@ -1,7 +1,7 @@
 import type {
   BrainManifest,
   ContentManifest,
-  Event,
+  KernelEvent,
   Intent,
   Manifest,
   SenseManifest,
@@ -15,7 +15,7 @@ export interface PluginContext {
   /** Kernel clock time in ms. */
   readonly t: number;
   /** Events appended since the brains last ran. */
-  readonly events: readonly Event[];
+  readonly events: readonly KernelEvent[];
   /** The kernel's seeded random source: the only randomness plugins may use. */
   readonly random: Random;
 }

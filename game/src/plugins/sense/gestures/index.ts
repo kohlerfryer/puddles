@@ -1,5 +1,5 @@
 import { newSamples, type ReadCamera } from "../../../core/cameraSample";
-import type { Event } from "../../../core/contracts";
+import type { KernelEvent } from "../../../core/contracts";
 import type { PluginFolder } from "../../../kernel/plugins";
 import { BODY_GESTURES, type BodyGesture } from "./gestures";
 import manifest from "./manifest.json";
@@ -24,7 +24,7 @@ export function gesturesSense(read: ReadCamera): PluginFolder {
 }
 
 /** The gesture an `observation.gesture` event reports, or nothing for any other event. */
-export function gestureOf({ type, data }: Event): BodyGesture | undefined {
+export function gestureOf({ type, data }: KernelEvent): BodyGesture | undefined {
   if (type !== GESTURE) return undefined;
   return BODY_GESTURES.find((gesture) => gesture === data.gesture);
 }

@@ -35,7 +35,7 @@ export type Cadence = "tick" | OnEvent | EverySeconds;
  * One of each kernel contract: the root for type generators and a table of test examples.
  */
 export interface Contracts {
-  event: Event;
+  event: KernelEvent;
   observation: Observation;
   intent: Intent;
   step: Step;
@@ -46,7 +46,7 @@ export interface Contracts {
 /**
  * One entry in the kernel's append-only event log. Plugins talk only through events.
  */
-export interface Event {
+export interface KernelEvent {
   /**
    * Kernel clock time in ms.
    */

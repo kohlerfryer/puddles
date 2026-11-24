@@ -20,6 +20,14 @@ OUT = ROOT / "server" / "puddles_server" / "contracts.py"
 BANNER = '"""Generated from shared/contracts.schema.json by just gen. Do not edit."""'
 SCALARS = {"string": "str", "integer": "int", "number": "float", "boolean": "bool"}
 TYPING = ("Literal", "NotRequired", "TypedDict")
+UNSUPPORTED = ("allOf", "anyOf", "not", "if", "patternProperties")
+
+
+def refuse_unsupported(node: Schema) -> None:
+    """Raise on keywords the generator would otherwise drop without a word."""
+    for keyword in UNSUPPORTED:
+        if keyword in node:
+            raise ValueError(f"unsupported keyword {keyword}: {json.dumps(node)}")
 
 
 class Generator:
@@ -28,7 +36,7 @@ class Generator:
     def __init__(self, folder: Path) -> None:
         self.folder = folder
         self.docs: dict[str, Schema] = {}
-        self.named: set[str] = set()
+        self.named: dict[str, Schema] = {}
         self.blocks: list[str] = []
 
     def load(self, name: str) -> Schema:
@@ -53,6 +61,7 @@ class Generator:
         return self.expression(node, doc)
 
     def expression(self, node: Schema, doc: str) -> str:
+        refuse_unsupported(node)
         if "const" in node:
             return f"Literal[{json.dumps(node['const'])}]"
         if "enum" in node:
@@ -76,10 +85,18 @@ class Generator:
 
     def declare(self, node: Schema, doc: str) -> str:
         name: str = node["title"]
-        if name not in self.named:
-            self.named.add(name)
+        if self.claim(name, node):
             self.blocks.append(self.declaration(name, node, doc))
         return name
+
+    def claim(self, name: str, node: Schema) -> bool:
+        """Record the schema behind a title; True the first time, raise if another uses it."""
+        if name not in self.named:
+            self.named[name] = node
+            return True
+        if self.named[name] is not node:
+            raise ValueError(f"title {name} is declared twice, in different schemas")
+        return False
 
     def declaration(self, name: str, node: Schema, doc: str) -> str:
         if "properties" not in node:
@@ -92,12 +109,13 @@ class Generator:
         members = []
         for branch in node["oneOf"]:
             target, target_doc = self.resolve(branch["$ref"], doc)
-            self.named.add(target["title"])
+            self.claim(target["title"], target)
             self.blocks.append(self.typed_dict(target["title"], target, target_doc, common))
             members.append(target["title"])
         return f"type {name} = {' | '.join(members)}"
 
     def typed_dict(self, name: str, node: Schema, doc: str, base: str) -> str:
+        refuse_unsupported(node)
         required = set(node.get("required", []))
         lines = [f"class {name}({base}):"]
         if "description" in node:

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { type CameraSample, replayCamera } from "../../../core/cameraSample";
-import type { Event } from "../../../core/contracts";
+import type { KernelEvent } from "../../../core/contracts";
 import { LANDMARK_COUNT, type PoseFrame } from "../../../core/poseFixture";
 import { createKernel } from "../../../kernel/kernel";
 import { runSense } from "../../../kernel/testing";
@@ -37,7 +37,8 @@ const holding = (ms: number, raised = true): CameraSample[] =>
     return { t, pose: poseAt(t, raised ? RAISED : {}), hands: [lowHand, hand] };
   });
 
-const holds = (events: readonly Event[]) => events.filter((e) => e.type === "observation.held");
+const holds = (events: readonly KernelEvent[]) =>
+  events.filter((e) => e.type === "observation.held");
 
 describe("the held_object sense", () => {
   it("reports a raised hand held still, framing the same photo as before", () => {

@@ -1,4 +1,4 @@
-import type { Cadence, Event, Manifest } from "../core/contracts";
+import type { Cadence, KernelEvent, Manifest } from "../core/contracts";
 import { contractValidators } from "../core/contractsSchema";
 import type {
   BrainPlugin,
@@ -25,7 +25,7 @@ export interface Registry {
   readonly content: readonly ContentPlugin[];
   readonly rejected: readonly Rejected[];
   /** The brains whose cadence says they decide now, given the events since they last could. */
-  due(t: number, events: readonly Event[]): BrainPlugin[];
+  due(t: number, events: readonly KernelEvent[]): BrainPlugin[];
 }
 
 interface Sorted {
@@ -81,7 +81,7 @@ function isDue(
   cadence: Cadence,
   last: number | undefined,
   t: number,
-  events: readonly Event[],
+  events: readonly KernelEvent[],
 ): boolean {
   if (cadence === "tick") return true;
   if ("on" in cadence) return events.some((event) => matches(event.type, cadence.on));

@@ -1,4 +1,4 @@
-import type { Event } from "../core/contracts";
+import type { KernelEvent } from "../core/contracts";
 import type { Random } from "../core/random";
 import type { EventLog } from "../kernel/eventLog";
 import type { Emitted, PluginFolder } from "../kernel/plugins";
@@ -62,7 +62,7 @@ export function simulatedKid(profile: KidProfile, log: () => EventLog): Simulate
     return [{ type: "observation.walk_away", data: { reason: "scared" } }];
   };
 
-  const follow = ({ type, data }: Event, t: number, random: Random): Emitted[] => {
+  const follow = ({ type, data }: KernelEvent, t: number, random: Random): Emitted[] => {
     const brain = String(data.brain);
     if (type === "intent.proposed")
       proposed.set(brain, (data.features as string[] | undefined) ?? []);

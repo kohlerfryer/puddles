@@ -5,7 +5,7 @@ from typing import Literal, NotRequired, TypedDict
 type EventType = str
 
 
-class Event(TypedDict):
+class KernelEvent(TypedDict):
     """One entry in the kernel's append-only event log. Plugins talk only through events."""
 
     t: float
@@ -185,7 +185,7 @@ type Manifest = SenseManifest | BrainManifest | SkillManifest | ContentManifest
 class Contracts(TypedDict):
     """One of each kernel contract: the root for type generators and a table of test examples."""
 
-    event: Event
+    event: KernelEvent
     observation: Observation
     intent: Intent
     step: Step

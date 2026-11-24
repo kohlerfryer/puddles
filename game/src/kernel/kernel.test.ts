@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Event } from "../core/contracts";
+import type { KernelEvent } from "../core/contracts";
 import { createKernel } from "./kernel";
 import type { PluginFolder } from "./plugins";
 import { fakeBrain, fakeSense, fakeSkill, routine } from "./testing";
@@ -21,7 +21,7 @@ function session(): PluginFolder[] {
   ];
 }
 
-const run = (seed: number): Event[] => {
+const run = (seed: number): KernelEvent[] => {
   const kernel = createKernel({ plugins: session(), seed, now: () => 0 });
   for (let i = 0; i < 300; i++) kernel.tick();
   return kernel.log.events();

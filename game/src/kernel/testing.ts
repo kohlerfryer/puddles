@@ -1,4 +1,4 @@
-import type { Event, Intent } from "../core/contracts";
+import type { KernelEvent, Intent } from "../core/contracts";
 import { createKernel } from "./kernel";
 import type { Activity, Emitted, PluginContext, PluginFolder } from "./plugins";
 
@@ -50,7 +50,7 @@ export function fakeSense(id: string, emit: (ctx: PluginContext) => Emitted[]): 
 }
 
 /** Ticks a headless kernel running only `sense` until `ms` of kernel time have passed. */
-export function runSense(sense: PluginFolder, ms: number): Event[] {
+export function runSense(sense: PluginFolder, ms: number): KernelEvent[] {
   const kernel = createKernel({ plugins: [sense], now: () => 0 });
   while (kernel.clock.t <= ms) kernel.tick();
   return kernel.log.events();
