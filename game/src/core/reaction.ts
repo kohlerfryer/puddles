@@ -24,6 +24,11 @@ export type Verb =
   | "fall_over";
 export type Target = "object" | "camera" | "reeds" | "none";
 export type Mood = "happy" | "curious" | "scared" | "silly" | "proud" | "grossed_out";
+/**
+ * The object matcher's library answer: an installed prop's id, or other with an archetype and the crop's dominant colour.
+ */
+export type PropAnswer = LibraryProp | OtherProp;
+export type Archetype = "ball" | "box" | "plush_animal" | "stick" | "fruit" | "cup" | "flat_thing";
 
 /**
  * What Puddles does about a held-up object. Produced by the VLM, checked by the game's validator.
@@ -43,6 +48,7 @@ export interface Reaction {
    * @maxItems 5
    */
   script: [Step, Step, ...Step[]];
+  prop?: PropAnswer;
 }
 export interface Traits {
   size: Size;
@@ -58,4 +64,18 @@ export interface Step {
    * What Puddles says. The game cuts it to 12 words.
    */
   say?: string;
+}
+export interface LibraryProp {
+  /**
+   * An installed prop's id.
+   */
+  id: string;
+}
+export interface OtherProp {
+  id: "other";
+  archetype: Archetype;
+  /**
+   * The crop's dominant colour.
+   */
+  color: string;
 }

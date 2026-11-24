@@ -31,6 +31,9 @@
       "items": {
         "$ref": "#/$defs/Step"
       }
+    },
+    "prop": {
+      "$ref": "#/$defs/PropAnswer"
     }
   },
   "$defs": {
@@ -127,6 +130,71 @@
         "other"
       ],
       "title": "Shape"
+    },
+    "PropAnswer": {
+      "title": "PropAnswer",
+      "description": "The object matcher's library answer: an installed prop's id, or other with an archetype and the crop's dominant colour.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/LibraryProp"
+        },
+        {
+          "$ref": "#/$defs/OtherProp"
+        }
+      ]
+    },
+    "LibraryProp": {
+      "title": "LibraryProp",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "An installed prop's id.",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "not": {
+            "const": "other"
+          }
+        }
+      }
+    },
+    "OtherProp": {
+      "title": "OtherProp",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "archetype",
+        "color"
+      ],
+      "properties": {
+        "id": {
+          "const": "other"
+        },
+        "archetype": {
+          "$ref": "#/$defs/Archetype"
+        },
+        "color": {
+          "type": "string",
+          "description": "The crop's dominant colour.",
+          "pattern": "^#[0-9a-f]{6}$"
+        }
+      }
+    },
+    "Archetype": {
+      "enum": [
+        "ball",
+        "box",
+        "plush_animal",
+        "stick",
+        "fruit",
+        "cup",
+        "flat_thing"
+      ],
+      "title": "Archetype"
     },
     "Step": {
       "title": "Step",
