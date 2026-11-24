@@ -1,4 +1,5 @@
 import type {
+  BehaviorCall,
   BrainManifest,
   ContentManifest,
   KernelEvent,
@@ -37,6 +38,15 @@ export interface Finished {
 export interface Activity {
   tick(t: number): "running" | Finished;
 }
+
+/**
+ * One run of a behavior: a state machine over skills. Given how its last step ended (null at the
+ * start), it returns the next step to play, or how the whole behavior ended.
+ */
+export type BehaviorRun = (last: Finished | null) => Step | Finished;
+
+/** A behavior: tested code the executor plays as one choice, ending with a single outcome. */
+export type Behavior = (params: BehaviorCall["params"], ctx: PluginContext) => BehaviorRun;
 
 /** The code half of a plugin folder (its index.ts); which function it needs depends on its kind. */
 export interface PluginCode {
