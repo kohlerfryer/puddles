@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { IDLE_MARGIN } from "./idle";
-import type { Step, Target, Verb } from "./reaction";
+import { IDLE_MARGIN } from "../../core/idle";
+import type { Step, Target, Verb } from "../../core/reaction";
 import { planVerb } from "./planVerb";
-import { BANK } from "./world";
+import { BANK } from "../../core/world";
 
 const step = (verb: Verb, target?: Target): Step =>
   target ? { do: verb, target, mood: "curious" } : { do: verb, mood: "curious" };

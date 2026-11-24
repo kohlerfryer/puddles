@@ -1,5 +1,5 @@
 import type { Random } from "./random";
-import type { Facing } from "./verbs";
+import type { Facing } from "../plugins/skill/verbs";
 import { BANK } from "./world";
 
 export type IdleKind = "wander" | "preen" | "nap";

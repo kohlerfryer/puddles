@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Step, Target, Verb } from "./reaction";
+import type { Step, Target, Verb } from "../../core/reaction";
 import { planVerb } from "./planVerb";
 import { frameAt } from "./verbs";
 

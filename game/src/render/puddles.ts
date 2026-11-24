@@ -4,7 +4,7 @@ import type { createGlass } from "../core/glass";
 import type { IdleKind } from "../core/idle";
 import { GROUND } from "../core/pond";
 import type { Mood } from "../core/reaction";
-import type { Facing, Hold, Pose } from "../core/verbs";
+import type { Facing, Hold, Pose } from "../plugins/skill/verbs";
 
 /** What Puddles is doing: a verb's pose or an idle action. */
 type Look = Pose | IdleKind;

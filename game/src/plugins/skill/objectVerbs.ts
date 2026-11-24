@@ -1,5 +1,5 @@
-import type { Step } from "./reaction";
-import { VERB_SECONDS } from "./validator";
+import type { Step } from "../../core/reaction";
+import { VERB_SECONDS } from "../../core/validator";
 import {
   approach,
   type Duck,

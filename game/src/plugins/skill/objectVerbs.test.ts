@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { heldScale } from "./objectVerbs";
-import { createPhysics } from "./physics";
+import { createPhysics } from "../../core/physics";
+import { STICKER_POND } from "../../core/pond";
+import type { Step, Target, Traits, Verb } from "../../core/reaction";
 import { planVerb } from "./planVerb";
-import { STICKER_POND } from "./pond";
-import type { Step, Target, Traits, Verb } from "./reaction";
 import { frameAt } from "./verbs";
 
 const step = (verb: Verb, target?: Target): Step =>

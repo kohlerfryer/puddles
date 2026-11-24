@@ -1,5 +1,5 @@
 import { OBJECT_PLANNERS } from "./objectVerbs";
-import type { Step } from "./reaction";
+import type { Step } from "../../core/reaction";
 import { type Duck, onTheSpot, type Plan, type Scene, VERB_PLANNERS } from "./verbs";
 
 const PLANNERS = { ...VERB_PLANNERS, ...OBJECT_PLANNERS };
