@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "jump_over",
+  "contract": "1",
+  "name": "Jump over",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["uses_object", "slapstick"],
+  "params": { "target": "target" },
+  "needs": [],
+  "duration_s": 1.5,
+  "energy": -0.04,
+  "outcomes": ["done"]
+}

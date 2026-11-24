@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "dance",
+  "contract": "1",
+  "name": "Dance",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["musical"],
+  "params": { "target": "target" },
+  "needs": [],
+  "duration_s": 2,
+  "energy": -0.03,
+  "outcomes": ["done"]
+}

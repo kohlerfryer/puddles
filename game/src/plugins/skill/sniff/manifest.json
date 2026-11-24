@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "sniff",
+  "contract": "1",
+  "name": "Sniff",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["uses_object"],
+  "params": { "target": "target" },
+  "needs": [],
+  "duration_s": 1,
+  "energy": 0,
+  "outcomes": ["done"]
+}

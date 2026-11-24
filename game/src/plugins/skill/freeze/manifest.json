@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "freeze",
+  "contract": "1",
+  "name": "Freeze",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["surprise"],
+  "params": { "target": "target" },
+  "needs": [],
+  "duration_s": 1,
+  "energy": 0,
+  "outcomes": ["done"]
+}

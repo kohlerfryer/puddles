@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "wear",
+  "contract": "1",
+  "name": "Wear",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["uses_object", "surprise"],
+  "params": { "target": "target" },
+  "needs": ["target.size:tiny|small"],
+  "duration_s": 1.5,
+  "energy": -0.02,
+  "outcomes": ["done"]
+}

@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "hide_behind",
+  "contract": "1",
+  "name": "Hide behind",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["scary_light", "surprise"],
+  "params": { "target": "target" },
+  "needs": [],
+  "duration_s": 1.5,
+  "energy": -0.04,
+  "outcomes": ["done"]
+}

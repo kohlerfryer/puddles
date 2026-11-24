@@ -1,4 +1,5 @@
 import schema from "../../../shared/reaction.schema.json";
+import { SKILLS } from "../plugins/skill";
 import type { Step, Traits, Verb } from "./reaction";
 import { isReaction } from "./reactionSchema";
 
@@ -7,27 +8,19 @@ const MAX_STEPS = 5;
 export const MAX_SECONDS = 6;
 const MAX_SAY_WORDS = 12;
 
-/** Rough length of each verb in seconds: caps a script near MAX_SECONDS and times its steps. */
-export const VERB_SECONDS: Record<Verb, number> = {
-  walk_to: 1.5,
-  run_to: 1,
-  run_away: 1.5,
-  hide_behind: 1.5,
-  look_at: 1,
-  sniff: 1,
-  peck: 1,
-  eat: 1.5,
-  push: 1.5,
-  jump: 1,
-  jump_over: 1.5,
-  sit_on: 1.5,
-  wear: 1.5,
-  circle: 2,
-  dance: 2,
-  flap: 1,
-  freeze: 1,
-  fall_over: 1.5,
-};
+const MANIFESTS = new Map(SKILLS.map(({ manifest }) => [manifest.id, manifest]));
+
+/** The manifest of the skill plugin that plays `verb`; every verb must have one. */
+function skillFor(verb: string) {
+  const manifest = MANIFESTS.get(verb);
+  if (!manifest) throw new Error(`no skill plugin for the verb ${verb}`);
+  return manifest;
+}
+
+/** Each verb's skill duration in seconds: caps a script near MAX_SECONDS and times its steps. */
+export const VERB_SECONDS = Object.fromEntries(
+  schema.$defs.Verb.enum.map((verb) => [verb, skillFor(verb).duration_s]),
+) as Record<Verb, number>;
 
 const KNOWN_VERBS = new Set<unknown>(schema.$defs.Verb.enum);
 
@@ -52,17 +45,16 @@ export interface SafeReaction {
   readonly script: Step[];
 }
 
-const isSmall = (traits: Traits): boolean => traits.size === "tiny" || traits.size === "small";
+/** What Puddles does instead of a verb whose skill needs something the object lacks. */
+const INSTEAD: Partial<Record<Verb, Verb>> = { eat: "peck", sit_on: "circle", wear: "push" };
 
-/** A verb the object can't support, with the verb Puddles does instead. */
-const SWAPS: Partial<Record<Verb, { allowed: (traits: Traits) => boolean; instead: Verb }>> = {
-  eat: { allowed: (t) => t.edible && isSmall(t), instead: "peck" },
-  sit_on: {
-    allowed: (t) => !isSmall(t) && (t.shape === "flat" || t.shape === "other"),
-    instead: "circle",
-  },
-  wear: { allowed: isSmall, instead: "push" },
-};
+/** Whether the object's traits meet a skill's need, such as `target.size:tiny|small`. */
+function meets(need: string, traits: Traits): boolean {
+  const [trait, values = ""] = need.replace(/^target\./, "").split(":");
+  const entries: [string, unknown][] = Object.entries(traits);
+  const value = entries.find(([key]) => key === trait)?.[1];
+  return values.split("|").includes(String(value));
+}
 
 function parse(raw: string): unknown {
   try {
@@ -86,8 +78,9 @@ function trimScript(data: unknown): unknown {
 }
 
 function swapVerb(step: Step, traits: Traits): Step {
-  const swap = SWAPS[step.do];
-  return swap && !swap.allowed(traits) ? { ...step, do: swap.instead } : step;
+  const instead = INSTEAD[step.do];
+  const met = skillFor(step.do).needs.every((need) => meets(need, traits));
+  return instead && !met ? { ...step, do: instead } : step;
 }
 
 function cutSay(step: Step): Step {

@@ -1,0 +1,14 @@
+{
+  "kind": "skill",
+  "id": "sit_on",
+  "contract": "1",
+  "name": "Sit on",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "tags": ["uses_object", "slapstick"],
+  "params": { "target": "target" },
+  "needs": ["target.size:medium|big", "target.shape:flat|other"],
+  "duration_s": 1.5,
+  "energy": -0.01,
+  "outcomes": ["done"]
+}
