@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kohlerfryer/puddles/shared/manifest.schema.json",
+  "title": "Manifest",
+  "description": "A plugin's manifest.json: the common fields plus the fields of its kind.",
+  "type": "object",
+  "required": ["id", "contract", "name", "authors", "license"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+    "contract": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$",
+      "description": "Major version of these contracts the plugin was written against."
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "authors": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "license": { "type": "string", "minLength": 1, "description": "An SPDX license id." },
+    "tags": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/SenseManifest" },
+    { "$ref": "#/$defs/BrainManifest" },
+    { "$ref": "#/$defs/SkillManifest" },
+    { "$ref": "#/$defs/ContentManifest" }
+  ],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "SenseManifest": {
+      "title": "SenseManifest",
+      "type": "object",
+      "required": ["kind", "inputs", "emits", "budget_ms"],
+      "properties": {
+        "kind": { "const": "sense" },
+        "inputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Raw inputs it reads, e.g. camera, microphone, hand landmarks."
+        },
+        "emits": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "events.schema.json#/$defs/EventType" }
+        },
+        "budget_ms": { "type": "number", "exclusiveMinimum": 0, "description": "Per tick." }
+      }
+    },
+    "BrainManifest": {
+      "title": "BrainManifest",
+      "type": "object",
+      "required": ["kind", "cadence", "autonomy", "latency_budget_ms", "intents"],
+      "properties": {
+        "kind": { "const": "brain" },
+        "cadence": { "$ref": "#/$defs/Cadence" },
+        "autonomy": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "latency_budget_ms": { "type": "number", "exclusiveMinimum": 0 },
+        "intents": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "intent.schema.json#/$defs/IntentKind" }
+        }
+      }
+    },
+    "Cadence": {
+      "title": "Cadence",
+      "description": "When the brain decides: every tick, on an event, or every few seconds.",
+      "oneOf": [{ "const": "tick" }, { "$ref": "#/$defs/OnEvent" }, { "$ref": "#/$defs/EverySeconds" }]
+    },
+    "OnEvent": {
+      "title": "OnEvent",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["on"],
+      "properties": { "on": { "$ref": "events.schema.json#/$defs/EventType" } }
+    },
+    "EverySeconds": {
+      "title": "EverySeconds",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["every_s"],
+      "properties": { "every_s": { "type": "number", "exclusiveMinimum": 0 } }
+    },
+    "SkillManifest": {
+      "title": "SkillManifest",
+      "type": "object",
+      "required": ["kind", "params", "needs", "duration_s", "energy", "outcomes"],
+      "properties": {
+        "kind": { "const": "skill" },
+        "params": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 },
+          "description": "Each param's type, e.g. target: prop."
+        },
+        "needs": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Affordances or conditions, e.g. target.affords:wear."
+        },
+        "duration_s": { "type": "number", "exclusiveMinimum": 0 },
+        "energy": { "type": "number", "minimum": -1, "maximum": 1 },
+        "outcomes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "ContentManifest": {
+      "title": "ContentManifest",
+      "type": "object",
+      "required": ["kind", "type"],
+      "properties": {
+        "kind": { "const": "content" },
+        "type": {
+          "enum": [
+            "prop",
+            "place",
+            "scene",
+            "character",
+            "personality",
+            "bit_pack",
+            "art_pack",
+            "sound_pack"
+          ]
+        }
+      }
+    }
+  }
+}

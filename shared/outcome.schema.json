@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kohlerfryer/puddles/shared/outcome.schema.json",
+  "title": "Outcome",
+  "description": "How a step or behavior ended. Skills emit it in outcome.* events.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["step", "status"],
+  "properties": {
+    "step": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Index of the step in the running intent; 0 for a behavior."
+    },
+    "status": { "enum": ["done", "failed", "interrupted"] },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Why it failed or stopped, or the skill's own outcome name, e.g. dropped."
+    },
+    "effects": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Changes to the world state."
+    }
+  }
+}

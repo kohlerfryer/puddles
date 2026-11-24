@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kohlerfryer/puddles/shared/reward.schema.json",
+  "title": "Reward",
+  "description": "How the kid took a bit, attributed to the bit that caused it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bit_id", "smile_delta", "laugh", "talk", "attention", "window_ms"],
+  "properties": {
+    "bit_id": { "type": "string", "minLength": 1 },
+    "smile_delta": {
+      "type": "number",
+      "minimum": -1,
+      "maximum": 1,
+      "description": "Smile after the punchline minus the smile before the bit."
+    },
+    "laugh": { "type": "boolean" },
+    "talk": { "type": "boolean" },
+    "attention": { "type": "number", "minimum": 0, "maximum": 1 },
+    "window_ms": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "description": "Length of the attribution window."
+    }
+  }
+}

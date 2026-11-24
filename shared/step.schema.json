@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kohlerfryer/puddles/shared/step.schema.json",
+  "title": "Step",
+  "description": "One skill call. A reaction step maps onto it: do is the skill, target is args.target.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["skill", "args"],
+  "properties": {
+    "skill": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Skill id." },
+    "args": {
+      "type": "object",
+      "additionalProperties": { "type": ["string", "number", "boolean"] },
+      "description": "Arguments, named as in the skill's manifest params."
+    },
+    "say": { "type": "string", "description": "What Puddles says. The guardian caps it at 12 words." },
+    "mood": { "$ref": "reaction.schema.json#/$defs/Mood" },
+    "think": { "type": "string", "minLength": 1, "description": "Thought bubble icon id." }
+  }
+}

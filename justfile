@@ -40,15 +40,20 @@ deadcode:
     uv run vulture
     pnpm -C game exec knip
 
-# Generated code matches its source (shared/ schema -> game types)
+# Regenerate code from shared/ schemas: game types and server TypedDicts
+gen:
+    pnpm -C game run --silent gen:types >/dev/null
+    uv run python -m scripts.gen_contracts
+
+# Generated code matches its source
 generated:
     #!/usr/bin/env bash
     set -euo pipefail
-    file=game/src/core/reaction.ts
-    before=$(git hash-object "$file")
-    pnpm -C game run --silent gen:types >/dev/null
-    if [ "$before" != "$(git hash-object "$file")" ]; then
-      echo "$file was stale and has been regenerated; commit it"
+    files=(game/src/core/reaction.ts game/src/core/contracts.ts server/puddles_server/contracts.py)
+    before=$(git hash-object "${files[@]}")
+    {{just_executable()}} gen
+    if [ "$before" != "$(git hash-object "${files[@]}")" ]; then
+      echo "generated files were stale and have been regenerated; commit them: ${files[*]}"
       exit 1
     fi
 

@@ -13,7 +13,7 @@
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "deadcode": "knip",
-    "gen:types": "json2ts --maxItems -1 -i ../shared/reaction.schema.json -o src/core/reaction.ts --bannerComment \"// Generated from shared/reaction.schema.json by pnpm gen:types. Do not edit.\" && prettier --write src/core/reaction.ts"
+    "gen:types": "json2ts --maxItems -1 -i ../shared/reaction.schema.json -o src/core/reaction.ts --bannerComment \"// Generated from shared/reaction.schema.json by pnpm gen:types. Do not edit.\" && json2ts --maxItems -1 --additionalProperties false -i ../shared/contracts.schema.json -o src/core/contracts.ts --bannerComment \"// Generated from shared/contracts.schema.json by pnpm gen:types. Do not edit.\" && eslint --fix src/core/contracts.ts && prettier --write src/core/reaction.ts src/core/contracts.ts"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",
