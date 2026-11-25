@@ -15,7 +15,7 @@ import { loadPose, openCamera, SAMPLE_MS, WASM } from "./camera";
 // Dev-only tool for the smile spike (issue #122). Keeps scores only, never images.
 const FACE_MODEL =
   "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
-const DISTANCES_M = [0.5, 1, 2];
+const DISTANCES_M = [0.3, 0.5, 1, 2];
 const READY_S = 3;
 const HOLD_MS = 5000;
 const CROP_PX = 256;
