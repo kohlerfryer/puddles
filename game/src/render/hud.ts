@@ -14,8 +14,9 @@ export interface Hud {
 
 export function createHud(host: HTMLElement): Hud {
   const box = document.createElement("div");
+  // Sits above the grown-ups button, which holds the bottom-left corner (parentPanel.ts).
   box.style.cssText =
-    "position:fixed;left:12px;bottom:12px;padding:8px 12px;border-radius:8px;" +
+    "position:fixed;left:12px;bottom:48px;padding:8px 12px;border-radius:8px;" +
     "background:rgba(0,0,0,.55);color:#fff;font:14px/1.5 system-ui,sans-serif;pointer-events:none";
   const camera = document.createElement("div");
   const body = document.createElement("div");
