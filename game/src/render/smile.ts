@@ -15,7 +15,7 @@ import { loadPose, openCamera, SAMPLE_MS, WASM } from "./camera";
 // Dev-only tool for the smile spike (issue #122). Keeps scores only, never images.
 const FACE_MODEL =
   "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
-const DISTANCES_M = [0.3, 0.5, 1];
+const DISTANCES_FT = [1, 2, 3];
 const READY_S = 3;
 const HOLD_MS = 5000;
 const CROP_PX = 256;
@@ -72,37 +72,37 @@ function measure(models: Models): Record<ProbeMethod, number | undefined> {
   return { full, crop: cropped };
 }
 
-async function hold(models: Models, distanceM: number, face: ProbeSample["face"]) {
+async function hold(models: Models, distanceFt: number, face: ProbeSample["face"]) {
   banner.textContent = face === "smile" ? "Big smile!" : "Neutral face";
   const samples: ProbeSample[] = [];
   const end = performance.now() + HOLD_MS;
   while (performance.now() < end) {
     const scores = measure(models);
     for (const method of ["full", "crop"] as const) {
-      samples.push({ distanceM, method, face, score: scores[method] });
+      samples.push({ distanceFt, method, face, score: scores[method] });
     }
     await sleep(SAMPLE_MS);
   }
   return samples;
 }
 
-async function atDistance(models: Models, distanceM: number): Promise<ProbeSample[]> {
+async function atDistance(models: Models, distanceFt: number): Promise<ProbeSample[]> {
   for (let s = READY_S; s > 0; s--) {
-    banner.textContent = `Stand ${String(distanceM)} m away · ${String(s)}`;
+    banner.textContent = `Stand ${String(distanceFt)} ft away · ${String(s)}`;
     await sleep(1000);
   }
-  const neutral = await hold(models, distanceM, "neutral");
-  return [...neutral, ...(await hold(models, distanceM, "smile"))];
+  const neutral = await hold(models, distanceFt, "neutral");
+  return [...neutral, ...(await hold(models, distanceFt, "smile"))];
 }
 
 function showResults(summaries: readonly ProbeSummary[]): void {
   const cell = (v: number | undefined) => (v === undefined ? "–" : v.toFixed(2));
   results.innerHTML =
-    "<tr><th>m</th><th>method</th><th>found</th><th>neutral</th><th>smile</th><th>sep.</th></tr>" +
+    "<tr><th>ft</th><th>method</th><th>found</th><th>neutral</th><th>smile</th><th>sep.</th></tr>" +
     summaries
       .map(
         (s) =>
-          `<tr><td>${String(s.distanceM)}</td><td>${s.method}</td><td>${cell(s.detected)}</td>` +
+          `<tr><td>${String(s.distanceFt)}</td><td>${s.method}</td><td>${cell(s.detected)}</td>` +
           `<td>${cell(s.neutral)}</td><td>${cell(s.smile)}</td><td>${cell(s.separation)}</td></tr>`,
       )
       .join("");
@@ -123,7 +123,7 @@ function download(summaries: readonly ProbeSummary[]): void {
 async function run(models: Models): Promise<void> {
   go.disabled = true;
   const samples: ProbeSample[] = [];
-  for (const distanceM of DISTANCES_M) samples.push(...(await atDistance(models, distanceM)));
+  for (const distanceFt of DISTANCES_FT) samples.push(...(await atDistance(models, distanceFt)));
   banner.textContent = "Done!";
   const summaries = summarize(samples);
   showResults(summaries);

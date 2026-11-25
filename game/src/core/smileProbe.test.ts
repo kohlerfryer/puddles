@@ -61,7 +61,7 @@ describe("summarize", () => {
     face: ProbeSample["face"],
     score?: number,
   ): ProbeSample => ({
-    distanceM: 2,
+    distanceFt: 2,
     method,
     face,
     score,
@@ -76,9 +76,9 @@ describe("summarize", () => {
       sample("full", "smile", undefined),
     ];
     expect(summarize(samples)).toEqual([
-      { distanceM: 2, method: "crop", detected: 0.75, neutral: 0.1, smile: 0.8, separation: 1 },
+      { distanceFt: 2, method: "crop", detected: 0.75, neutral: 0.1, smile: 0.8, separation: 1 },
       {
-        distanceM: 2,
+        distanceFt: 2,
         method: "full",
         detected: 0,
         neutral: undefined,

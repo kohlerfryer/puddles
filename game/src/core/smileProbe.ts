@@ -12,7 +12,7 @@ export interface Blendshape {
 export type ProbeMethod = "full" | "crop";
 
 export interface ProbeSample {
-  distanceM: number;
+  distanceFt: number;
   method: ProbeMethod;
   face: "neutral" | "smile";
   /** The smile score, or nothing when no face was found. */
@@ -20,7 +20,7 @@ export interface ProbeSample {
 }
 
 export interface ProbeSummary {
-  distanceM: number;
+  distanceFt: number;
   method: ProbeMethod;
   /** Share of samples where a face was found. */
   detected: number;
@@ -68,13 +68,13 @@ export function separation(
 }
 
 function summarizeGroup(samples: readonly ProbeSample[]): ProbeSummary {
-  const [{ distanceM, method }] = samples as [ProbeSample];
+  const [{ distanceFt, method }] = samples as [ProbeSample];
   const scores = (face: ProbeSample["face"]) =>
     samples.flatMap((s) => (s.face === face && s.score !== undefined ? [s.score] : []));
   const neutral = scores("neutral");
   const smile = scores("smile");
   return {
-    distanceM,
+    distanceFt,
     method,
     detected: (neutral.length + smile.length) / samples.length,
     neutral: mean(neutral),
@@ -87,7 +87,7 @@ function summarizeGroup(samples: readonly ProbeSample[]): ProbeSummary {
 export function summarize(samples: readonly ProbeSample[]): ProbeSummary[] {
   const groups = new Map<string, ProbeSample[]>();
   for (const sample of samples) {
-    const key = `${String(sample.distanceM)}:${sample.method}`;
+    const key = `${String(sample.distanceFt)}:${sample.method}`;
     groups.set(key, [...(groups.get(key) ?? []), sample]);
   }
   return [...groups.values()].map(summarizeGroup);
