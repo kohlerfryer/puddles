@@ -15,7 +15,7 @@ import { type Box, cropBox } from "../plugins/sense/held_object/hold";
 import { poseSense } from "../plugins/sense/pose";
 
 // Assets load from the MediaPipe CDN for now; bundling them for offline play is a follow-up.
-const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
+export const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 const MODEL =
   "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 const HAND_MODEL =

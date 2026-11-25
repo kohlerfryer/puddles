@@ -6,5 +6,5 @@
     "type": true,
     "interface": true
   },
-  "entry": ["src/render/capture.ts"]
+  "entry": ["src/render/capture.ts", "src/render/smile.ts"]
 }
