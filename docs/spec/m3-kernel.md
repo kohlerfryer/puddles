@@ -187,7 +187,9 @@ The local server owns the save at `~/Puddles/save/` (inspectable JSON; the brows
 
 ## 13. Senses for engagement (M3: smiles; later: laughs, voice)
 
-- **smile**: MediaPipe Face Landmarker blendshapes (`mouthSmileLeft/Right`, `cheekSquintLeft/Right`); face crop from the pose to get enough pixels at 2 m. Emits per-face level and delta.
+- **smile**: MediaPipe Face Landmarker blendshapes on the full frame; level is the mean of `mouthSmileLeft/Right`. Emits per-face level and delta. Kids lean in and stay at 1–3 ft, so that is the design range; no face crop is needed there.
+
+  Spike #122 (owner, 1/2/3 ft, `game/smile.html`): faces found in 99–100% of frames; neutral level ≤ 0.01, smiling 0.60–0.72; separation (AUC) 0.87–0.91, with the misses in the first second of each smile while it forms. Full frame and face crop are equal at these distances. A smile counts once the level rises above about 0.3 for half a second.
 - **laugh** (M4): audio classifier, local.
 - **speech** (M4): voice activity; wake word "Puddles"; local speech-to-text; quick commands handled by reflexes, open-ended by the planner.
 - **attention**: facing the screen, distance.
