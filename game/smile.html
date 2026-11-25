@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Puddles smile probe</title>
+    <style>
+      body {
+        margin: 0;
+        font:
+          16px system-ui,
+          sans-serif;
+        background: #102030;
+        color: #f4f4f4;
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        height: 100vh;
+      }
+      #view {
+        position: relative;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+      video,
+      canvas {
+        position: absolute;
+        max-width: 100%;
+        max-height: 100%;
+        transform: scaleX(-1);
+      }
+      #banner {
+        position: absolute;
+        top: 24px;
+        font-size: 48px;
+        font-weight: 700;
+        text-shadow: 0 2px 8px #000;
+      }
+      aside {
+        padding: 20px;
+        background: #1c3248;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      button {
+        font: inherit;
+        padding: 10px;
+        border-radius: 8px;
+        border: 0;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      input {
+        font: inherit;
+        padding: 8px;
+        border-radius: 6px;
+        border: 0;
+      }
+      #status {
+        min-height: 3em;
+      }
+      .done {
+        background: #8fd18f;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="view">
+      <video id="video" playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div id="banner"></div>
+    </div>
+    <aside>
+      <h2>Smile probe</h2>
+      <p>
+        Checks whether the game can tell a smile from a neutral face at play distance. For each
+        distance: 3 seconds to get ready, 5 seconds with a neutral face, then 5 seconds with a big
+        smile. Only scores are kept; no images are saved.
+      </p>
+      <div id="live">Full frame: – · Face crop: –</div>
+      <button id="go" disabled>Start</button>
+      <div id="status">Loading the face and pose models...</div>
+      <table id="results"></table>
+    </aside>
+    <script type="module" src="/src/render/smile.ts"></script>
+  </body>
+</html>
