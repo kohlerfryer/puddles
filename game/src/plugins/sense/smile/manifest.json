@@ -1,0 +1,11 @@
+{
+  "kind": "sense",
+  "id": "smile",
+  "contract": "1",
+  "name": "Smile",
+  "authors": ["Puddles"],
+  "license": "MIT",
+  "inputs": ["face blendshapes"],
+  "emits": ["observation.smile"],
+  "budget_ms": 1
+}

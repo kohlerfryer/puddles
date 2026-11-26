@@ -7,6 +7,7 @@ import { gestureOf } from "./plugins/sense/gestures";
 import { momentOf } from "./plugins/sense/recorded";
 import { parseRecording, type Recording } from "./plugins/sense/recorded/recording";
 import { watchCamera } from "./render/camera";
+import { createDevOverlay } from "./render/devOverlay";
 import { createDevPanel } from "./render/devPanel";
 import { createHud, type Hud } from "./render/hud";
 import { createParentPanel } from "./render/parentPanel";
@@ -55,12 +56,20 @@ async function reactTo(photo: Blob, puddles: Actor, hud: Hud): Promise<SafeReact
   return reaction;
 }
 
-/** Shows each gesture on the HUD and hands every event to Puddles. */
-function follower(puddles: Actor, hud: Hud): (event: KernelEvent) => void {
-  return (event) => {
+/** What the game shows: Puddles, the HUD, and where each kernel event goes. */
+interface Screen {
+  readonly puddles: Actor;
+  readonly hud: Hud;
+  readonly see: (event: KernelEvent) => void;
+}
+
+/** Shows each gesture on the HUD, hands every event to Puddles and logs it on the dev overlay. */
+function follower(puddles: Actor, hud: Hud, overlay: (event: KernelEvent) => void) {
+  return (event: KernelEvent): void => {
     const gesture = gestureOf(event);
     if (gesture) hud.gesture(gesture);
     puddles.follow(event);
+    overlay(event);
   };
 }
 
@@ -68,7 +77,7 @@ function follower(puddles: Actor, hud: Hud): (event: KernelEvent) => void {
  * Plays the recording in `input` in place of the camera, naming its key moments on the HUD, or
  * says on the HUD why it can't.
  */
-function replay(input: string, sessionLimitMin: number, puddles: Actor, hud: Hud): void {
+function replay(input: string, sessionLimitMin: number, { puddles, hud, see }: Screen): void {
   let recording: Recording;
   try {
     recording = parseRecording(input);
@@ -77,7 +86,6 @@ function replay(input: string, sessionLimitMin: number, puddles: Actor, hud: Hud
     return;
   }
   hud.status("replaying a recording");
-  const see = follower(puddles, hud);
   replayRecording(recording, sessionLimitMin, {
     onEvent: (event) => {
       see(event);
@@ -106,8 +114,10 @@ void Promise.all([createStage(document.body), loadSave(saves)]).then(([app, save
   );
   createDevPanel(document.body, puddles);
   createParentPanel(document.body, saves, save);
+  const see = follower(puddles, hud, createDevOverlay(document.body));
   if (INPUT !== undefined) {
-    replay(INPUT, save?.settings.session_limit_min ?? SESSION_LIMIT_MIN.default, puddles, hud);
+    const limit = save?.settings.session_limit_min ?? SESSION_LIMIT_MIN.default;
+    replay(INPUT, limit, { puddles, hud, see });
     return;
   }
   if (!save) {
@@ -120,7 +130,7 @@ void Promise.all([createStage(document.body), loadSave(saves)]).then(([app, save
   }
   watchCamera(
     save.settings.session_limit_min,
-    follower(puddles, hud),
+    see,
     (frame) => {
       hud.status("watching");
       hud.frame(frame);
