@@ -92,6 +92,8 @@ Common manifest fields:
 ### 5.1 Sense plugins
 Read raw input (camera frames, microphone audio, hand landmarks), emit `observation.*` events. Declare `inputs`, `emits`, and a per-tick time budget. Raw media never leaves the sense.
 
+**Play distance.** Kids lean in and stay at 1–3 ft, so the camera mostly sees face, shoulders and hands (spike #122, Owner inbox #137 item 6). Close range is the default: smile, mouth open (silly face), head tilt, nod, peekaboo and lean-in distance, plus wave and hold-up, which already work there. Whole-body gestures (jump, flap, crouch) count only in a "stand back and play" mode, entered when hips and knees stay in view.
+
 ### 5.2 Brain plugins
 `decide(snapshot, memory, world) → Intent | null`. Declare `cadence` (every tick, on event, every N seconds), `autonomy` level (§9), `latency_budget_ms`, and which intents they may emit.
 
@@ -119,9 +121,9 @@ Atomic actions. Manifest declares `params`, `needs` (affordances or conditions),
 ## 6. Body
 
 ### 6.1 Core skills (M3 ports today's verbs; the catalogue grows as starter issues)
-- **Moving:** `walk_to`, `run_to`, `run_away`, `hide_behind`, `circle`, `jump`, `jump_over`, `approach_glass`, `enter`, `exit`
+- **Moving:** `walk_to`, `run_to`, `run_away`, `hide_behind`, `circle`, `jump`, `jump_over`, `approach_glass` (when the kid leans in), `enter`, `exit`
 - **With objects:** `sniff`, `peck`, `eat`, `push`, `wear`, `sit_on`, `pick_up`, `carry`, `drop`, `toss`, `place_in_slot`
-- **Expressive:** `look_at`, `dance`, `flap`, `freeze`, `fall_over`, `tap_glass`, `shake_head`, `quack`, `think` (thought bubble), `nap`
+- **Expressive:** `look_at`, `dance`, `flap`, `freeze`, `fall_over`, `tap_glass`, `shake_head`, `nod`, `tilt_head`, `quack`, `think` (thought bubble), `nap`
 - **With the kid:** `copy_gesture`, `ask_for` (vetted request list), `celebrate`
 
 ### 6.2 Routines and behaviors
@@ -144,7 +146,7 @@ The crop is used once to identify and color the prop, then discarded. Library-ma
 
 | Brain (first versions) | Cadence | Job |
 | --- | --- | --- |
-| **reflexes** | every tick | copy gestures, eye-follow, flinch, approach the glass |
+| **reflexes** | every tick | copy gestures (body and face), eye-follow, flinch, play peekaboo, walk up to the glass when the kid leans in |
 | **object matcher** | on held object | library id / archetype + traits (SmolVLM, constrained; templates as fallback) |
 | **bandit** | when idle or after a bit ends | choose the next behavior or bit (§12) |
 | **planner** (M4) | every 10–30 s | goals and new routines from a local 3–8B model |
@@ -190,6 +192,8 @@ The local server owns the save at `~/Puddles/save/` (inspectable JSON; the brows
 - **smile**: MediaPipe Face Landmarker blendshapes on the full frame; level is the mean of `mouthSmileLeft/Right`. Emits per-face level and delta. Kids lean in and stay at 1–3 ft, so that is the design range; no face crop is needed there.
 
   Spike #122 (owner, 1/2/3 ft, `game/smile.html`): faces found in 99–100% of frames; neutral level ≤ 0.01, smiling 0.60–0.72; separation (AUC) 0.87–0.91; the owner saw the misses come in the first second of each smile while it forms. Full frame and face crop are equal at these distances. As a starting value to tune in K13 (#125), a smile counts once the level stays above 0.3 for half a second.
+- **face gestures**: from the same Face Landmarker: `mouth_open` (`jawOpen`), `head_tilt` (head roll) and `nod` (a pitch swing), and `peekaboo` (the face hides for 0.5–5 s while the kid is still there, then comes back). Thresholds are starting values to tune.
+- **distance**: near / mid / far from shoulder width in the pose; near for a second brings Puddles to the glass.
 - **laugh** (M4): audio classifier, local.
 - **speech** (M4): voice activity; wake word "Puddles"; local speech-to-text; quick commands handled by reflexes, open-ended by the planner.
 - **attention**: facing the screen, distance.
@@ -273,6 +277,11 @@ Exit: the game runs on the kernel with today's features as plugins; replay works
 | K18w | CI workflow posting screenshots to game PRs | owner | K18 |
 | K19 | Showcase scenarios as end-to-end tests; recorded model replies (cassettes) | agent | K17, K8 |
 | K19w | Nightly workflow running the real-model bench | owner | K19 |
+| K20 | Face sense: mouth open, head tilt, nod (#209) | agent | K13 |
+| K21 | Peekaboo (#210) | agent | K20 |
+| K22 | Copy face gestures: `nod`, `tilt_head`, open-bill quack (#211) | agent | K20 |
+| K23 | Lean in: distance bands and `approach_glass` (#212) | agent | K7 |
+| K24 | Stand back and play: body gestures only with the whole body in view (#213) | agent | K7 |
 
 ### M4: Mind
 Local planner brain (spike: Qwen2.5-VL 3B/7B, SmolVLM2 2.2B on the Mac), voice commands and wake word, needs/boredom/personality, laugh sense, planner-proposed routines.
