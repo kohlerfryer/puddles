@@ -138,6 +138,26 @@ describe("bandit", () => {
     expect(next.choices.filter((c) => c.arm === "song").length).toBeGreaterThanOrEqual(5);
   });
 
+  it("rests between bits when asked, leaving room for other brains", () => {
+    const events = proposals(run(bandit({ arms, model: betaModel, restMs: 10_000 }), () => [], 40));
+    expect(events[0]?.t).toBeGreaterThanOrEqual(10_000);
+    const gaps = events.slice(1).map((e, i) => e.t - (events[i]?.t ?? 0));
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(10_000 + WINDOW_MS);
+  });
+
+  it("plays only while a face is in view when it needs one", () => {
+    const faceUntil = (ms: number) =>
+      fakeSense("smile", ({ t }) =>
+        t < ms ? [{ type: "observation.smile", data: { level: 0, delta: 0 } }] : [],
+      );
+    const unseen = bandit({ arms, model: betaModel, needsFace: true });
+    expect(proposals(run(unseen, () => [], 10))).toEqual([]);
+    const seen = bandit({ arms, model: betaModel, needsFace: true });
+    const events = proposals(run(seen, () => [faceUntil(5000)], 20));
+    expect(events.length).toBeGreaterThan(0);
+    expect(events.every((e) => e.t < 5000 + 1000)).toBe(true);
+  });
+
   it("refuses an arm with no skills", () => {
     expect(() =>
       bandit({ arms: [{ id: "x", features: [], skills: [] }], model: betaModel }),

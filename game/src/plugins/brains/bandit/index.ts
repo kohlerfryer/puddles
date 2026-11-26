@@ -43,7 +43,14 @@ export interface BanditOptions {
    * §11). A fresh map when absent.
    */
   readonly household?: Map<string, Model>;
+  /** How long to rest after a bit's window closes, and from the start, so other brains get turns. */
+  readonly restMs?: number;
+  /** Plays only while a face is in view: with no face there is no data (spec §12). */
+  readonly needsFace?: boolean;
 }
+
+/** How recent the last smile reading must be for a face to count as in view. */
+const FACE_MS = 1000;
 
 interface Open {
   readonly arm: Arm;
@@ -102,6 +109,10 @@ interface State {
   /** The brain whose intent is playing, if any. */
   running: string | null;
   open: Open | null;
+  /** When the next bit may start. */
+  restUntil: number;
+  /** When a face was last seen. */
+  faceAt: number;
 }
 
 /** Whether the open bit is over; once its window closes, learns from how it landed. */
@@ -134,7 +145,8 @@ function choose(state: State, { arms, model }: BanditOptions, ctx: PluginContext
 }
 
 function watch(state: State, events: readonly KernelEvent[]) {
-  for (const { type, data } of events) {
+  for (const { t, type, data } of events) {
+    if (type === "observation.smile") state.faceAt = t;
     if (type === "observation.held_object" && typeof data.archetype === "string")
       state.archetype = data.archetype;
     if (type === "intent.started") state.running = String(data.brain);
@@ -146,6 +158,7 @@ function watch(state: State, events: readonly KernelEvent[]) {
 /** A fresh bandit brain over `arms`, and the log of its choices. */
 export function bandit(options: BanditOptions): Bandit {
   options.arms.forEach(routineOf);
+  const { restMs = 0 } = options;
   const state: State = {
     models: options.household ?? new Map<string, Model>(),
     choices: [],
@@ -154,13 +167,20 @@ export function bandit(options: BanditOptions): Bandit {
     archetype: NO_OBJECT,
     running: null,
     open: null,
+    restUntil: restMs,
+    faceAt: -Infinity,
   };
   const decide = (ctx: PluginContext): Intent | null => {
     watch(state, ctx.events);
-    if (state.open && !settle(state, state.open, ctx)) return null;
-    state.open = null;
+    if (state.open) {
+      if (!settle(state, state.open, ctx)) return null;
+      state.open = null;
+      state.restUntil = ctx.t + restMs;
+    }
     state.observed = state.observed.filter((e) => e.t > ctx.t - WINDOW_MS);
-    return state.running === null ? choose(state, options, ctx) : null;
+    const faceOk = !options.needsFace || ctx.t - state.faceAt <= FACE_MS;
+    const free = state.running === null && ctx.t >= state.restUntil;
+    return free && faceOk ? choose(state, options, ctx) : null;
   };
   return { plugin: { manifest, code: { decide } }, choices: state.choices };
 }
