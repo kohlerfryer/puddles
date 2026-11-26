@@ -27,6 +27,15 @@ concurrency:
   group: nightly-bench
   cancel-in-progress: false
 
+# Hosted runners land on different CPU types, and torch, MKL and oneDNN pick their kernels per CPU,
+# so the same model gave two sets of replies (#203). Pin every library to the AVX2 path and a fixed
+# thread count so recording and checking agree on any runner.
+env:
+  ATEN_CPU_CAPABILITY: avx2
+  MKL_CBWR: AVX2,STRICT
+  ONEDNN_MAX_CPU_ISA: AVX2
+  OMP_NUM_THREADS: "4"
+
 jobs:
   drift:
     name: model drift
@@ -40,6 +49,10 @@ jobs:
           python-version: "3.12"
       - name: Install the vlm group
         run: uv sync --frozen --group vlm
+      - name: Log the CPU and torch's kernel path
+        run: |
+          echo "- CPU: $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) cores" >> "$GITHUB_STEP_SUMMARY"
+          uv run --frozen --group vlm python -c "import torch; print('- torch kernels:', torch.backends.cpu.get_cpu_capability())" >> "$GITHUB_STEP_SUMMARY"
       - name: Compare real replies with the cassettes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -68,6 +81,10 @@ jobs:
           python-version: "3.12"
       - name: Install the vlm group
         run: uv sync --frozen --group vlm
+      - name: Log the CPU and torch's kernel path
+        run: |
+          echo "- CPU: $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) cores" >> "$GITHUB_STEP_SUMMARY"
+          uv run --frozen --group vlm python -c "import torch; print('- torch kernels:', torch.backends.cpu.get_cpu_capability())" >> "$GITHUB_STEP_SUMMARY"
       - name: Record the cassettes on this runner and commit them to the branch
         env:
           PYTHONPATH: server
