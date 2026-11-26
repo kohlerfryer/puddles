@@ -8,7 +8,7 @@
     },
     "cereal-bowl.jpg": {
       "sha256": "d0010c2aab99db5fd1d25bdb52bf74387471b5c32249cc587c5979b5f7944475",
-      "reply": "{\"holding\": true, \"object\": \"banana\", \"traits\": {\"size\": \"small\", \"weight\": \"light\", \"shape\": \"long\", \"edible\": true}, \"script\": [{\"do\": \"walk_to\", \"target\": \"object\", \"mood\": \"curious\"}, {\"do\": \"peck\", \"target\": \"object\", \"mood\": \"curious\"}, {\"do\": \"eat\", \"target\": \"object\", \"mood\": \"happy\", \"say\": \"Banana! My favourite! Well, today. Today. Well, today. Well, today. Well, today.\"}]}"
+      "reply": "{\"holding\": true, \"object\": \"banana\", \"traits\": {\"size\": \"small\", \"weight\": \"light\", \"shape\": \"long\", \"edible\": true}, \"script\": [{\"do\": \"walk_to\", \"target\": \"object\", \"mood\": \"curious\"}, {\"do\": \"peck\", \"target\": \"object\", \"mood\": \"happy\", \"say\": \"Banana! My favourite! Well, today. Today. Well, today. Well, today. Well, today.\"}, {\"do\": \"eat\", \"target\": \"object\", \"mood\": \"scared\", \"say\": \"Nobody move. Especially you, cat. Very convincing. \"}]}"
     },
     "toothbrush.jpg": {
       "sha256": "2bf81e32eb4c2618ef41c727f8f06bdc82b027fa07d71e6da72aeaed1d8021e5",
@@ -20,7 +20,7 @@
     },
     "water-bottle.jpg": {
       "sha256": "5a3d64374bd9eeb3d195768bab4987a394abec6c2fb4bfdfd21763d3ed4d2546",
-      "reply": "{\"holding\": true, \"object\": \"banana\", \"traits\": {\"size\": \"tiny\", \"weight\": \"light\", \"shape\": \"long\", \"edible\": true}, \"script\": [{\"do\": \"walk_to\", \"target\": \"object\", \"mood\": \"curious\", \"say\": \"Is that a yellow boomerang?\"}, {\"do\": \"peck\", \"target\": \"object\", \"mood\": \"curious\"}, {\"do\": \"eat\", \"target\": \"object\", \"mood\": \"happy\", \"say\": \"Banana! My favourite! Well, today. Today. Well, today. Well, today. Well, today.\"}]}"
+      "reply": "{\"holding\": true, \"object\": \"banana\", \"traits\": {\"size\": \"small\", \"weight\": \"light\", \"shape\": \"long\", \"edible\": true}, \"script\": [{\"do\": \"walk_to\", \"target\": \"object\", \"mood\": \"curious\", \"say\": \"Is that a yellow boomerang?\"}, {\"do\": \"peck\", \"target\": \"object\", \"mood\": \"curious\"}, {\"do\": \"eat\", \"target\": \"object\", \"mood\": \"happy\", \"say\": \"Banana! My favourite! Well, today. Today. Well, today. Well, today. Well, today.\"}]}"
     }
   }
 }
