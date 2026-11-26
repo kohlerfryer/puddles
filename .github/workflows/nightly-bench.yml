@@ -2,12 +2,20 @@ name: nightly bench
 
 # The nightly real-model check (docs/spec/m3-kernel.md §14.1, K19w): runs SmolVLM on CPU over
 # ml/bench/photos and compares its replies with the cassettes that PR tests replay. Drift opens or
-# updates one issue; it never fails this job, and `main red` only watches `ci`.
+# updates one issue; it never fails this job, and `main red` only watches `ci`. Dispatch with
+# mode=record to re-record the cassettes on this runner instead; they come back as an artifact to
+# commit, so the CI CPU runner stays the device the cassettes and the nightly check agree on.
 
 on:
   schedule:
     - cron: "30 4 * * *"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: check the cassettes for drift, or record new ones
+        type: choice
+        options: [check, record]
+        default: check
 
 permissions:
   contents: read
@@ -30,6 +38,7 @@ jobs:
       - name: Install the vlm group
         run: uv sync --frozen --group vlm
       - name: Compare real replies with the cassettes
+        if: inputs.mode != 'record'
         env:
           GH_TOKEN: ${{ github.token }}
           PYTHONPATH: server
@@ -37,3 +46,16 @@ jobs:
         run: |
           uv run --frozen --group vlm python -m scripts.model_drift --summary drift.md --run-url "$RUN_URL"
           cat drift.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Record the cassettes on this runner
+        if: inputs.mode == 'record'
+        env:
+          PYTHONPATH: server
+        run: |
+          for model in smolvlm smolvlm-json; do
+            uv run --frozen --group vlm python -m scripts.cassettes record "$model"
+          done
+      - uses: actions/upload-artifact@v7
+        if: inputs.mode == 'record'
+        with:
+          name: cassettes
+          path: server/tests/cassettes/
