@@ -51,8 +51,8 @@ jobs:
         run: uv sync --frozen --group vlm
       - name: Log the CPU and torch's kernel path
         run: |
-          echo "- CPU: $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) cores" >> "$GITHUB_STEP_SUMMARY"
-          uv run --frozen --group vlm python -c "import torch; print('- torch kernels:', torch.backends.cpu.get_cpu_capability())" >> "$GITHUB_STEP_SUMMARY"
+          echo "- CPU: $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) cores" | tee -a "$GITHUB_STEP_SUMMARY"
+          uv run --frozen --group vlm python -c "import torch; print('- torch kernels:', torch.backends.cpu.get_cpu_capability())" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Compare real replies with the cassettes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -83,8 +83,8 @@ jobs:
         run: uv sync --frozen --group vlm
       - name: Log the CPU and torch's kernel path
         run: |
-          echo "- CPU: $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) cores" >> "$GITHUB_STEP_SUMMARY"
-          uv run --frozen --group vlm python -c "import torch; print('- torch kernels:', torch.backends.cpu.get_cpu_capability())" >> "$GITHUB_STEP_SUMMARY"
+          echo "- CPU: $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) cores" | tee -a "$GITHUB_STEP_SUMMARY"
+          uv run --frozen --group vlm python -c "import torch; print('- torch kernels:', torch.backends.cpu.get_cpu_capability())" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Record the cassettes on this runner and commit them to the branch
         env:
           PYTHONPATH: server
