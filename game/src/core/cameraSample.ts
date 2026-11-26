@@ -15,6 +15,8 @@ export interface CameraSample {
   readonly pose: PoseFrame | undefined;
   /** Every hand Hand Landmarker found. */
   readonly hands: readonly (readonly Point[])[];
+  /** The biggest smile level (0–1) among the faces Face Landmarker found; absent with no face. */
+  readonly smile?: number;
 }
 
 /** Gives a sense the latest camera sample at kernel time `t`, or nothing before the first. */

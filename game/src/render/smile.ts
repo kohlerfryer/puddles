@@ -1,4 +1,4 @@
-import { FaceLandmarker, FilesetResolver, type PoseLandmarker } from "@mediapipe/tasks-vision";
+import type { FaceLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
 
 import { toFrame } from "../core/poseFixture";
 import {
@@ -10,11 +10,9 @@ import {
   type ProbeSummary,
 } from "../core/smileProbe";
 import { cropBox } from "../plugins/sense/held_object/hold";
-import { loadPose, openCamera, SAMPLE_MS, WASM } from "./camera";
+import { loadFace, loadPose, openCamera, SAMPLE_MS } from "./camera";
 
 // Dev-only tool for the smile spike (issue #122). Keeps scores only, never images.
-const FACE_MODEL =
-  "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 const DISTANCES_FT = [1, 2, 3];
 const READY_S = 3;
 const HOLD_MS = 5000;
@@ -37,15 +35,6 @@ interface Models {
   pose: PoseLandmarker;
   full: FaceLandmarker;
   cropped: FaceLandmarker;
-}
-
-async function loadFace(): Promise<FaceLandmarker> {
-  const vision = await FilesetResolver.forVisionTasks(WASM);
-  return FaceLandmarker.createFromOptions(vision, {
-    baseOptions: { modelAssetPath: FACE_MODEL },
-    runningMode: "VIDEO",
-    outputFaceBlendshapes: true,
-  });
 }
 
 function score(face: FaceLandmarker, source: HTMLVideoElement | HTMLCanvasElement, now: number) {
@@ -134,7 +123,7 @@ async function run(models: Models): Promise<void> {
 
 async function start(): Promise<void> {
   await openCamera(video);
-  const [pose, full, cropped] = await Promise.all([loadPose(), loadFace(), loadFace()]);
+  const [pose, full, cropped] = await Promise.all([loadPose(), loadFace(1), loadFace(1)]);
   const models = { pose, full, cropped };
   go.addEventListener("click", () => {
     run(models).catch((error: unknown) => {

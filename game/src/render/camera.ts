@@ -1,9 +1,15 @@
-import { FilesetResolver, HandLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
+import {
+  FaceLandmarker,
+  FilesetResolver,
+  HandLandmarker,
+  PoseLandmarker,
+} from "@mediapipe/tasks-vision";
 
 import { scriptMs } from "../core/ask";
 import type { CameraSample, Point } from "../core/cameraSample";
 import type { KernelEvent } from "../core/contracts";
 import { type PoseFrame, toFrame } from "../core/poseFixture";
+import { smileScore } from "../core/smileProbe";
 import type { SafeReaction } from "../core/validator";
 import { TICK_HZ } from "../kernel/clock";
 import { createKernel, type Kernel } from "../kernel/kernel";
@@ -13,13 +19,18 @@ import { gesturesSense } from "../plugins/sense/gestures";
 import { type HeldObjectSense, heldHand, heldObjectSense } from "../plugins/sense/held_object";
 import { type Box, cropBox } from "../plugins/sense/held_object/hold";
 import { poseSense } from "../plugins/sense/pose";
+import { smileSense } from "../plugins/sense/smile";
 
 // Assets load from the MediaPipe CDN for now; bundling them for offline play is a follow-up.
-export const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
+const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 const MODEL =
   "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 const HAND_MODEL =
   "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+const FACE_MODEL =
+  "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+/** Faces the game looks at; the best smile among them counts (spec §12). */
+const FACES = 4;
 /** Photos of held-up objects are this many pixels square. */
 const PHOTO_PX = 512;
 /** Same rate the gesture fixtures were recorded at, so live input matches what the detector is tested on. */
@@ -50,6 +61,25 @@ async function loadHands(): Promise<HandLandmarker> {
     runningMode: "VIDEO",
     numHands: 2,
   });
+}
+
+/** Face Landmarker with blendshapes, finding up to `numFaces` faces. */
+export async function loadFace(numFaces: number): Promise<FaceLandmarker> {
+  const vision = await FilesetResolver.forVisionTasks(WASM);
+  return FaceLandmarker.createFromOptions(vision, {
+    baseOptions: { modelAssetPath: FACE_MODEL },
+    runningMode: "VIDEO",
+    outputFaceBlendshapes: true,
+    numFaces,
+  });
+}
+
+/** The biggest smile among the faces in `video`, or nothing when no face is found. */
+function bestSmile(face: FaceLandmarker, video: HTMLVideoElement, now: number) {
+  const scores = face
+    .detectForVideo(video, now)
+    .faceBlendshapes.flatMap(({ categories }) => smileScore(categories) ?? []);
+  return scores.length > 0 ? { smile: Math.max(...scores) } : {};
 }
 
 /** Crops `box` out of the current video frame as a square JPEG. */
@@ -115,15 +145,13 @@ export async function watchCamera(
   video.muted = true;
   video.playsInline = true;
   await openCamera(video);
-  const pose = await loadPose();
+  const [pose, face] = await Promise.all([loadPose(), loadFace(FACES)]);
   const hands = onPhoto ? await loadHands() : undefined;
   let latest: CameraSample | undefined;
   const read = () => latest;
   const held = heldObjectSense(read);
-  const kernel = liveKernel(
-    [poseSense(read), gesturesSense(read), ...(hands ? [held.folder] : [])],
-    sessionLimitMin,
-  );
+  const senses = [poseSense(read), gesturesSense(read), smileSense(read)];
+  const kernel = liveKernel([...senses, ...(hands ? [held.folder] : [])], sessionLimitMin);
   let sampledAt = -Infinity;
 
   const sample = (now: number): void => {
@@ -133,7 +161,12 @@ export async function watchCamera(
     const person = pose.detectForVideo(video, now).landmarks[0];
     const frame = person ? toFrame(now, person) : undefined;
     onFrame?.(frame);
-    latest = { t: now, pose: frame, hands: hands?.detectForVideo(video, now).landmarks ?? [] };
+    latest = {
+      t: now,
+      pose: frame,
+      hands: hands?.detectForVideo(video, now).landmarks ?? [],
+      ...bestSmile(face, video, now),
+    };
   };
   const photo = onPhoto ? photographer(video, held, onPhoto) : undefined;
   driveKernel(kernel, (events) => {
