@@ -24,7 +24,7 @@ REACTION = Draft202012Validator(json.loads(smolvlm.SCHEMA_PATH.read_text()))
 # What the base namer and the templates make of each photo: the object and the prop it spawns.
 NAMER_ANSWERS = {
     "book-cover.jpg": ("book", {"id": "book"}),
-    "cereal-bowl.jpg": ("bowl", {"id": "bowl"}),
+    "cereal-bowl.jpg": ("cereal", {"id": "other", "archetype": "fruit", "color": "#ad8e61"}),
     "toothbrush.jpg": ("toothbrush", {"id": "toothbrush"}),
     "toy-car.jpg": ("toy car", {"id": "toy_car"}),
     "water-bottle.jpg": ("bottle", {"id": "bottle"}),
